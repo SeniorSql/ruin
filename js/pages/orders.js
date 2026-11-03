@@ -1,0 +1,202 @@
+// Заказчик: мои заказы, мастер заказа, предложения и сравнение (SCR-ORD-01..05)
+import { sb, state, q, rpc, loadCategories, categoryById } from '../api.js';
+import { esc, money, status, toast, busy, modal, askReason, emptyState, errorState, mskToday, date, period, FORMAT, idemKey,
+  dateTime, timeLeft, photoOf, initials, plural, POLICY, toMinor } from '../ui.js';
+import { go, route } from '../app.js';
+
+export async function render(app, params, query, pattern) {
+  await loadCategories();
+  if (!state.org.can_order) {
+    app.innerHTML = emptyState('Текущая организация не заказчик', 'Переключитесь на личный профиль или организацию-заказчика в меню слева, либо включите роль заказчика в настройках организации.',
+      '<a class="btn" href="#/account">Настройки</a>');
+    return;
+  }
+  if (pattern === 'orders') return list(app);
+  if (pattern === 'orders/new') return create(app, query);
+  return detail(app, params.id);
+}
+
+async function list(app) {
+  let rows;
+  try { rows = await q(sb.from('orders').select('*, categories(name)').eq('customer_org_id', state.org.id).order('created_at', { ascending: false }).limit(200)); }
+  catch (err) { app.innerHTML = errorState(err); return; }
+  const counts = await Promise.all(rows.map((o) => rpc('order_offer_count', { p_order: o.id }).catch(() => 0)));
+  app.innerHTML = `
+    <div class="page-head"><div><h1>Мои заказы</h1><p>Опишите задачу — проверенные исполнители пришлют предложения.</p></div>
+      <a class="btn" href="#/orders/new">+ Разместить заказ</a></div>
+    ${rows.length ? `<div class="panel"><table class="table resp"><thead><tr><th>Заказ</th><th>Даты</th><th>Предложений</th><th>Статус</th></tr></thead><tbody>
+      ${rows.map((o, i) => `<tr class="click" onclick="location.hash='#/orders/${o.id}'"><td><b>${esc(o.title)}</b><div class="small muted">${esc(o.categories?.name)} · ${esc(o.city)}${o.visibility === 'DIRECT' ? ' · личный запрос' : ''}</div></td>
+        <td class="small">${date(o.start_date)} — ${date(o.end_date)}</td><td><b>${counts[i]}</b></td><td>${status('order', o.status)}</td></tr>`).join('')}
+      </tbody></table></div>`
+    : emptyState('Заказов пока нет', 'Разместите первый заказ: укажите технику, даты и адрес. Исполнители пришлют цены, вы выберете лучшее.', '<a class="btn" href="#/orders/new">Разместить заказ</a>')}`;
+}
+
+function create(app, query) {
+  const cats = state.categories;
+  app.innerHTML = `
+    <div class="crumbs"><a href="#/orders">Мои заказы</a> › <b>Новый заказ</b></div>
+    <div class="page-head"><div><h1>Разместить заказ</h1><p>Заказ увидят проверенные исполнители с подходящей техникой. Точный адрес — только тот, с кем заключите сделку.</p></div></div>
+    <form id="of" class="cols">
+      <div>
+        <div class="panel"><h2>Что нужно</h2>
+          <label class="f"><span>Категория техники <i>*</i></span><select class="inp" name="cat" required><option value="">Выберите</option>
+            ${cats.map((c) => `<option value="${c.id}" ${c.code === query.cat ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
+          <label class="f"><span>Коротко о задаче <i>*</i></span><input class="inp" name="title" required maxlength="150" placeholder="Например: выкопать котлован 10×12 м"></label>
+          <div class="grid2">
+            <label class="f"><span>Количество единиц</span><input class="inp" name="qty" type="number" min="1" max="50" value="1"></label>
+            <label class="f"><span>Формат</span><select class="inp" name="format"><option value="ANY">Не важно</option><option value="WITH_OPERATOR">С оператором</option><option value="WITHOUT_OPERATOR">Без оператора</option></select></label>
+          </div>
+          <label class="f"><span>Подробности</span><textarea class="inp" name="desc" maxlength="3000" rows="5" placeholder="Объём работ, требования к технике (глубина копания, грузоподъёмность), график, условия подъезда"></textarea>
+            <div class="hint">Без телефонов и ссылок — контакты откроются после подтверждения сделки.</div></label>
+        </div>
+        <div class="panel"><h2>Где и когда</h2>
+          <div class="grid2">
+            <label class="f"><span>Начало <i>*</i></span><input class="inp" type="date" name="start" required min="${mskToday(1)}" value="${mskToday(1)}"></label>
+            <label class="f"><span>Окончание <i>*</i></span><input class="inp" type="date" name="end" required min="${mskToday(1)}" value="${mskToday(1)}"></label>
+            <label class="f"><span>Город <i>*</i></span><input class="inp" name="city" required value="${esc(state.org.city || '')}"></label>
+            <label class="f"><span>Район (видят все)</span><input class="inp" name="district"></label>
+          </div>
+          <label class="f"><span>Точный адрес <i>*</i></span><input class="inp" name="address" required maxlength="300">
+            <div class="hint">Увидит только исполнитель, с которым будет подтверждена сделка.</div></label>
+        </div>
+      </div>
+      <aside class="sticky"><div class="panel"><h2>Условия</h2>
+        <label class="f"><span>Бюджет, ₽</span><input class="inp" name="budget" type="number" min="0" step="500"></label>
+        <label class="check"><input type="checkbox" name="budget_visible"> <span>Показывать бюджет исполнителям</span></label>
+        <label class="f"><span>Собирать предложения</span><select class="inp" name="deadline">
+          <option value="24">24 часа</option><option value="72" selected>3 дня</option><option value="168">7 дней</option><option value="336">14 дней</option></select></label>
+        <div class="banner info small">Заказ от имени: <b>&nbsp;${esc(state.org.type === 'PERSON' ? 'вы как частное лицо' : state.org.name)}</b></div>
+        <div class="form-error hidden" id="err"></div>
+        <button class="btn wide">Опубликовать заказ</button>
+      </div></aside>
+    </form>`;
+  const f = app.querySelector('#of');
+  f.onsubmit = (e) => {
+    e.preventDefault();
+    if (f.end.value < f.start.value) { f.end.value = f.start.value; }
+    busy(f.querySelector('button'), async () => {
+      try {
+        const id = await rpc('create_order', {
+          p_org: state.org.id, p_title: f.title.value, p_description: f.desc.value, p_category: Number(f.cat.value),
+          p_qty: Number(f.qty.value || 1), p_format: f.format.value, p_start: f.start.value, p_end: f.end.value,
+          p_city: f.city.value, p_district: f.district.value || null, p_address: f.address.value,
+          p_budget: f.budget.value ? toMinor(f.budget.value) : null, p_budget_visible: f.budget_visible.checked,
+          p_deadline_hours: Number(f.deadline.value), p_equipment: null });
+        toast('Заказ опубликован'); go('#/orders/' + id);
+      } catch (err) { const el = app.querySelector('#err'); el.textContent = err.message; el.classList.remove('hidden'); }
+    });
+  };
+}
+
+async function detail(app, id) {
+  let o, offers, priv;
+  try {
+    o = await q(sb.from('orders').select('*, categories(name,code)').eq('id', id).maybeSingle());
+    if (!o || o.customer_org_id !== state.org.id) {
+      app.innerHTML = emptyState('Заказ не найден', 'Возможно, он размещён от имени другой организации — переключите контекст слева.');
+      return;
+    }
+    [offers, priv] = await Promise.all([
+      q(sb.from('offers').select('*, equipment(id,title,photos,brand,model,year,specs,cancel_policy), organizations(id,name,verification_status)')
+        .eq('order_id', id).order('created_at', { ascending: false })),
+      q(sb.from('order_private').select('*').eq('order_id', id).maybeSingle())
+    ]);
+  } catch (err) { app.innerHTML = errorState(err); return; }
+  const active = offers.filter((f) => ['SUBMITTED', 'SELECTED', 'ACCEPTED'].includes(f.status));
+  const other = offers.filter((f) => !active.includes(f));
+  const stats = Object.fromEntries(await Promise.all(active.map(async (f) => [f.provider_org_id, await rpc('public_org_stats', { p_org: f.provider_org_id }).catch(() => ({}))])));
+  const deal = o.status === 'NEGOTIATION' || o.status === 'CONVERTED_TO_DEAL'
+    ? await q(sb.from('deals').select('id,number,status').eq('order_id', id).neq('status', 'CANCELLED').maybeSingle()) : null;
+  const cheapest = Math.min(...active.filter((f) => f.status === 'SUBMITTED').map((f) => f.total_minor));
+  const canCancel = ['PUBLISHED', 'OFFERS_RECEIVED'].includes(o.status);
+
+  app.innerHTML = `
+    <div class="crumbs"><a href="#/orders">Мои заказы</a> › <b>${esc(o.title)}</b></div>
+    <div class="page-head"><div><h1>${esc(o.title)}</h1><div style="margin-top:6px">${status('order', o.status)}
+      ${o.visibility === 'DIRECT' ? '<span class="st gray">Личный запрос</span>' : ''}</div></div>
+      ${canCancel ? '<button class="btn danger" id="cancelBtn">Отменить заказ</button>' : ''}</div>
+    ${deal ? `<div class="next"><div><small>ЧТО ДАЛЬШЕ</small><b>Сделка ${esc(deal.number)}: ${deal.status === 'AWAITING_CONFIRMATION' ? 'ждём подтверждения исполнителя' : 'перейдите в сделку'}</b></div><a class="btn" href="#/deals/${deal.id}">Открыть сделку</a></div>` : ''}
+    ${['PUBLISHED', 'OFFERS_RECEIVED'].includes(o.status) ? `<div class="banner info">Приём предложений: ${new Date(o.deadline_at) > Date.now() ? 'ещё ' + timeLeft(o.deadline_at) : 'завершён — выберите предложение'}.</div>` : ''}
+    <div class="cols">
+      <div>
+        <div class="panel"><h2>Предложения ${active.length ? `<span class="muted">(${active.length})</span>` : ''}</h2>
+          ${active.length ? compareTable(active, stats, cheapest) : `<div class="empty"><b>Пока нет предложений</b>Исполнители получили уведомление. Обычно первые предложения приходят в течение нескольких часов.
+            <div><a class="btn ghost" href="#/catalog?cat=${o.categories?.code}">Посмотреть технику в каталоге</a></div></div>`}
+        </div>
+        ${other.length ? `<div class="panel"><h3>Неактивные предложения</h3>${other.map((f) => `<div class="row-item"><div class="grow"><b>${esc(f.organizations?.name)}</b>
+          <span class="small muted">${esc(f.equipment?.title)} · ${money(f.total_minor)}</span></div>${status('offer', f.status)}</div>`).join('')}</div>` : ''}
+      </div>
+      <aside class="sticky"><div class="panel"><h2>Детали заказа</h2>
+        <dl class="kv"><dt>Техника</dt><dd>${esc(o.categories?.name)}, ${o.qty} шт.</dd><dt>Формат</dt><dd>${FORMAT[o.format]}</dd>
+          <dt>Даты</dt><dd>${period(o.start_date, o.end_date)}</dd><dt>Город</dt><dd>${esc(o.city)}${o.district ? ', ' + esc(o.district) : ''}</dd>
+          <dt>Адрес</dt><dd>${esc(priv?.address_exact || '—')}</dd>
+          <dt>Бюджет</dt><dd>${o.budget_minor ? money(o.budget_minor) + (o.budget_visible ? '' : ' (скрыт)') : 'не указан'}</dd>
+          <dt>Создан</dt><dd>${dateTime(o.created_at)}</dd></dl>
+        ${o.description ? `<div class="divider"></div><p style="white-space:pre-wrap;margin:0" class="small">${esc(o.description)}</p>` : ''}
+      </div></aside>
+    </div>`;
+
+  app.querySelector('#cancelBtn')?.addEventListener('click', async () => {
+    const r = await askReason('Отменить заказ?', 'Исполнители получат уведомление, их предложения закроются.', 'Причина', 'Отменить заказ');
+    if (!r) return;
+    try { await rpc('cancel_order', { p_order: id, p_reason: r }); toast('Заказ отменён'); route(); } catch (err) { toast(err.message, true); }
+  });
+  app.querySelectorAll('[data-select]').forEach((b) => b.onclick = () => selectDialog(o, active.find((f) => f.id === b.dataset.select)));
+  app.querySelectorAll('[data-decline]').forEach((b) => b.onclick = async () => {
+    try { await rpc('decline_offer', { p_offer: b.dataset.decline }); toast('Предложение отклонено'); route(); } catch (err) { toast(err.message, true); }
+  });
+  app.querySelectorAll('[data-chat]').forEach((b) => b.onclick = async () => {
+    try { const c = await rpc('open_conversation', { p_org: state.org.id, p_equipment: null, p_order: id, p_provider: b.dataset.chat }); go('#/messages/' + c); }
+    catch (err) { toast(err.message, true); }
+  });
+}
+
+// Сравнение предложений: одинаковый набор строк для всех (F1)
+function compareTable(list, stats, cheapest) {
+  const cell = (f, html) => `<td>${html}</td>`;
+  const row = (label, fn) => `<tr><th style="white-space:nowrap">${label}</th>${list.map((f) => cell(f, fn(f))).join('')}</tr>`;
+  return `<div style="overflow-x:auto"><table class="table" style="min-width:${180 + list.length * 200}px">
+    <thead><tr><th></th>${list.map((f) => {
+      const p = photoOf(f.equipment || {});
+      return `<th style="vertical-align:top">${p ? `<img src="${esc(p.url)}" alt="" style="width:100%;height:90px;object-fit:cover;border-radius:8px" referrerpolicy="no-referrer">` : ''}
+        <a href="#/item/${f.equipment_id}" target="_blank" style="color:var(--ink);font-size:14px">${esc(f.equipment?.title)}</a></th>`;
+    }).join('')}</tr></thead>
+    <tbody>
+      ${row('Итого', (f) => `<b class="num" style="font-size:17px">${money(f.total_minor)}</b>${f.total_minor === cheapest && list.length > 1 ? '<div><span class="st ok">Лучшая цена</span></div>' : ''}`)}
+      ${row('Исполнитель', (f) => `<b>${esc(f.organizations?.name)}</b><div>${status('org', f.organizations?.verification_status)}</div>`)}
+      ${row('Завершённых сделок', (f) => String(stats[f.provider_org_id]?.completed ?? 0))}
+      ${row('Формат', (f) => f.with_operator ? 'С оператором' : 'Без оператора')}
+      ${row('Техника', (f) => `${esc(f.equipment?.brand)} ${esc(f.equipment?.model)}${f.equipment?.year ? ', ' + f.equipment.year : ''}`)}
+      ${row('Отмена', (f) => esc((POLICY[f.equipment?.cancel_policy] || '').split(':')[0]))}
+      ${row('Комментарий', (f) => `<span class="small">${esc(f.comment || '—')}</span>`)}
+      ${row('Действует до', (f) => `<span class="small">${dateTime(f.expires_at)}</span>`)}
+      ${row('Редакция', (f) => `№${f.rev}`)}
+      ${row('', (f) => f.status === 'SUBMITTED' ? `<div class="actions" style="flex-direction:column;align-items:stretch">
+        <button class="btn sm" data-select="${f.id}">Выбрать</button>
+        <button class="btn ghost sm" data-chat="${f.provider_org_id}">Написать</button>
+        <button class="btn ghost sm" data-decline="${f.id}">Отклонить</button></div>` : status('offer', f.status))}
+    </tbody></table></div>`;
+}
+
+function selectDialog(o, f) {
+  const key = idemKey();
+  const m = modal(`<h2>Выбрать предложение</h2>
+    <p class="muted" style="margin-top:-6px">${esc(f.organizations?.name)} · ${esc(f.equipment?.title)}</p>
+    <dl class="kv"><dt>Даты</dt><dd>${period(o.start_date, o.end_date)}</dd><dt>Формат</dt><dd>${f.with_operator ? 'с оператором' : 'без оператора'}</dd>
+      <dt>Итого</dt><dd class="num" style="font-size:18px">${money(f.total_minor)}</dd><dt>Отмена</dt><dd>${esc(POLICY[f.equipment?.cancel_policy] || '')}</dd>
+      <dt>Оплата</dt><dd>напрямую исполнителю</dd></dl>
+    <div class="banner info" style="margin-top:14px">Техника забронируется на ваши даты. Исполнитель подтвердит сделку в течение 12 часов — после этого откроются контакты и адрес.</div>
+    <label class="check"><input type="checkbox" id="agree"> <span>Подтверждаю условия предложения и <a href="#/terms" target="_blank">правила сервиса</a></span></label>
+    <div class="form-error hidden" id="err"></div>
+    <button class="btn wide" id="go">Выбрать и забронировать</button>`);
+  m.el.querySelector('#go').onclick = (ev) => {
+    if (!m.el.querySelector('#agree').checked) { const el = m.el.querySelector('#err'); el.textContent = 'Подтвердите условия'; el.classList.remove('hidden'); return; }
+    busy(ev.currentTarget, async () => {
+      try {
+        const r = await rpc('select_offer', { p_offer: f.id, p_key: key });
+        if (!r.ok) { const el = m.el.querySelector('#err'); el.textContent = r.error; el.classList.remove('hidden'); setTimeout(route, 2500); return; }
+        m.close(); toast('Предложение выбрано, ждём подтверждения исполнителя'); go('#/deals/' + r.deal_id);
+      } catch (err) { const el = m.el.querySelector('#err'); el.textContent = err.message; el.classList.remove('hidden'); }
+    });
+  };
+}
