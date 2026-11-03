@@ -22,7 +22,7 @@ export async function render(app, _p, query) {
       <input class="inp" name="city" value="${esc(f.city)}" placeholder="Город" aria-label="Город" style="min-width:130px;width:140px">
       <select class="inp" name="fmt" aria-label="Формат"><option value="">Любой формат</option>
         <option value="op" ${f.fmt === 'op' ? 'selected' : ''}>С оператором</option><option value="noop" ${f.fmt === 'noop' ? 'selected' : ''}>Без оператора</option></select>
-      <input class="inp" name="max" type="number" min="0" step="500" value="${esc(f.max)}" placeholder="Цена до, ₽" aria-label="Цена до" style="width:130px;min-width:0">
+      <input class="inp" name="max" type="number" min="0" step="0.01" max="1000000000" value="${esc(f.max)}" placeholder="Цена до, ₽" aria-label="Цена до" style="width:130px;min-width:0">
       <label class="small muted">Свободна с <input class="inp" type="date" name="from" value="${esc(f.from)}" min="${mskToday(1)}" style="width:150px;min-width:0"></label>
       <label class="small muted">по <input class="inp" type="date" name="to" value="${esc(f.to)}" min="${mskToday(1)}" style="width:150px;min-width:0"></label>
       <select class="inp" name="sort" aria-label="Сортировка">

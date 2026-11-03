@@ -107,7 +107,7 @@ async function orderPage(app, id) {
           <label class="f"><span>Техника <i>*</i></span><select class="inp" name="eq" required>
             ${myEq.map((e) => `<option value="${e.id}" ${busyMap[e.id] ? 'disabled' : ''}>${esc(e.title)}${busyMap[e.id] ? ' — занята' : ''}</option>`).join('')}</select></label>
           <label class="f"><span>Формат</span><select class="inp" name="op"></select></label>
-          <label class="f"><span>Стоимость за весь период, ₽ <i>*</i></span><input class="inp" name="total" type="number" min="1" step="100" required>
+          <label class="f"><span>Стоимость за весь период, ₽ <i>*</i></span><input class="inp" name="total" type="number" min="1" step="0.01" max="1000000000" required>
             <div class="hint" id="sugg"></div></label>
           <label class="f"><span>Комментарий</span><textarea class="inp" name="comment" maxlength="2000" placeholder="Что входит, когда сможете приехать, особые условия"></textarea></label>
           <div class="form-error hidden" id="err"></div>

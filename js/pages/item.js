@@ -261,7 +261,7 @@ function priceRequestDialog(e, form) {
       </div>
       <div class="grid2">
         <label class="f"><span>Город <i>*</i></span><input class="inp" name="city" required value="${esc(e.city)}"></label>
-        <label class="f"><span>Бюджет, ₽</span><input class="inp" name="budget" type="number" min="0"></label>
+        <label class="f"><span>Бюджет, ₽</span><input class="inp" name="budget" type="number" min="0" step="0.01" max="1000000000"></label>
       </div>
       <label class="f"><span>Адрес объекта <i>*</i></span><input class="inp" name="address" required maxlength="300"></label>
       <label class="f"><span>Подробности</span><textarea class="inp" name="desc" maxlength="3000" placeholder="Объём работ, график, условия подъезда"></textarea></label>
