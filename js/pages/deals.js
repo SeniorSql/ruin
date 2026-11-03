@@ -3,6 +3,7 @@ import { sb, state, q, rpc, canManage, refreshCounters } from '../api.js';
 import { esc, money, status, toast, busy, askReason, confirmBox, emptyState, errorState, period, dateTime, timeLeft, photoOf,
   POLICY, ORG_TYPE } from '../ui.js';
 import { breakdownHtml } from './item.js';
+import { renderExtras } from '../dealExtras.js';
 import { mountChat } from '../chat.js';
 import { route, refreshShell } from '../app.js';
 
@@ -77,7 +78,8 @@ async function detail(app, id) {
             ${d.cancel_reason ? `<dt>Причина отмены</dt><dd>${esc(reasonText(d.cancel_reason))}</dd>` : ''}</dl>
           <h3 style="margin-top:16px">Стоимость</h3>${breakdownHtml(d.breakdown)}
         </div>
-        <div id="chat">${conv ? '' : '<p class="muted">Чат недоступен</p>'}</div>
+        <div id="extras"><div class="skeleton" style="height:120px;margin-top:14px"></div></div>
+        <div id="chat" style="margin-top:14px">${conv ? '' : '<p class="muted">Чат недоступен</p>'}</div>
       </div>
       <aside class="sticky">
         <div class="panel"><h2>Стороны</h2>
@@ -117,11 +119,12 @@ async function detail(app, id) {
     catch (err) { toast(err.message, true); }
   });
 
+  renderExtras(app.querySelector('#extras'), d).catch((err) => { app.querySelector('#extras').innerHTML = `<p class="muted">${esc(err.message)}</p>`; });
   if (conv) return mountChat(app.querySelector('#chat'), conv.id, 'Чат сделки');
 }
 
 function party(role, org, contacts, show) {
-  return `<div class="small muted">${role}</div><b>${esc(org?.type === 'PERSON' ? org.name + ' (частное лицо)' : org?.name)}</b>
+  return `<div class="small muted">${role}</div><b>${org?.type === 'PERSON' ? esc(org.name + ' (частное лицо)') : `<a href="#/company/${org?.id}">${esc(org?.name)}</a>`}</b>
     ${org?.type && org.type !== 'PERSON' ? `<div class="small muted">${ORG_TYPE[org.type]}${org.inn ? ', ИНН ' + esc(org.inn) : ''}</div>` : ''}
     ${show && contacts ? `<div class="small" style="margin-top:6px">${contacts.contact_person ? esc(contacts.contact_person) + '<br>' : ''}
       ${contacts.phone ? `<a href="tel:${esc(contacts.phone)}">${esc(contacts.phone)}</a><br>` : ''}${contacts.email ? `<a href="mailto:${esc(contacts.email)}">${esc(contacts.email)}</a>` : ''}</div>`

@@ -1,7 +1,7 @@
 // Главная: поиск, категории с реальными фото, свежие предложения (SCR-CAT-01)
 import { sb, state, q, rpc, loadCategories } from '../api.js';
 import { esc, photoOf, skeleton, plural } from '../ui.js';
-import { EQ_SELECT, productCard, loadFavs, bindFavs } from '../cards.js';
+import { EQ_SELECT, productCard, loadFavs, bindFavs, loadRatings } from '../cards.js';
 import { icon } from '../app.js';
 
 const HERO = 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Caterpillar_320.jpg/960px-Caterpillar_320.jpg';
@@ -61,8 +61,9 @@ export async function render(app) {
   }).join('');
 
   const freshEl = app.querySelector('#fresh');
+  const ratings = await loadRatings(fresh);
   freshEl.innerHTML = fresh.length
-    ? `<div class="products">${fresh.map((e) => productCard(e, favs)).join('')}</div>`
+    ? `<div class="products">${fresh.map((e) => productCard(e, favs, ratings)).join('')}</div>`
     : '<div class="panel empty"><b>Каталог пока пуст</b>Станьте первым исполнителем на RUIN.</div>';
   bindFavs(freshEl);
 }

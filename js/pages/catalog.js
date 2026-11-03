@@ -1,7 +1,7 @@
 // Каталог: поиск и фильтры в адресе страницы (AC-UX-06), пустая выдача с подсказками (BR-SRCH-06)
 import { sb, state, q, rpc, loadCategories } from '../api.js';
 import { esc, skeleton, qs, toMinor, mskToday, plural } from '../ui.js';
-import { EQ_SELECT, productCard, loadFavs, bindFavs } from '../cards.js';
+import { EQ_SELECT, productCard, loadFavs, bindFavs, loadRatings } from '../cards.js';
 
 const PAGE = 48;
 const STALE_DAYS = 7;
@@ -90,8 +90,9 @@ export async function render(app, _p, query) {
       }
       res.innerHTML = '<div class="products"></div>';
     }
+    const ratings = await loadRatings(rows);
     res.querySelector('.products').insertAdjacentHTML('beforeend', rows.map((e) => {
-      let html = productCard(e, favs);
+      let html = productCard(e, favs, ratings);
       const stale = Date.now() - new Date(e.availability_confirmed_at) > STALE_DAYS * 864e5;
       if (stale && !e.is_demo) html = html.replace('<div class="spacer">', '<div class="small" style="color:#9a3412;margin-top:6px">Доступность уточняется</div><div class="spacer">');
       return html;

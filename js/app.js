@@ -30,7 +30,8 @@ const ROUTES = [
   ['fleet', 'fleet'], ['fleet/new', 'fleet'], ['fleet/:id', 'fleet'],
   ['orders', 'orders'], ['orders/new', 'orders'], ['orders/:id', 'orders'],
   ['feed', 'feed'], ['feed/:id', 'feed'], ['offers', 'feed'],
-  ['deals', 'deals'], ['deals/:id', 'deals'],
+  ['deals', 'deals'], ['deals/:id', 'deals'], ['deals/:id/doc/:type', 'docs'],
+  ['company/:id', 'company'], ['team', 'team'], ['analytics', 'analytics'],
   ['messages', 'messages'], ['messages/:id', 'messages'],
   ['notifications', 'notifications'], ['favorites', 'favorites'],
   ['admin', 'admin'], ['terms', 'static'], ['privacy', 'static'], ['help', 'static']
@@ -108,6 +109,7 @@ function renderSide(active) {
     }
     html += `<div class="nav-caption">АККАУНТ</div><nav class="nav">
       ${link('#/messages', 'chat', 'Сообщения', c.unread_messages)}${link('#/notifications', 'bell', 'Уведомления', c.notifications)}
+      ${link('#/analytics', 'grid', 'Аналитика')}${o.type !== 'PERSON' ? link('#/team', 'org', 'Сотрудники') : ''}
       ${link('#/account', 'org', 'Профиль и организации')}${isAdmin() ? link('#/admin', 'shield', 'Админка') : ''}</nav>`;
   }
   html += `</div>`;
@@ -133,14 +135,14 @@ export function refreshShell() {
   const top = path.split('/')[0];
   const activeMap = { '': '#/', catalog: '#/catalog', item: '#/catalog', orders: path === 'orders/new' ? '#/orders/new' : '#/orders',
     deals: '#/deals', fleet: '#/fleet', feed: '#/feed', offers: '#/offers', messages: '#/messages',
-    notifications: '#/notifications', account: '#/account', admin: '#/admin' };
+    notifications: '#/notifications', account: '#/account', admin: '#/admin', team: '#/team', analytics: '#/analytics', company: '#/catalog' };
   renderTop();
   renderSide(activeMap[top] ?? (m ? '#/' + m.name : ''));
 }
 
 // ---------- маршрутизация ----------
 let cleanup = null;
-const PUBLIC = new Set(['home', 'catalog', 'item', 'auth', 'static']);
+const PUBLIC = new Set(['home', 'catalog', 'item', 'auth', 'static', 'company']);
 
 const FOOTER = `<footer class="foot"><span>© RUIN, ${new Date().getFullYear()}</span><a href="#/help">Помощь</a>
   <a href="#/terms">Пользовательское соглашение</a><a href="#/privacy">Персональные данные</a>

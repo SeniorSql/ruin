@@ -12,7 +12,19 @@ export async function loadFavs() {
   return favCache;
 }
 
-export function productCard(e, favs = new Set()) {
+// Рейтинги исполнителей для набора карточек одним запросом
+export async function loadRatings(rows) {
+  const ids = [...new Set(rows.map((e) => e.org_id))];
+  if (!ids.length) return new Map();
+  try {
+    const { data } = await sb.rpc('ratings_for', { p_orgs: ids });
+    return new Map((data || []).map((r) => [r.org_id, r]));
+  } catch { return new Map(); }
+}
+
+export function productCard(e, favs = new Set(), ratings = new Map()) {
+  const rt = ratings.get(e.org_id);
+  const rtHtml = e.is_demo ? '' : rt?.rating ? ` · <span class="rating">★ ${rt.rating}</span> <small class="muted">(${rt.n})</small>` : rt?.n ? ' · <small class="muted">мало оценок</small>' : ' · <small class="muted">новичок</small>';
   const p = photoOf(e);
   const specs = Object.entries(e.specs || {}).slice(0, 2).map(([k, v]) => `<span>${esc(specValue(k, v))}</span>`).join('');
   const fmt = [e.with_operator && 'с оператором', e.without_operator && 'без оператора'].filter(Boolean).join(' / ');
@@ -27,7 +39,7 @@ export function productCard(e, favs = new Set()) {
       <span class="cat-name">${esc(e.categories?.name || '')}</span>
       <h3>${esc(e.title)}</h3>
       <div class="meta">${esc(e.city)}${e.district ? ' · ' + esc(e.district) : ''}${fmt ? ' · ' + fmt : ''}</div>
-      <div class="seller"><span class="sa">${esc(initials(org.name))}</span><span><b>${esc(org.name || '')}</b></span></div>
+      <div class="seller"><span class="sa">${esc(initials(org.name))}</span><span><b>${esc(org.name || '')}</b>${rtHtml}</span></div>
       <div class="spec-chips">${specs}</div>
       <div class="spacer"></div>
       <div class="price-row"><div><strong class="num">${priceText(e)}</strong></div></div>

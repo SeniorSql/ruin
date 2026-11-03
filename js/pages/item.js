@@ -18,7 +18,8 @@ export async function render(app, { id }) {
   const org = e.organizations || {};
   const mine = state.orgs.some((o) => o.id === e.org_id);
   const photos = (e.photos || []).map((p) => (typeof p === 'string' ? { url: p } : p));
-  const [stats, favs] = await Promise.all([rpc('public_org_stats', { p_org: e.org_id }).catch(() => ({})), loadFavs()]);
+  const [stats, favs, rating] = await Promise.all([rpc('public_org_stats', { p_org: e.org_id }).catch(() => ({})), loadFavs(),
+    rpc('org_rating', { p_org: e.org_id, p_role: 'PROVIDER' }).catch(() => ({}))]);
   const stale = Date.now() - new Date(e.availability_confirmed_at) > 7 * 864e5;
   const negotiable = e.price_unit === 'NEGOTIABLE' || e.price_minor == null || e.delivery_minor == null;
   document.title = `${e.title} — аренда, ${e.city} | RUIN`;
@@ -73,9 +74,10 @@ export async function render(app, { id }) {
 
         <div class="panel"><h2>Исполнитель</h2>
           <div class="provider-box"><span class="sa">${esc(initials(org.name))}</span>
-            <div><b>${esc(org.name)}</b><div class="small">${status('org', org.verification_status)}
-              <span class="muted"> · завершено сделок: ${stats.completed ?? 0} · на RUIN с ${date(stats.since)}</span></div></div></div>
-          <p class="small muted" style="margin:12px 0 0">Отзывы и рейтинг появятся после первых завершённых сделок. Контакты исполнителя откроются после подтверждения сделки.</p>
+            <div><b>${e.is_demo ? esc(org.name) : `<a href="#/company/${org.id}">${esc(org.name)}</a>`}</b><div class="small">${status('org', org.verification_status)}
+              <span class="muted"> · завершено сделок: ${stats.completed ?? 0} · на RUIN с ${date(stats.since)}</span></div>
+              <div class="small" style="margin-top:4px">${rating?.rating ? `<span class="rating">★ ${rating.rating}</span> <span class="muted">· ${rating.n} отзывов</span>` : rating?.n ? '<span class="muted">Мало оценок для рейтинга</span>' : '<span class="muted">Нет оценок — новичок на платформе</span>'}</div></div></div>
+          <p class="small muted" style="margin:12px 0 0">Контакты исполнителя откроются после подтверждения сделки.${e.is_demo ? '' : ` <a href="#/company/${org.id}">Все предложения и отзывы компании →</a>`}</p>
         </div>
       </div>
 

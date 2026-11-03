@@ -6,9 +6,12 @@ import { go, refreshShell, route } from '../app.js';
 export async function render(app) {
   const contacts = await q(sb.from('org_contacts').select('*').in('org_id', state.orgs.map((o) => o.id)));
   const cById = Object.fromEntries(contacts.map((c) => [c.org_id, c]));
+  const invites = await rpc('my_invitations').catch(() => []);
 
   app.innerHTML = `
     <div class="page-head"><div><h1>Профиль и организации</h1><p>От имени организации вы бронируете технику, размещаете заказы и сдаёте технику.</p></div></div>
+    ${invites.map((i) => `<div class="banner info" style="align-items:center"><div style="flex:1">Вас пригласили в <b>${esc(i.org_name)}</b> на роль «${esc(i.role)}».</div>
+      <button class="btn sm" data-accept="${i.id}">Принять приглашение</button></div>`).join('')}
     <div class="cols">
       <div>
         <div class="panel"><h2>Мои организации</h2>
@@ -56,6 +59,10 @@ export async function render(app) {
       </aside>
     </div>`;
 
+  app.querySelectorAll('[data-accept]').forEach((b) => b.onclick = () => busy(b, async () => {
+    try { const org = await rpc('accept_invitation', { p_id: b.dataset.accept }); await loadMe(); setOrg(org); await refreshCounters(); refreshShell(); toast('Вы присоединились к организации'); route(); }
+    catch (err) { toast(err.message, true); }
+  }));
   app.querySelectorAll('[data-use]').forEach((b) => b.onclick = async () => {
     setOrg(b.dataset.use); await refreshCounters(); refreshShell(); toast('Рабочий контекст переключён'); route();
   });
