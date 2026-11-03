@@ -36,6 +36,7 @@ function snapshot(form) {
 }
 
 function save(form) {
+  if (!form.isConnected) return; // форма уже убрана со страницы (отправлена) — не возвращаем черновик
   const { data, hasText } = snapshot(form);
   if (hasText) store.set(form.__draftKey, data); else store.del(form.__draftKey);
 }
@@ -78,6 +79,8 @@ function attach(form) {
   }
   let timer;
   const onEdit = (e) => {
+    // «change» при уходе фокуса в момент отправки не считается правкой
+    if (e.type === 'change' && form.__submittedAt && Date.now() - form.__submittedAt < 1000) return;
     if (e.target?.dataset) e.target.dataset.touched = '1';
     clearTimeout(timer); timer = setTimeout(() => save(form), 300);
   };
@@ -87,6 +90,10 @@ function attach(form) {
   form.addEventListener('submit', () => {
     const key = form.__draftKey;
     justSubmitted.set(key, Date.now());
+    // Нажатие кнопки снимает фокус с поля и вызывает «change» — отменяем отложенное сохранение
+    clearTimeout(timer);
+    setTimeout(() => clearTimeout(timer), 0);
+    form.__submittedAt = Date.now();
     // Ждём до 10 секунд результата: форма закрылась/перерисовалась или очистилась — черновик удаляем;
     // осталась заполненной (ошибка) — черновик сохраняем
     let n = 0;

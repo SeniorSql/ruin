@@ -55,6 +55,18 @@ h1,h2,h3{font-family:Manrope,'DM Sans',sans-serif;letter-spacing:-.4px;margin:0}
 .nav a.active{background:#21231f;color:#fff}
 .nav a.active svg{color:var(--yellow)}
 .nav .cnt{margin-left:auto;border-radius:6px;background:var(--yellow);color:#222;padding:1px 7px;font-size:12px;font-weight:800}
+/* выделенные блоки ролей в меню: заказчик — синий, исполнитель — жёлтый */
+.nav-group{border-radius:14px;padding:8px 6px 6px;margin:0 -6px 16px;border:1px solid}
+.nav-group.customer{background:#eef3fd;border-color:#c9d8f6}
+.nav-group.provider{background:#fff6d6;border-color:#f1d77a}
+.nav-role{display:flex;align-items:center;gap:7px;padding:2px 8px 8px;font-weight:800;font-size:14px;flex-wrap:wrap}
+.nav-role small{flex-basis:100%;font-weight:500;font-size:11.5px;color:var(--muted);margin:-3px 0 0 23px}
+.nav-group.customer .nav-role{color:#1e40af}
+.nav-group.provider .nav-role{color:#7a5b00}
+.nav-group .nav{margin-bottom:0}
+.nav-group .nav a:hover{background:#ffffff99}
+.nav-group.customer .nav a.active{background:#1e40af;color:#fff}.nav-group.customer .nav a.active svg{color:#fff}
+.nav-group.provider .nav a.active{background:#21231f;color:#fff}
 .side-note{border-radius:13px;background:var(--green-soft);padding:13px;color:#355745;font-size:13px;line-height:1.55}
 .side-note b{display:block;color:#1c4f37;margin-bottom:3px}
 .main{min-width:0}
@@ -349,6 +361,10 @@ textarea.inp{height:auto;min-height:96px;padding:10px 12px;resize:vertical}
   .side-note,.nav-caption{display:none}
   .navs{display:flex;overflow-x:auto;gap:6px;margin:0 -16px;padding:0 16px 4px}
   .nav{display:contents}
+  .nav-group{display:contents}
+  .nav-role{display:none}
+  .nav-group.customer .nav a{background:#eef3fd;border-color:#c9d8f6}
+  .nav-group.provider .nav a{background:#fff6d6;border-color:#f1d77a}
   .nav a{white-space:nowrap;background:#fff;border:1px solid var(--line);height:38px;flex:none}
   .context{margin-bottom:10px}
   .hero{grid-template-columns:1fr;min-height:0}

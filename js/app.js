@@ -100,13 +100,13 @@ function renderSide(active) {
     ${state.user ? link('#/orders/new', 'plus', 'Разместить заказ') : ''}</nav>`;
   if (state.user && o) {
     if (o.can_order) {
-      html += `<div class="nav-caption">ЗАКАЗЧИК</div><nav class="nav">
-        ${link('#/orders', 'list', 'Мои заказы', c.orders_offers)}${link('#/deals', 'deal', 'Сделки', c.deals_action)}</nav>`;
+      html += `<div class="nav-group customer"><div class="nav-role">${icon('list', 16)}<span>Я заказчик</span><small>арендую технику</small></div><nav class="nav">
+        ${link('#/orders', 'list', 'Мои заказы', c.orders_offers)}${link('#/deals', 'deal', 'Сделки', c.deals_action)}</nav></div>`;
     }
     if (o.can_provide) {
-      html += `<div class="nav-caption">ИСПОЛНИТЕЛЬ</div><nav class="nav">
+      html += `<div class="nav-group provider"><div class="nav-role">${icon('truck', 16)}<span>Я исполнитель</span><small>сдаю технику</small></div><nav class="nav">
         ${link('#/fleet', 'truck', 'Моя техника')}${link('#/feed', 'feed', 'Лента заказов')}
-        ${link('#/offers', 'send', 'Мои предложения')}${o.can_order ? '' : link('#/deals', 'deal', 'Сделки', c.deals_action)}</nav>`;
+        ${link('#/offers', 'send', 'Мои предложения')}${o.can_order ? '' : link('#/deals', 'deal', 'Сделки', c.deals_action)}</nav></div>`;
     }
     html += `<div class="nav-caption">АККАУНТ</div><nav class="nav">
       ${link('#/messages', 'chat', 'Сообщения', c.unread_messages)}${link('#/notifications', 'bell', 'Уведомления', c.notifications)}
