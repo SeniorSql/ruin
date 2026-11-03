@@ -165,12 +165,14 @@ export async function render(app, { id }) {
   }
   function renderCta() {
     const canBook = lastQuote?.ok && !lastQuote.busy;
-    const blocked = e.is_demo || mine || e.status !== 'PUBLISHED';
+    // Блокируем только если действуем от организации-владельца: из личного профиля или другой компании запрос возможен
+    const actingOwner = state.org?.id === e.org_id;
+    const blocked = e.is_demo || actingOwner || e.status !== 'PUBLISHED';
     cta.innerHTML = `
       ${!negotiable ? `<button class="btn wide" id="bookBtn" ${canBook && !blocked ? '' : 'disabled'}>Забронировать</button>` : ''}
       <button class="btn ${negotiable ? '' : 'ghost'} wide" id="priceBtn" ${blocked ? 'disabled' : ''}>Запросить цену</button>
       <button class="btn ghost wide" id="askBtn" ${blocked ? 'disabled' : ''}>Задать вопрос</button>
-      <p class="small muted" style="margin:4px 0 0">Бронь бесплатна. Исполнитель подтвердит её в течение 12 часов, после этого откроются контакты.</p>`;
+      <p class="small muted" style="margin:4px 0 0">${actingOwner ? 'Это техника организации, от имени которой вы сейчас действуете. Чтобы запросить цену как заказчик, переключитесь в меню слева на другой профиль.' : 'Бронь бесплатна. Исполнитель подтвердит её в течение 12 часов, после этого откроются контакты.'}</p>`;
     const need = (fn) => () => {
       if (!state.user) return go('#/login?next=' + encodeURIComponent(location.hash));
       if (!state.org?.can_order) return toast('Переключитесь на организацию-заказчика в меню слева', true);
