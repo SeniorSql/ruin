@@ -203,7 +203,7 @@ function disputeDialog(d, done) {
     <form id="df">
       <label class="f"><span>Что случилось <i>*</i></span><select class="inp" name="r" required><option value="">Выберите</option>${REASONS.map((r) => `<option>${r}</option>`).join('')}</select></label>
       <label class="f"><span>Подробности <i>*</i></span><textarea class="inp" name="t" required minlength="10" maxlength="3000" placeholder="Что произошло, когда, какие есть доказательства (фото приложите в чат сделки)"></textarea></label>
-      <div class="grid2"><label class="f"><span>Сумма требования, ₽</span><input class="inp" name="a" type="number" min="0" step="0.01" max="1000000000"></label>
+      <div class="grid2"><label class="f"><span>Сумма требования, ₽</span><input class="inp" name="a" type="number" min="0" step="1" max="1000000000"></label>
         <label class="f"><span>Чего вы хотите</span><select class="inp" name="o"><option value="">—</option><option>Снизить стоимость</option><option>Вернуть деньги</option><option>Доделать работы</option><option>Возместить ущерб</option><option>Другое</option></select></label></div>
       <div class="form-error hidden" id="err"></div>
       <button class="btn wide">Открыть претензию</button></form>`);

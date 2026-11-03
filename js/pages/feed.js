@@ -99,15 +99,21 @@ async function orderPage(app, id) {
           ${f.comment ? `<div class="small">${esc(f.comment)}</div>` : ''}</div>${status('offer', f.status)}
           ${f.status === 'SUBMITTED' ? `<button class="btn ghost sm" data-wd="${f.id}">Отозвать</button>` : ''}</div>`).join('')}</div>` : ''}
       </div>
-      <aside class="sticky"><div class="panel"><h2>${active ? 'Изменить предложение' : 'Ваше предложение'}</h2>
+      <aside class="sticky"><div class="panel"><h2>${active ? 'Ваше предложение отправлено' : 'Ваше предложение'}</h2>
+        ${active?.status === 'SUBMITTED' ? `<div class="banner ok" style="display:block">
+            <div class="price-big num" style="font-size:22px">${money(active.total_minor)}</div>
+            <div class="small">${esc(myEq.find((e) => e.id === active.equipment_id)?.title || '')} · ${active.with_operator ? 'с оператором' : 'без оператора'} · редакция №${active.rev}</div>
+            ${active.comment ? `<p class="small" style="margin:6px 0 0;white-space:pre-wrap">${esc(active.comment)}</p>` : ''}
+            <div class="small muted" style="margin-top:6px">Заказчик получил уведомление. Ждём его решения.</div></div>
+          ${open ? '<button class="btn ghost wide" id="editOffer">Изменить предложение</button>' : ''}` : ''}
         ${!open ? '<div class="banner warn">Приём предложений закрыт.</div>'
         : !myEq.length ? `<div class="banner warn">Нет опубликованной техники категории «${esc(o.categories?.name)}». <a href="#/fleet/new">Добавить</a></div>`
         : active?.status === 'SELECTED' ? '<div class="banner ok">Заказчик выбрал ваше предложение — подтвердите сделку в разделе «Сделки».</div>'
-        : `<form id="of">
+        : `<form id="of" class="${active ? 'hidden' : ''}" ${active ? 'data-nodraft' : ''}>
           <label class="f"><span>Техника <i>*</i></span><select class="inp" name="eq" required>
             ${myEq.map((e) => `<option value="${e.id}" ${busyMap[e.id] ? 'disabled' : ''}>${esc(e.title)}${busyMap[e.id] ? ' — занята' : ''}</option>`).join('')}</select></label>
           <label class="f"><span>Формат</span><select class="inp" name="op"></select></label>
-          <label class="f"><span>Стоимость за весь период, ₽ <i>*</i></span><input class="inp" name="total" type="number" min="1" step="0.01" max="1000000000" required>
+          <label class="f"><span>Стоимость за весь период, ₽ <i>*</i></span><input class="inp" name="total" type="number" min="1" step="1" max="1000000000" required>
             <div class="hint" id="sugg"></div></label>
           <label class="f"><span>Комментарий</span><textarea class="inp" name="comment" maxlength="2000" placeholder="Что входит, когда сможете приехать, особые условия"></textarea></label>
           <div class="form-error hidden" id="err"></div>
@@ -147,7 +153,9 @@ async function orderPage(app, id) {
     } catch { sg.textContent = ''; }
   };
   f.total.addEventListener('input', () => { f.total.dataset.auto = '0'; });
+  // Изменение отправленного предложения: форма открывается по кнопке и заполняется текущей редакцией
   if (active) { f.eq.value = active.equipment_id; f.total.value = fromMinor(active.total_minor); f.comment.value = active.comment || ''; f.total.dataset.auto = '0'; }
+  app.querySelector('#editOffer')?.addEventListener('click', (ev) => { f.classList.remove('hidden'); ev.currentTarget.remove(); f.total.focus(); });
   f.eq.addEventListener('change', fillFormats);
   f.op.addEventListener('change', suggest);
   fillFormats();

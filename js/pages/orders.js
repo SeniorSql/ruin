@@ -61,7 +61,7 @@ function create(app, query) {
         </div>
       </div>
       <aside class="sticky"><div class="panel"><h2>Условия</h2>
-        <label class="f"><span>Бюджет, ₽</span><input class="inp" name="budget" type="number" min="0" step="0.01" max="1000000000"></label>
+        <label class="f"><span>Бюджет, ₽</span><input class="inp" name="budget" type="number" min="0" step="1" max="1000000000"></label>
         <label class="check"><input type="checkbox" name="budget_visible"> <span>Показывать бюджет исполнителям</span></label>
         <label class="f"><span>Собирать предложения</span><select class="inp" name="deadline">
           <option value="24">24 часа</option><option value="72" selected>3 дня</option><option value="168">7 дней</option><option value="336">14 дней</option></select></label>

@@ -220,6 +220,11 @@ async function boot() {
     }, 30000);
   }
   window.addEventListener('hashchange', route);
+  // Прокрутка тачпадом/колёсиком над числовым полем не должна менять число — уводим фокус, страница прокручивается
+  document.addEventListener('wheel', (e) => {
+    const el = e.target;
+    if (el instanceof HTMLInputElement && el.type === 'number' && document.activeElement === el) el.blur();
+  }, { passive: true });
   initDrafts();
   route();
 }

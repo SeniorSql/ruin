@@ -101,15 +101,15 @@ async function editor(app, o, id) {
           <label class="f"><span>Единица цены</span><select class="inp" name="price_unit">
             <option value="SHIFT" ${e.price_unit === 'SHIFT' ? 'selected' : ''}>За смену</option><option value="HOUR" ${e.price_unit === 'HOUR' ? 'selected' : ''}>За час</option>
             <option value="DAY" ${e.price_unit === 'DAY' ? 'selected' : ''}>За сутки</option><option value="NEGOTIABLE" ${e.price_unit === 'NEGOTIABLE' ? 'selected' : ''}>Договорная</option></select></label>
-          <label class="f"><span>Ставка, ₽</span><input class="inp" name="price" type="number" min="0" step="0.01" max="1000000000" value="${fromMinor(e.price_minor)}"></label>
+          <label class="f"><span>Ставка, ₽</span><input class="inp" name="price" type="number" min="0" step="1" max="1000000000" value="${fromMinor(e.price_minor)}"></label>
           <label class="f"><span>Часов в смене</span><input class="inp" name="shift_hours" type="number" min="1" max="24" value="${e.shift_hours}"></label>
           <label class="f"><span>Минимальный заказ, единиц</span><input class="inp" name="min_units" type="number" min="1" value="${e.min_units}"></label>
-          <label class="f"><span>Доплата за оператора, ₽/ед.</span><input class="inp" name="operator" type="number" min="0" step="0.01" max="1000000000" value="${fromMinor(e.operator_minor)}">
+          <label class="f"><span>Доплата за оператора, ₽/ед.</span><input class="inp" name="operator" type="number" min="0" step="1" max="1000000000" value="${fromMinor(e.operator_minor)}">
             <div class="hint">0 — оператор включён в ставку</div></label>
-          <label class="f"><span>Залог, ₽</span><input class="inp" name="deposit" type="number" min="0" step="0.01" max="1000000000" value="${fromMinor(e.deposit_minor)}"></label>
+          <label class="f"><span>Залог, ₽</span><input class="inp" name="deposit" type="number" min="0" step="1" max="1000000000" value="${fromMinor(e.deposit_minor)}"></label>
         </div>
         <div class="grid2">
-          <label class="f"><span>Доставка (подача и возврат), ₽</span><input class="inp" name="delivery" type="number" min="0" step="0.01" max="1000000000" value="${e.delivery_minor == null ? '' : fromMinor(e.delivery_minor)}" ${e.delivery_minor == null ? 'disabled' : ''}></label>
+          <label class="f"><span>Доставка (подача и возврат), ₽</span><input class="inp" name="delivery" type="number" min="0" step="1" max="1000000000" value="${e.delivery_minor == null ? '' : fromMinor(e.delivery_minor)}" ${e.delivery_minor == null ? 'disabled' : ''}></label>
           <label class="check" style="margin-top:30px"><input type="checkbox" name="delivery_request" ${e.delivery_minor == null ? 'checked' : ''}> <span>Доставка по запросу</span></label>
         </div>
         <label class="f"><span>Правила отмены</span><select class="inp" name="cancel_policy">
