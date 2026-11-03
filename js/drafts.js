@@ -58,10 +58,18 @@ function restore(form) {
   return changed;
 }
 
+// Ключи форм, отправленных только что: если страница перерисовалась после успешной отправки,
+// новая форма не должна заполняться старым черновиком
+const justSubmitted = new Map();
+
 function attach(form) {
   if (form.__draftKey || form.matches(SKIP_FORMS)) return;
   form.__draftKey = formKey(form);
-  if (restore(form)) {
+  const sentAt = justSubmitted.get(form.__draftKey);
+  if (sentAt && Date.now() - sentAt < 10000) {
+    store.del(form.__draftKey);
+    justSubmitted.delete(form.__draftKey);
+  } else if (restore(form)) {
     const note = document.createElement('div');
     note.className = 'banner info small draft-note';
     note.innerHTML = `Восстановлен несохранённый черновик. <button type="button" class="link">Сбросить</button>`;
@@ -77,10 +85,16 @@ function attach(form) {
   form.addEventListener('change', onEdit);
   // После отправки: если форма закрылась или очистилась — черновик больше не нужен
   form.addEventListener('submit', () => {
-    setTimeout(() => {
-      if (!form.isConnected) store.del(form.__draftKey);
-      else { form.querySelector('.draft-note')?.remove(); save(form); }
-    }, 2500);
+    const key = form.__draftKey;
+    justSubmitted.set(key, Date.now());
+    // Ждём до 10 секунд результата: форма закрылась/перерисовалась или очистилась — черновик удаляем;
+    // осталась заполненной (ошибка) — черновик сохраняем
+    let n = 0;
+    const check = setInterval(() => {
+      n++;
+      if (!form.isConnected || !snapshot(form).hasText) { clearInterval(check); store.del(key); return; }
+      if (n >= 20) { clearInterval(check); justSubmitted.delete(key); form.querySelector('.draft-note')?.remove(); save(form); }
+    }, 500);
   });
 }
 
