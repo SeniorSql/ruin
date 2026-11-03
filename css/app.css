@@ -42,7 +42,9 @@ h1,h2,h3{font-family:Manrope,'DM Sans',sans-serif;letter-spacing:-.4px;margin:0}
 
 /* ---------- раскладка ---------- */
 .layout{display:grid;grid-template-columns:236px minmax(0,1fr);gap:28px;padding:24px 32px 64px;max-width:1600px;margin:0 auto}
-.sidebar{align-self:start;position:sticky;top:96px}
+.sidebar{align-self:start;position:sticky;top:96px;max-height:calc(100vh - 110px);overflow-y:auto;overscroll-behavior:contain;
+  padding:0 6px 12px 6px;margin:0 -6px;scrollbar-width:thin;scrollbar-color:#d3d4cd transparent}
+.sidebar::-webkit-scrollbar{width:6px}.sidebar::-webkit-scrollbar-thumb{background:#d3d4cd;border-radius:3px}
 .context{border:1px solid var(--line);background:#fff;border-radius:13px;padding:10px 12px;margin-bottom:18px}
 .context small{display:block;font-size:10px;letter-spacing:.8px;color:var(--muted);font-weight:700;margin-bottom:4px}
 .context select{width:100%;border:0;background:transparent;font-weight:700;font-size:14px;padding:2px 0;outline:none}
@@ -357,7 +359,7 @@ textarea.inp{height:auto;min-height:96px;padding:10px 12px;resize:vertical}
   .brand svg{width:34px;height:34px}
   .icon-btn{width:38px;height:38px}
   .layout{display:block;padding:14px 16px 48px}
-  .sidebar{position:static;margin-bottom:14px}
+  .sidebar{position:static;margin-bottom:14px;max-height:none;overflow:visible;padding:0;margin-left:0;margin-right:0}
   .side-note,.nav-caption{display:none}
   .navs{display:flex;overflow-x:auto;gap:6px;margin:0 -16px;padding:0 16px 4px}
   .nav{display:contents}
