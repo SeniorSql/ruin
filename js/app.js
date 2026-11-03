@@ -225,6 +225,20 @@ async function boot() {
     const el = e.target;
     if (el instanceof HTMLInputElement && el.type === 'number' && document.activeElement === el) el.blur();
   }, { passive: true });
+  // Целочисленные поля (суммы в рублях, год, километры): точку, запятую, минус и «e» набрать нельзя.
+  // Поля с дробным шагом (часы, моточасы) не трогаем.
+  const intField = (el) => el instanceof HTMLInputElement && el.type === 'number' && (!el.step || el.step === '1');
+  document.addEventListener('keydown', (e) => {
+    if (intField(e.target) && ['.', ',', 'e', 'E', '-', '+'].includes(e.key)) e.preventDefault();
+  });
+  document.addEventListener('paste', (e) => {
+    if (!intField(e.target)) return;
+    e.preventDefault();
+    const digits = (e.clipboardData?.getData('text') || '').split(/[.,]/)[0].replace(/\D/g, '');
+    e.target.value = digits;
+    e.target.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  document.addEventListener('focusin', (e) => { if (intField(e.target)) e.target.setAttribute('inputmode', 'numeric'); });
   initDrafts();
   route();
 }

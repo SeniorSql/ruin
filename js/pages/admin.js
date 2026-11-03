@@ -25,6 +25,7 @@ export async function render(app, _p, query) {
 async function stats(box, query) {
   const from = query.from || mskToday(-30), to = query.to || mskToday(0);
   const a = await rpc('platform_analytics', { p_from: from, p_to: to });
+  const bypass = await rpc('admin_bypass_attempts').catch(() => []);
   box.innerHTML = `<form class="filters" id="sf"><label class="small muted">с <input class="inp" type="date" name="from" value="${from}"></label>
       <label class="small muted">по <input class="inp" type="date" name="to" value="${to}"></label><button class="btn dark">Показать</button></form>
     <div class="cols"><div class="panel"><h2>Платформа за период</h2><dl class="kv">
@@ -41,7 +42,11 @@ async function stats(box, query) {
       <div class="divider"></div><h3>Очереди</h3><dl class="kv">
       <dt><a href="#/admin?tab=orgs">Проверка организаций</a></dt><dd>${a.queue_orgs}</dd>
       <dt><a href="#/admin?tab=equipment">Модерация техники</a></dt><dd>${a.queue_equipment}</dd>
-      <dt><a href="#/admin?tab=disputes">Открытые претензии</a></dt><dd>${a.disputes_open}</dd></dl></div></aside></div>`;
+      <dt><a href="#/admin?tab=disputes">Открытые претензии</a></dt><dd>${a.disputes_open}</dd></dl></div>
+    <div class="panel"><h2>Попытки передать контакты</h2>
+      <p class="small muted" style="margin-top:-6px">За 30 дней, до подтверждения сделки. 3 и больше за неделю — повод проверить организацию.</p>
+      ${bypass.length ? `<table class="table"><tbody>${bypass.map((b) => `<tr><td>${esc(b.org_name)}</td><td class="num"><b style="color:${b.attempts >= 3 ? 'var(--red)' : 'inherit'}">${b.attempts}</b></td><td class="small muted">${dateTime(b.last_at)}</td></tr>`).join('')}</tbody></table>`
+        : '<p class="muted">Попыток не было.</p>'}</div></aside></div>`;
   box.querySelector('#sf').onsubmit = (e) => { e.preventDefault(); location.hash = '#/admin' + qs({ tab: 'stats', from: e.target.from.value, to: e.target.to.value }); };
 }
 
