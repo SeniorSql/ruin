@@ -100,11 +100,14 @@ async function orgs(box, { status: st, search }) {
       <div class="small"><a href="https://egrul.nalog.ru/" target="_blank" rel="noopener">Проверить в ЕГРЮЛ/ЕГРИП →</a></div>
       ${o.verification_comment ? `<div class="small" style="color:#9a3412">Комментарий: ${esc(o.verification_comment)}</div>` : ''}</div>
       <div class="actions" style="justify-content:flex-end">
-        <button class="btn sm" data-o="${o.id}" data-d="VERIFIED">Подтвердить</button>
-        <button class="btn ghost sm" data-o="${o.id}" data-d="REQUIRES_UPDATE">На доработку</button>
-        <button class="btn danger sm" data-o="${o.id}" data-d="REJECTED">Отклонить</button>
-        ${o.verification_status === 'VERIFIED' ? `<button class="btn danger sm" data-o="${o.id}" data-d="SUSPENDED">Приостановить</button>` : ''}
-      </div></div>`).join('')}</div>` : emptyState('Очередь пуста', st ? 'Новых заявок на проверку нет.' : 'Ничего не найдено.')}`;
+        ${o.verification_status === 'VERIFIED'
+          ? `<span class="small muted">Уже проверена</span><button class="btn danger sm" data-o="${o.id}" data-d="SUSPENDED">Приостановить</button>`
+          : `<button class="btn sm" data-o="${o.id}" data-d="VERIFIED">Подтвердить</button>
+             <button class="btn ghost sm" data-o="${o.id}" data-d="REQUIRES_UPDATE">На доработку</button>
+             <button class="btn danger sm" data-o="${o.id}" data-d="REJECTED">Отклонить</button>`}
+      </div></div>`).join('')}</div>` : emptyState(st ? 'Очередь пуста' : 'Ничего не найдено', st
+        ? 'Новых заявок нет. Организация попадает сюда, когда её владелец нажимает «Отправить на проверку» в разделе «Профиль и организации».'
+        : 'Попробуйте другое название или ИНН.')}`;
   box.querySelector('#sf')?.addEventListener('submit', (e) => { e.preventDefault(); location.hash = '#/admin' + qs({ tab: 'all', s: e.target.s.value }); });
   box.querySelectorAll('[data-o]').forEach((b) => b.onclick = async () => {
     let comment = null;
