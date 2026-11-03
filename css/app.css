@@ -187,127 +187,15 @@ textarea.inp{height:auto;min-height:96px;padding:10px 12px;resize:vertical}
 .price-row small{font-size:12px;color:var(--muted);font-weight:500}
 .pi .spacer{flex:1;min-height:10px}
 
-/* ---------- сцена «техника за работой» при наведении ---------- */
-.pv .scene{position:absolute;inset:0;z-index:1;background:#eef0e8;opacity:0;transform:scale(.97);transition:opacity .3s ease,transform .45s ease;pointer-events:none}
-.pv .scene svg{width:100%;height:100%;display:block}
-.pv .scene *{animation-play-state:paused}
-.product:hover .pv .scene,.product:focus-visible .pv .scene{opacity:1;transform:none}
-.product:hover .pv .scene *,.product:focus-visible .pv .scene *{animation-play-state:running}
-.product:hover .pv img,.product:focus-visible .pv img{opacity:0;transform:scale(1.06)}
-.pv img{transition:opacity .35s ease,transform .7s cubic-bezier(.2,.7,.2,1)}
-.product:hover .pv .credit{opacity:0}
-.scene-label{position:absolute;left:8px;bottom:8px;border-radius:6px;background:#ffffffe6;padding:3px 8px;color:#2c2e28;font-size:11px;font-weight:800;letter-spacing:.3px}
-.scene-label:before{content:'';display:inline-block;width:6px;height:6px;background:#e0b000;border-radius:50%;margin-right:6px;vertical-align:1px;animation:rx-pulse 1s ease-in-out infinite}
-.scene .m{fill:#f5c400;stroke:#26281f;stroke-width:2;stroke-linejoin:round}
-.scene .d{fill:#2b2d27}
-.scene .g{fill:#bcd0cc;stroke:#26281f;stroke-width:2;stroke-linejoin:round}
-.scene .w{fill:#23251f;stroke:#62655c;stroke-width:3}
-.scene .soil{fill:#8f6d42}
-.scene .sand{fill:#e2c27a}
-.scene [style*="transform-origin"],.scene g,.scene rect,.scene path{transform-box:view-box}
-.scene circle{transform-box:fill-box;transform-origin:center}
-.rx-shake{animation:rx-shake .25s linear infinite}
-.rx-smoke circle{fill:#9a9c94;opacity:0;animation:rx-smoke 1.8s ease-out infinite}
-/* экскаватор и экскаватор-погрузчик */
-.rx-boom{animation:rx-boom 3.2s ease-in-out infinite}
-.rx-stick{animation:rx-stick 3.2s ease-in-out infinite}
-.rx-bucket{animation:rx-bucket 3.2s ease-in-out infinite}
-.rx-load{animation:rx-load 3.2s ease-in-out infinite}
-.rx-drop circle{opacity:0;animation:rx-drop 3.2s ease-in infinite}
-@keyframes rx-boom{0%,8%{transform:rotate(0)}38%,52%{transform:rotate(14deg)}78%,90%{transform:rotate(-6deg)}100%{transform:rotate(0)}}
-@keyframes rx-stick{0%,8%{transform:rotate(-8deg)}38%,52%{transform:rotate(18deg)}78%,90%{transform:rotate(-12deg)}100%{transform:rotate(-8deg)}}
-@keyframes rx-bucket{0%,30%{transform:rotate(-10deg)}50%,70%{transform:rotate(38deg)}84%,92%{transform:rotate(-40deg)}100%{transform:rotate(-10deg)}}
-@keyframes rx-load{0%,44%{opacity:0}52%,82%{opacity:1}88%,100%{opacity:0}}
-@keyframes rx-drop{0%,82%{opacity:0;transform:translateY(0)}86%{opacity:1}100%{opacity:0;transform:translateY(16px)}}
-/* погрузчик */
-.rx-scoop{animation:rx-scoop 2.8s ease-in-out infinite}
-.rx-drive{animation:rx-drive 2.8s ease-in-out infinite}
-@keyframes rx-scoop{0%,15%{transform:rotate(0)}45%,75%{transform:rotate(-24deg)}100%{transform:rotate(0)}}
-@keyframes rx-drive{0%{transform:translateX(-6px)}20%{transform:translateX(10px)}60%{transform:translateX(-10px)}100%{transform:translateX(-6px)}}
-.rx-scoop .rx-load{animation:rx-load2 2.8s ease-in-out infinite}
-@keyframes rx-load2{0%,18%{opacity:0}30%,85%{opacity:1}100%{opacity:0}}
-/* телескопический погрузчик */
-.rx-tele{animation:rx-tele 3.4s ease-in-out infinite}
-.rx-tele-in{animation:rx-tele-in 3.4s ease-in-out infinite}
-@keyframes rx-tele{0%,10%{transform:rotate(0)}45%,75%{transform:rotate(-24deg)}100%{transform:rotate(0)}}
-@keyframes rx-tele-in{0%,30%{transform:translateX(0)}55%,72%{transform:translateX(18px)}95%,100%{transform:translateX(0)}}
-/* бульдозер */
-.rx-push{animation:rx-push 3.4s ease-in-out infinite}
-.rx-pile{animation:rx-pile 3.4s ease-in-out infinite}
-@keyframes rx-push{0%,8%{transform:translateX(-24px)}55%,65%{transform:translateX(52px)}100%{transform:translateX(-24px)}}
-@keyframes rx-pile{0%,8%{transform:scale(.3)}55%,70%{transform:scale(1.25)}85%,100%{transform:scale(.3)}}
-/* грейдер */
-.rx-grade{animation:rx-grade 4s linear infinite}
-.rx-bumps path{animation:rx-flat 4s linear infinite;transform-origin:center 118px}
-.rx-bumps path:nth-child(2){animation-name:rx-flat2}
-.rx-bumps path:nth-child(3){animation-name:rx-flat3}
-@keyframes rx-grade{0%{transform:translateX(-60px)}100%{transform:translateX(130px)}}
-@keyframes rx-flat{0%,52%{transform:scaleY(1)}60%,100%{transform:scaleY(.08)}}
-@keyframes rx-flat2{0%,64%{transform:scaleY(1)}72%,100%{transform:scaleY(.08)}}
-@keyframes rx-flat3{0%,78%{transform:scaleY(1)}86%,100%{transform:scaleY(.08)}}
-/* каток */
-.rx-roll{animation:rx-roll 3s ease-in-out infinite}
-.rx-spin{animation:rx-spin 3s ease-in-out infinite}
-.rx-shine{animation:rx-shine 3s linear infinite}
-@keyframes rx-roll{0%,100%{transform:translateX(-26px)}50%{transform:translateX(56px)}}
-@keyframes rx-spin{0%,100%{transform:rotate(0)}50%{transform:rotate(255deg)}}
-@keyframes rx-shine{0%{transform:translateX(-40px)}100%{transform:translateX(240px)}}
-/* асфальтоукладчик */
-.rx-pave{animation:rx-pave 4s linear infinite}
-.rx-asphalt{animation:rx-asphalt 4s linear infinite}
-.rx-steam circle{fill:#c9cbc2;opacity:0;animation:rx-smoke 2.1s ease-out infinite}
-@keyframes rx-pave{0%{transform:translateX(90px)}100%{transform:translateX(-40px)}}
-@keyframes rx-asphalt{0%{transform:scaleX(.02)}100%{transform:scaleX(1.8)}}
-/* автокран: плита поднимается, трос укорачивается */
-.rx-lift{animation:rx-lift 3.6s ease-in-out infinite}
-.rx-cable{animation:rx-cable 3.6s ease-in-out infinite}
-@keyframes rx-lift{0%,12%{transform:translateY(0) rotate(0)}55%{transform:translateY(-50px) rotate(-3deg)}70%{transform:translateY(-50px) rotate(3deg)}80%{transform:translateY(-50px) rotate(0)}100%{transform:translateY(0)}}
-@keyframes rx-cable{0%,12%{transform:scaleY(1)}55%,80%{transform:scaleY(.34)}100%{transform:scaleY(1)}}
-/* автовышка: стрела вверх, люлька остаётся горизонтальной */
-.rx-arm{animation:rx-arm 3.6s ease-in-out infinite}
-.rx-basket{animation:rx-basket 3.6s ease-in-out infinite}
-@keyframes rx-arm{0%,10%{transform:rotate(0)}55%,80%{transform:rotate(-40deg)}100%{transform:rotate(0)}}
-@keyframes rx-basket{0%,10%{transform:rotate(0)}55%,80%{transform:rotate(40deg)}100%{transform:rotate(0)}}
-/* самосвал: кузов поднимается, песок сыпется */
-.rx-tip{animation:rx-tip 3.6s ease-in-out infinite}
-.rx-heap{animation:rx-heap 3.6s ease-in-out infinite}
-.rx-sandfall circle{opacity:0;animation:rx-sand .5s linear infinite}
-.product:hover .rx-sandfall{animation:rx-sandwin 3.6s linear infinite}
-@keyframes rx-tip{0%,10%{transform:rotate(0)}45%,72%{transform:rotate(26deg)}100%{transform:rotate(0)}}
-@keyframes rx-heap{0%,40%{transform:scale(.25)}72%,90%{transform:scale(1.1)}100%{transform:scale(.25)}}
-@keyframes rx-sand{0%{opacity:1;transform:translateY(-6px)}100%{opacity:.2;transform:translateY(18px)}}
-@keyframes rx-sandwin{0%,38%{opacity:0}42%,74%{opacity:1}78%,100%{opacity:0}}
-/* манипулятор */
-.rx-reach{animation:rx-reach 4s ease-in-out infinite}
-.rx-carry{animation:rx-carry 4s ease-in-out infinite}
-.rx-cable2{animation:rx-cable2 4s ease-in-out infinite}
-@keyframes rx-reach{0%,25%{transform:translateX(-44px)}55%,100%{transform:translateX(30px)}}
-@keyframes rx-carry{0%,8%{transform:translateY(10px)}22%,55%{transform:translateY(-12px)}80%,100%{transform:translateY(28px)}}
-@keyframes rx-cable2{0%,8%{transform:scaleY(1.37)}22%,55%{transform:scaleY(.55)}80%,100%{transform:scaleY(2.04)}}
-/* бурение */
-.rx-bore{animation:rx-bore 3.6s ease-in-out infinite}
-.rx-auger{animation:rx-auger .35s linear infinite}
-.rx-spoil circle{opacity:0;animation:rx-spoil 1.2s ease-out infinite}
-@keyframes rx-bore{0%,10%{transform:translateY(0)}70%,85%{transform:translateY(30px)}100%{transform:translateY(0)}}
-@keyframes rx-auger{0%{transform:scaleX(1)}50%{transform:scaleX(-1)}100%{transform:scaleX(1)}}
-@keyframes rx-spoil{0%{opacity:1;transform:translate(0,0)}100%{opacity:0;transform:translate(6px,-14px)}}
-/* бетононасос */
-.rx-p1{animation:rx-p1 4s ease-in-out infinite}
-.rx-p2{animation:rx-p2 4s ease-in-out infinite}
-.rx-p3{animation:rx-p3 4s ease-in-out infinite}
-.rx-pour circle{opacity:0;animation:rx-pour .45s linear infinite}
-.rx-fill{animation:rx-fill 4s ease-in-out infinite}
-@keyframes rx-p1{0%,5%{transform:rotate(0)}40%,85%{transform:rotate(-38deg)}100%{transform:rotate(0)}}
-@keyframes rx-p2{0%,5%{transform:rotate(0)}40%,85%{transform:rotate(60deg)}100%{transform:rotate(0)}}
-@keyframes rx-p3{0%,5%{transform:rotate(0)}40%,85%{transform:rotate(-22deg)}100%{transform:rotate(0)}}
-@keyframes rx-pour{0%{opacity:1;transform:translateY(-4px)}100%{opacity:.3;transform:translateY(12px)}}
-@keyframes rx-fill{0%,45%{transform:scaleY(.05)}85%,92%{transform:scaleY(1)}100%{transform:scaleY(.05)}}
-@keyframes rx-shake{0%,100%{transform:translate(0,0)}25%{transform:translate(.6px,-.5px)}75%{transform:translate(-.6px,.4px)}}
-@keyframes rx-smoke{0%{opacity:.7;transform:translate(0,0) scale(.6)}100%{opacity:0;transform:translate(-8px,-22px) scale(1.8)}}
-@keyframes rx-pulse{50%{opacity:.25;transform:scale(.7)}}
-@media (hover:none){.pv .scene{display:none}}
-@media (prefers-reduced-motion:reduce){.pv .scene{display:none}}
-
+/* ---------- «техника за работой»: видео при наведении (или плавное приближение фото) ---------- */
+.pv .pv-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1;opacity:0;transition:opacity .35s ease;background:#20231f;pointer-events:none}
+.product.playing .pv .pv-video{opacity:1}
+.pv .vcredit{z-index:3;opacity:0;transition:opacity .3s}
+.product.playing .pv .vcredit{opacity:1}
+.product.playing .pv .credit:not(.vcredit){opacity:0}
+.pv img{transition:transform 6s cubic-bezier(.2,.6,.3,1)}
+.product:hover .pv img{transform:scale(1.14)}
+.pv .tag,.pv .fav{z-index:2}
 /* ---------- каталог ---------- */
 .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
 .filters .inp{height:40px;width:auto}
