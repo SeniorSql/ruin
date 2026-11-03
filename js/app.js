@@ -1,6 +1,7 @@
 // Точка входа: шапка, меню, маршрутизация по #/адресам
 import { sb, configured, state, loadMe, setOrg, refreshCounters, loadCategories, isAdmin } from './api.js';
 import { esc, status, initials, toast } from './ui.js';
+import { initDrafts } from './drafts.js';
 const ICON = {
   home: '<path d="m3 10 9-7 9 7v10H3zM9 20v-6h6v6"/>',
   grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
@@ -194,13 +195,21 @@ async function boot() {
       await Promise.all([loadMe(), loadCategories()]);
       await refreshCounters();
     } catch (err) { console.error(err); toast('Нет связи с сервером', true); }
-    sb.auth.onAuthStateChange(async (event) => {
-      if (event === 'PASSWORD_RECOVERY') { go('#/reset'); return; }
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
-        const before = state.user?.id;
-        await loadMe(); await refreshCounters();
-        if (before !== state.user?.id) refreshShell();
+    // Внутри этого обработчика нельзя ждать другие запросы к Supabase: библиотека держит блокировку сессии,
+    // и запросы зависают (формы перестают работать после продления токена). Поэтому работа выносится в setTimeout.
+    sb.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') { setTimeout(() => go('#/reset'), 0); return; }
+      const changed = (session?.user?.id || null) !== (state.user?.id || null);
+      if (event === 'SIGNED_OUT' || event === 'USER_UPDATED' || (event === 'SIGNED_IN' && changed)) {
+        setTimeout(async () => {
+          await loadMe(); await refreshCounters();
+          if (changed) refreshShell();
+        }, 0);
       }
+    });
+    // После долгого простоя вкладки проверяем сессию заранее, чтобы первый запрос формы не упал
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && state.user) sb.auth.getSession().catch(() => {});
     });
     // Счётчики уведомлений и сообщений обновляются раз в 30 секунд
     setInterval(async () => {
@@ -211,6 +220,7 @@ async function boot() {
     }, 30000);
   }
   window.addEventListener('hashchange', route);
+  initDrafts();
   route();
 }
 boot();
