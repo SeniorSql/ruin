@@ -10,7 +10,21 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/app.css?v=5">
+<!-- Версия файлов: при каждом обновлении сайта увеличивать v=… здесь и ниже, чтобы браузеры не смешивали старые и новые файлы -->
+<script type="importmap">
+{ "imports": {
+  "./js/app.js": "./js/app.js?v=5", "./js/api.js": "./js/api.js?v=5", "./js/ui.js": "./js/ui.js?v=5",
+  "./js/cards.js": "./js/cards.js?v=5", "./js/chat.js": "./js/chat.js?v=5",
+  "./js/pages/home.js": "./js/pages/home.js?v=5", "./js/pages/catalog.js": "./js/pages/catalog.js?v=5",
+  "./js/pages/item.js": "./js/pages/item.js?v=5", "./js/pages/auth.js": "./js/pages/auth.js?v=5",
+  "./js/pages/account.js": "./js/pages/account.js?v=5", "./js/pages/fleet.js": "./js/pages/fleet.js?v=5",
+  "./js/pages/orders.js": "./js/pages/orders.js?v=5", "./js/pages/feed.js": "./js/pages/feed.js?v=5",
+  "./js/pages/deals.js": "./js/pages/deals.js?v=5", "./js/pages/messages.js": "./js/pages/messages.js?v=5",
+  "./js/pages/notifications.js": "./js/pages/notifications.js?v=5", "./js/pages/favorites.js": "./js/pages/favorites.js?v=5",
+  "./js/pages/admin.js": "./js/pages/admin.js?v=5", "./js/pages/static.js": "./js/pages/static.js?v=5"
+} }
+</script>
 </head>
 <body>
 <header class="top" id="top"></header>
@@ -19,7 +33,7 @@
   <main class="main" id="app" tabindex="-1"></main>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
-<script src="config.js"></script>
-<script type="module" src="js/app.js"></script>
+<script src="config.js?v=5"></script>
+<script type="module">import './js/app.js';</script>
 </body>
 </html>

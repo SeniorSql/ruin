@@ -1,8 +1,6 @@
 // Точка входа: шапка, меню, маршрутизация по #/адресам
 import { sb, configured, state, loadMe, setOrg, refreshCounters, loadCategories, isAdmin } from './api.js';
 import { esc, status, initials, toast } from './ui.js';
-import { bindVideos } from './scenes.js';
-
 const ICON = {
   home: '<path d="m3 10 9-7 9 7v10H3zM9 20v-6h6v6"/>',
   grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
@@ -211,7 +209,6 @@ async function boot() {
     }, 30000);
   }
   window.addEventListener('hashchange', route);
-  bindVideos();
   route();
 }
 boot();
