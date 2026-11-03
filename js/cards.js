@@ -1,6 +1,7 @@
 // Карточка техники в каталоге и избранное
 import { sb, state, q } from './api.js';
 import { esc, priceText, photoOf, initials, specValue, toast } from './ui.js';
+import { sceneHtml } from './scenes.js';
 
 export const EQ_SELECT = '*, organizations(id,name,verification_status,is_demo,type), categories(id,code,name)';
 
@@ -21,6 +22,7 @@ export function productCard(e, favs = new Set()) {
   return `<a class="product" href="#/item/${e.id}">
     <div class="pv">
       ${p ? `<img src="${esc(p.url)}" alt="${esc(e.title)}" loading="lazy" referrerpolicy="no-referrer">` : ''}
+      ${sceneHtml(e.categories?.code)}
       ${e.is_demo ? '<span class="tag demo">Пример</span>' : org.verification_status === 'VERIFIED' ? '<span class="tag">✓ Проверен</span>' : ''}
       ${state.user ? `<button class="fav ${favs.has(e.id) ? 'on' : ''}" data-fav="${e.id}" aria-label="В избранное">${favs.has(e.id) ? '♥' : '♡'}</button>` : ''}
       ${p?.author ? `<span class="credit">Фото: ${esc(p.author)} · ${esc(p.license || '')}</span>` : ''}
