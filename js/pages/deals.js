@@ -97,15 +97,18 @@ async function detail(app, id) {
       </aside>
     </div>`;
 
-  const run = (fn, okText) => async (ev) => busy(ev.currentTarget, async () => {
+  // Кнопку берём сразу из события: после await (окно подтверждения) ev.currentTarget уже пустой
+  const exec = (btn, fn, okText) => busy(btn, async () => {
     try { await fn(); toast(okText); await refreshCounters(); refreshShell(); route(); } catch (err) { toast(err.message, true); }
   });
+  const run = (fn, okText) => (ev) => exec(ev.currentTarget, fn, okText);
   const on = (sel, h) => app.querySelector(sel)?.addEventListener('click', h);
   on('#confirmBtn', run(() => rpc('provider_confirm_deal', { p_deal: id }), 'Сделка подтверждена'));
   on('#startBtn', run(() => rpc('start_deal', { p_deal: id }), 'Отмечено: работы начались'));
   on('#finishBtn', async (ev) => {
+    const btn = ev.currentTarget;
     if (!await confirmBox('Завершить работы?', 'Заказчик получит запрос на подтверждение. Если он не ответит за 72 часа, сделка закроется автоматически.', 'Завершить')) return;
-    run(() => rpc('finish_deal', { p_deal: id }), 'Запрос на завершение отправлен')(ev);
+    exec(btn, () => rpc('finish_deal', { p_deal: id }), 'Запрос на завершение отправлен');
   });
   on('#acceptBtn', run(() => rpc('confirm_completion', { p_deal: id }), 'Сделка завершена'));
   on('#rejectBtn', async () => {
