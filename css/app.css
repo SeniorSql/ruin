@@ -288,6 +288,10 @@ textarea.inp{height:auto;min-height:96px;padding:10px 12px;resize:vertical}
 .tabs .need{border-color:#f3c27a;background:#fff4e5;color:#8a4b00}
 .tabs .need.on{background:#21231f;color:#fff;border-color:#e08600;box-shadow:0 0 0 2px #f6c300}
 .tab-cnt{display:inline-block;min-width:20px;padding:0 6px;margin-left:7px;border-radius:10px;background:#e08600;color:#fff;font-size:12px;line-height:20px;text-align:center}
+.ext-top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;background:#fff4c7;border:2px solid #f5c400;border-radius:14px;padding:14px 18px;margin:-4px 0 16px}
+.ext-top small{display:block;font-size:11.5px;font-weight:800;letter-spacing:.04em;color:#8a6a00}
+.ext-top b{font-size:16px}
+.ext-top.mine{background:#eef3fd;border-color:#9db8ef}.ext-top.mine small{color:#1d4ed8}
 /* ---------- Рабочий стол (CRM) ---------- */
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
 .kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
