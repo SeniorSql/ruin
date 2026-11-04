@@ -249,7 +249,7 @@ function priceRequestDialog(e, form) {
   const m = modal(`<h2>Запросить цену</h2>
     <p class="muted" style="margin-top:-6px">Запрос увидит только этот исполнитель. Он пришлёт предложение, которое можно принять в один клик.</p>
     <form id="pf">
-      <label class="f"><span>Что нужно сделать <i>*</i></span><input class="inp" name="title" required maxlength="150" value="${esc(e.title)}"></label>
+      <label class="f"><span>Что нужно сделать <i>*</i></span><input class="inp" name="title" required minlength="3" maxlength="150" title="От 3 до 150 символов" value="${esc(e.title)}"></label>
       <div class="grid2">
         <label class="f"><span>Начало <i>*</i></span><input class="inp" type="date" name="start" required min="${mskToday(1)}" value="${form.start.value}"></label>
         <label class="f"><span>Окончание <i>*</i></span><input class="inp" type="date" name="end" required min="${mskToday(1)}" value="${form.end.value}"></label>
