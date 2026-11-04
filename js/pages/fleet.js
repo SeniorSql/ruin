@@ -38,7 +38,7 @@ async function list(app, o) {
       const stale = e.status === 'PUBLISHED' && Date.now() - new Date(e.availability_confirmed_at) > 5 * 864e5;
       return `<a class="row-item" href="#/fleet/${e.id}">${p ? `<img src="${esc(p.url)}" alt="" referrerpolicy="no-referrer">` : '<img alt="">'}
         <div class="grow"><b>${esc(e.title)}</b><div class="small muted">${esc(e.categories?.name)} · ${esc(e.city)} · <span class="num">${priceText(e)}</span></div>
-        ${stale ? '<div class="small" style="color:#9a3412">Подтвердите актуальность календаря</div>' : ''}
+        ${stale ? '<div class="small warn-text">Подтвердите актуальность календаря</div>' : ''}
         ${e.moderation_comment && e.status === 'REJECTED' ? `<div class="small" style="color:var(--red)">Модератор: ${esc(e.moderation_comment)}</div>` : ''}</div>
         ${status('equipment', e.status)}</a>`;
     }).join('')}</div>`
