@@ -41,7 +41,7 @@ function create(app, query) {
         <div class="panel"><h2>Что нужно</h2>
           <label class="f"><span>Категория техники <i>*</i></span><select class="inp" name="cat" required><option value="">Выберите</option>
             ${cats.map((c) => `<option value="${c.id}" ${c.code === query.cat ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
-          <label class="f"><span>Коротко о задаче <i>*</i></span><input class="inp" name="title" required maxlength="150" placeholder="Например: выкопать котлован 10×12 м"></label>
+          <label class="f"><span>Коротко о задаче <i>*</i></span><input class="inp" name="title" required minlength="3" maxlength="150" title="От 3 до 150 символов" placeholder="Например: выкопать котлован 10×12 м"></label>
           <div class="grid2">
             <label class="f"><span>Количество единиц</span><input class="inp" name="qty" type="number" min="1" max="50" value="1"></label>
             <label class="f"><span>Формат</span><select class="inp" name="format"><option value="ANY">Не важно</option><option value="WITH_OPERATOR">С оператором</option><option value="WITHOUT_OPERATOR">Без оператора</option></select></label>
