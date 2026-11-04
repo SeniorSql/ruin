@@ -1,5 +1,5 @@
 // Точка входа: шапка, меню, маршрутизация по #/адресам
-import { sb, configured, state, loadMe, setOrg, refreshCounters, loadCategories, isAdmin } from './api.js';
+import { sb, configured, state, loadMe, setOrg, refreshCounters, loadCategories, isAdmin, canManage } from './api.js';
 import { esc, status, initials, toast } from './ui.js';
 import { initDrafts } from './drafts.js';
 import { maybeShowOnboarding, showOnboarding } from './onboarding.js';
@@ -98,14 +98,15 @@ function renderSide(active) {
     html += `<div class="context"><small>ДЕЙСТВУЮ ОТ ИМЕНИ</small>
       <select id="ctxSel" aria-label="Рабочий контекст">${state.orgs.map((x) =>
         `<option value="${x.id}" ${x.id === o.id ? 'selected' : ''}>${esc(orgName(x))}${others[x.id] ? ` — ждёт действий: ${others[x.id]}` : ''}</option>`).join('')}</select>
-      ${o.type !== 'PERSON' ? `<div class="ctx-status">${status('org', o.verification_status)}</div>` : ''}</div>`;
+      ${o.type !== 'PERSON' ? `<div class="ctx-status">${status('org', o.verification_status)}</div>` : ''}
+      ${o.type !== 'PERSON' ? `<div class="ctx-role">Ваша роль: <b>${{ OWNER: 'владелец', ADMIN: 'администратор', MANAGER: 'менеджер', APPROVER: 'согласующий', FINANCE: 'бухгалтер', VIEWER: 'наблюдатель' }[o.role] || o.role}</b>${canManage(o) ? '' : ' · только просмотр'}</div>` : ''}</div>`;
     // Действия, которые ждут вас в других ваших организациях
     html += state.orgs.filter((x) => others[x.id]).map((x) =>
       `<button class="ctx-alert" data-switch="${x.id}"><b>${esc(orgName(x))}</b>: ${others[x.id]} ${others[x.id] === 1 ? 'сделка ждёт' : 'сделки ждут'} вашего действия <span>Перейти →</span></button>`).join('');
   }
   html += `<div class="navs"><div class="nav-caption">МАРКЕТПЛЕЙС</div><nav class="nav">
     ${link('#/', 'home', 'Главная')}${link('#/catalog', 'grid', 'Каталог техники')}
-    ${state.user ? link('#/orders/new', 'plus', 'Разместить заказ') : ''}</nav>`;
+    ${state.user && (!o || canManage(o)) ? link('#/orders/new', 'plus', 'Разместить заказ') : ''}</nav>`;
   if (state.user && o) {
     if (o.can_order) {
       html += `<div class="nav-group customer"><div class="nav-role">${icon('list', 16)}<span>Я заказчик</span><small>арендую технику</small></div><nav class="nav">
