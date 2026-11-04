@@ -18,12 +18,31 @@ const ICON = {
   shield: '<path d="m12 3 8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="m8 12 2.5 2.5L16 9"/>',
   search: '<circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
-  desk: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16M5 8h2M11 8h2M17 8h2M11 12h2"/>'
+  desk: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16M5 8h2M11 8h2M17 8h2M11 12h2"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/>',
+  auto: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17Z" fill="currentColor"/>'
 };
 export const icon = (name, size = 18) =>
   `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[name]}</svg>`;
 
-const LOGO = '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 3h20c9 0 15 5 15 13 0 6-3 10-9 12l9 15H30l-8-14h-4v14H8V3Zm10 9v9h9c4 0 6-1 6-5s-2-4-6-4h-9Z" fill="#20221f"/><path d="M8 3h10v9H8z" fill="#f5c400"/><path d="M8 39h10v4H8z" fill="#f5c400"/></svg>';
+const LOGO = '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 3h20c9 0 15 5 15 13 0 6-3 10-9 12l9 15H30l-8-14h-4v14H8V3Zm10 9v9h9c4 0 6-1 6-5s-2-4-6-4h-9Z" fill="currentColor"/><path d="M8 3h10v9H8z" style="fill:var(--accent)"/><path d="M8 39h10v4H8z" style="fill:var(--accent)"/></svg>';
+
+// ---------- тема: как в системе / светлая / тёмная (сама тема ставится скриптом в index.html) ----------
+const THEMES = { auto: ['auto', 'Авто', 'как в системе'], light: ['sun', 'Светлая', 'светлая'], dark: ['moon', 'Тёмная', 'тёмная'] };
+const themeMode = () => (window.ruinTheme ? window.ruinTheme.mode() : 'auto');
+function setTheme(m) {
+  document.body.classList.add('theme-anim');
+  window.ruinTheme?.set(m);
+  setTimeout(() => document.body.classList.remove('theme-anim'), 350);
+  refreshShell();
+}
+const themeBtn = () => {
+  const [ic, , text] = THEMES[themeMode()] || THEMES.auto;
+  return `<button class="icon-btn" id="themeBtn" type="button" title="Тема: ${text}. Нажмите, чтобы сменить" aria-label="Тема: ${text}">${icon(ic)}</button>`;
+};
+const themeSeg = () => `<div class="nav-caption">ТЕМА</div><div class="theme-seg" role="group" aria-label="Тема оформления">${Object.entries(THEMES).map(([k, [ic, label]]) =>
+  `<button type="button" data-theme-set="${k}" class="${themeMode() === k ? 'on' : ''}" aria-pressed="${themeMode() === k}">${icon(ic, 14)}${label}</button>`).join('')}</div>`;
 
 // Маршруты: шаблон → модуль страницы
 const ROUTES = [
@@ -70,6 +89,7 @@ function renderTop() {
       <input name="q" placeholder="Найти технику: экскаватор, автокран, самосвал…" aria-label="Поиск техники">
       <button class="btn sm dark">Найти</button></form>
     <div class="top-actions">
+      ${themeBtn()}
       ${u ? `
         <a class="icon-btn" href="#/favorites" title="Избранное">${icon('heart')}</a>
         <a class="icon-btn" href="#/messages" title="Сообщения">${icon('chat')}${c.unread_messages ? `<span class="badge-count">${c.unread_messages}</span>` : ''}</a>
@@ -81,6 +101,12 @@ function renderTop() {
   document.getElementById('topSearch').onsubmit = (e) => {
     e.preventDefault();
     go('#/catalog?q=' + encodeURIComponent(e.target.q.value.trim()));
+  };
+  document.getElementById('themeBtn').onclick = () => {
+    const order = ['auto', 'light', 'dark'];
+    const next = order[(order.indexOf(themeMode()) + 1) % order.length];
+    setTheme(next);
+    toast('Тема: ' + THEMES[next][2]);
   };
 }
 
@@ -124,6 +150,7 @@ function renderSide(active) {
       <a href="#" data-onb>${icon('send')}<span>Как пользоваться</span></a></nav>`;
   }
   html += `</div>`;
+  html += themeSeg();
   if (state.user && o && !o.can_provide) {
     html += `<div class="side-note"><b>Есть своя техника?</b>Создайте организацию исполнителя и получайте заказы. <a href="#/account">Начать →</a></div>`;
   } else if (!state.user) {
@@ -131,6 +158,7 @@ function renderSide(active) {
   }
   const side = document.getElementById('sidebar');
   side.innerHTML = html;
+  side.querySelectorAll('[data-theme-set]').forEach((b) => b.onclick = () => setTheme(b.dataset.themeSet));
   const sel = side.querySelector('#ctxSel');
   if (sel) sel.onchange = async () => {
     setOrg(sel.value);
