@@ -38,6 +38,12 @@ export function mountChat(box, convId, title = 'Переписка') {
   const guardBox = box.querySelector('.chat-guard');
   const drawGuard = (g) => {
     if (!g || g.open) { guardBox.innerHTML = ''; form.classList.remove('hidden'); return; }
+    if (g.predeal) {
+      guardBox.innerHTML = `<div class="banner info small" style="margin:0;border-radius:0">Переписка до сделки закрыта — это старый диалог, только для чтения.
+        Писать можно в чате сделки: он появится после брони или выбора предложения.</div>`;
+      form.classList.add('hidden');
+      return;
+    }
     if (g.blocked) {
       guardBox.innerHTML = `<div class="banner err small" style="margin:0;border-radius:0">Переписка в этом диалоге закрыта до подтверждения сделки: было ${g.limit} попытки передать контакты.
         Контакты сторон откроются автоматически, как только сделка будет подтверждена.</div>`;

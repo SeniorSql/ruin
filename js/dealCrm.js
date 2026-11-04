@@ -28,7 +28,7 @@ export async function renderExtension(box, d) {
         ${open.comment ? `<div class="small" style="margin-top:4px">${esc(open.comment)}</div>` : ''}
         <div class="actions" style="margin-top:8px">${act ? (mine ? `<button class="btn ghost sm" id="extCancel">Отозвать запрос</button>`
           : `<button class="btn sm" id="extOk">Принять продление</button><button class="btn ghost sm" id="extNo">Отклонить</button>`) : ''}</div></div>` : ''}
-    ${active && !open && act ? `<p class="small muted" style="margin-top:0">Сейчас до ${date(d.end_date)}. Любая сторона может предложить новую дату окончания и доплату — вторая сторона подтверждает.
+    ${active && !open && act ? `<p class="small muted" style="margin-top:0">Сейчас аренда до ${date(d.end_date)} Любая сторона может предложить новую дату окончания и доплату — вторая сторона подтверждает.
       Календарь техники и сумма сделки обновятся автоматически.</p>
       <button class="btn ${left <= 2 ? '' : 'ghost'} sm" id="extNew">Предложить продление</button>` : ''}
     ${rows.filter((x) => x.status !== 'REQUESTED').length ? `<table class="table" style="margin-top:12px"><tbody>${rows.filter((x) => x.status !== 'REQUESTED').map((x) => `<tr>
