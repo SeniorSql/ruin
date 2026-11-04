@@ -2,6 +2,7 @@
 import { sb, configured, state, loadMe, setOrg, refreshCounters, loadCategories, isAdmin } from './api.js';
 import { esc, status, initials, toast } from './ui.js';
 import { initDrafts } from './drafts.js';
+import { maybeShowOnboarding, showOnboarding } from './onboarding.js';
 const ICON = {
   home: '<path d="m3 10 9-7 9 7v10H3zM9 20v-6h6v6"/>',
   grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
@@ -118,7 +119,8 @@ function renderSide(active) {
     html += `<div class="nav-caption">АККАУНТ</div><nav class="nav">
       ${link('#/messages', 'chat', 'Сообщения', c.unread_messages)}${link('#/notifications', 'bell', 'Уведомления', c.notifications)}
       ${link('#/reviews', 'heart', 'Отзывы')}${link('#/analytics', 'grid', 'Аналитика')}${o.type !== 'PERSON' ? link('#/team', 'org', 'Сотрудники') : ''}
-      ${link('#/account', 'org', 'Профиль и организации')}${isAdmin() ? link('#/admin', 'shield', 'Админка', c.admin?.total) : ''}</nav>`;
+      ${link('#/account', 'org', 'Профиль и организации')}${isAdmin() ? link('#/admin', 'shield', 'Админка', c.admin?.total) : ''}
+      <a href="#" data-onb>${icon('send')}<span>Как пользоваться</span></a></nav>`;
   }
   html += `</div>`;
   if (state.user && o && !o.can_provide) {
@@ -164,7 +166,7 @@ export function refreshShell() {
 let cleanup = null;
 const PUBLIC = new Set(['home', 'catalog', 'item', 'auth', 'static', 'company']);
 
-const FOOTER = `<footer class="foot"><span>© RUIN, ${new Date().getFullYear()}</span><a href="#/help">Помощь</a>
+const FOOTER = `<footer class="foot"><span>© RUIN, ${new Date().getFullYear()}</span><a href="#" data-onb>Как пользоваться</a><a href="#/help">Помощь</a>
   <a href="#/terms">Пользовательское соглашение</a><a href="#/privacy">Персональные данные</a>
   <span>Фото техники — Wikimedia Commons, свободные лицензии, авторы указаны на фото</span></footer>`;
 
@@ -222,7 +224,7 @@ async function boot() {
       if (event === 'SIGNED_OUT' || event === 'USER_UPDATED' || (event === 'SIGNED_IN' && changed)) {
         setTimeout(async () => {
           await loadMe(); await refreshCounters();
-          if (changed) refreshShell();
+          if (changed) { refreshShell(); maybeShowOnboarding(); }
         }, 0);
       }
     });
@@ -288,6 +290,14 @@ async function boot() {
   }, true);
   document.addEventListener('focusin', (ev) => { const t = ev.target; if (isDate(t)) { const s = startOf(t); if (s) limitEnd(s, t); } });
   initDrafts();
-  route();
+  // «Как пользоваться» — открыть знакомство с сайтом заново
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-onb]');
+    if (!a) return;
+    e.preventDefault();
+    showOnboarding();
+  });
+  await route();
+  maybeShowOnboarding();
 }
 boot();
