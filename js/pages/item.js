@@ -171,8 +171,7 @@ export async function render(app, { id }) {
     cta.innerHTML = `
       ${!negotiable ? `<button class="btn wide" id="bookBtn" ${canBook && !blocked ? '' : 'disabled'}>Забронировать</button>` : ''}
       <button class="btn ${negotiable ? '' : 'ghost'} wide" id="priceBtn" ${blocked ? 'disabled' : ''}>Запросить цену</button>
-      <button class="btn ghost wide" id="askBtn" ${blocked ? 'disabled' : ''}>Задать вопрос</button>
-      <p class="small muted" style="margin:4px 0 0">${actingOwner ? 'Это техника организации, от имени которой вы сейчас действуете. Чтобы запросить цену как заказчик, переключитесь в меню слева на другой профиль.' : 'Бронь бесплатна. Исполнитель подтвердит её в течение 12 часов, после этого откроются контакты.'}</p>`;
+      <p class="small muted" style="margin:4px 0 0">${actingOwner ? 'Это техника организации, от имени которой вы сейчас действуете. Чтобы запросить цену как заказчик, переключитесь в меню слева на другой профиль.' : 'Бронь бесплатна. Исполнитель подтвердит её в течение 12 часов. Чат с исполнителем откроется после оформления брони, контакты — после подтверждения.'}</p>`;
     const need = (fn) => () => {
       if (!state.user) return go('#/login?next=' + encodeURIComponent(location.hash));
       if (!state.org?.can_order) return toast('Переключитесь на организацию-заказчика в меню слева', true);
@@ -180,10 +179,6 @@ export async function render(app, { id }) {
     };
     cta.querySelector('#bookBtn')?.addEventListener('click', need(() => bookDialog(e, calcForm, lastQuote)));
     cta.querySelector('#priceBtn').addEventListener('click', need(() => priceRequestDialog(e, calcForm)));
-    cta.querySelector('#askBtn').addEventListener('click', need(async () => {
-      try { const c = await rpc('open_conversation', { p_org: state.org.id, p_equipment: e.id, p_order: null }); go('#/messages/' + c); }
-      catch (err) { toast(err.message, true); }
-    }));
   }
   calcForm.addEventListener('change', recalc);
   recalc();

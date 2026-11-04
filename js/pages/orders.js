@@ -173,7 +173,6 @@ function compareTable(list, stats, cheapest) {
       ${row('Редакция', (f) => `№${f.rev}`)}
       ${row('', (f) => f.status === 'SUBMITTED' ? `<div class="actions" style="flex-direction:column;align-items:stretch">
         <button class="btn sm" data-select="${f.id}">Выбрать</button>
-        <button class="btn ghost sm" data-chat="${f.provider_org_id}">Написать</button>
         <button class="btn ghost sm" data-decline="${f.id}">Отклонить</button></div>` : status('offer', f.status))}
     </tbody></table></div>`;
 }

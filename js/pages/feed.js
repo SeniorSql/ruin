@@ -91,7 +91,7 @@ async function orderPage(app, id) {
     <div class="crumbs"><a href="#/feed">Лента заказов</a> › <b>${esc(o.title)}</b></div>
     <div class="page-head"><div><h1>${esc(o.title)}</h1><div style="margin-top:6px">${status('order', o.status)}
       ${o.visibility === 'DIRECT' ? '<span class="st warn">Личный запрос вам</span>' : ''}</div></div>
-      <button class="btn ghost" id="chatBtn">Задать вопрос заказчику</button></div>
+      <span class="small muted" style="max-width:260px">Чат с заказчиком откроется, когда он выберет ваше предложение и оформится сделка.</span></div>
     <div class="cols">
       <div>
         <div class="panel"><h2>Что нужно</h2>
@@ -133,10 +133,6 @@ async function orderPage(app, id) {
       </div></aside>
     </div>`;
 
-  app.querySelector('#chatBtn').onclick = async () => {
-    try { const c = await rpc('open_conversation', { p_org: state.org.id, p_equipment: null, p_order: id }); go('#/messages/' + c); }
-    catch (err) { toast(err.message, true); }
-  };
   app.querySelectorAll('[data-wd]').forEach((b) => b.onclick = async () => {
     try { await rpc('withdraw_offer', { p_offer: b.dataset.wd }); toast('Предложение отозвано'); route(); } catch (err) { toast(err.message, true); }
   });
