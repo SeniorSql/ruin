@@ -1,5 +1,6 @@
 // Заказчик: мои заказы, мастер заказа, предложения и сравнение (SCR-ORD-01..05)
-import { sb, state, q, rpc, loadCategories, categoryById } from '../api.js';
+import { sb, state, q, rpc, loadCategories, categoryById, canManage } from '../api.js';
+import { isTeam, loadTeam, assignees, memberLabel, assignFilterHtml, mountAssign, ROLE_NAME } from '../assign.js';
 import { esc, money, status, toast, busy, modal, askReason, emptyState, errorState, mskToday, date, period, FORMAT, idemKey,
   dateTime, timeLeft, photoOf, initials, plural, POLICY, toMinor } from '../ui.js';
 import { go, route } from '../app.js';
@@ -11,23 +12,40 @@ export async function render(app, params, query, pattern) {
       '<a class="btn" href="#/account">Настройки</a>');
     return;
   }
-  if (pattern === 'orders') return list(app);
-  if (pattern === 'orders/new') return create(app, query);
+  if (pattern === 'orders') return list(app, query);
+  if (pattern === 'orders/new') {
+    if (!canManage()) {
+      app.innerHTML = emptyState('Размещать заказы может менеджер', `У вас роль «${ROLE_NAME[state.org.role] || state.org.role}» — только просмотр. Попросите владельца или администратора организации изменить роль в разделе «Сотрудники».`, '<a class="btn ghost" href="#/orders">Мои заказы</a>');
+      return;
+    }
+    return create(app, query);
+  }
   return detail(app, params.id);
 }
 
-async function list(app) {
+async function list(app, query = {}) {
   let rows;
   try { rows = await q(sb.from('orders').select('*, categories(name)').eq('customer_org_id', state.org.id).order('created_at', { ascending: false }).limit(200)); }
   catch (err) { app.innerHTML = errorState(err); return; }
+  // Команда: ответственные за заказы и фильтр «Мои / Без ответственного»
+  const team = await isTeam() ? await loadTeam() : null;
+  const asg = team ? await assignees('ORDER', rows.map((o) => o.id)) : {};
+  const live = (o) => ['PUBLISHED', 'OFFERS_RECEIVED', 'NEGOTIATION'].includes(o.status);
+  const who = team ? (query.who || 'all') : 'all';
+  const cnt = team ? { mine: rows.filter((o) => live(o) && asg[o.id] === state.user.id).length, none: rows.filter((o) => live(o) && !asg[o.id]).length } : {};
+  if (who === 'mine') rows = rows.filter((o) => asg[o.id] === state.user.id);
+  if (who === 'none') rows = rows.filter((o) => !asg[o.id]);
   const counts = await Promise.all(rows.map((o) => rpc('order_offer_count', { p_order: o.id }).catch(() => 0)));
   app.innerHTML = `
     <div class="page-head"><div><h1>Мои заказы</h1><p>Опишите задачу — проверенные исполнители пришлют предложения.</p></div>
-      <a class="btn" href="#/orders/new">+ Разместить заказ</a></div>
-    ${rows.length ? `<div class="panel"><table class="table resp"><thead><tr><th>Заказ</th><th>Даты</th><th>Предложений</th><th>Статус</th></tr></thead><tbody>
+      ${canManage() ? '<a class="btn" href="#/orders/new">+ Разместить заказ</a>' : ''}</div>
+    ${team ? assignFilterHtml(who, '#/orders', cnt) : ''}
+    ${rows.length ? `<div class="panel"><table class="table resp"><thead><tr><th>Заказ</th><th>Даты</th><th>Предложений</th>${team ? '<th>Ответственный</th>' : ''}<th>Статус</th></tr></thead><tbody>
       ${rows.map((o, i) => `<tr class="click" onclick="location.hash='#/orders/${o.id}'"><td><b>${esc(o.title)}</b><div class="small muted">${esc(o.categories?.name)} · ${esc(o.city)}${o.visibility === 'DIRECT' ? ' · личный запрос' : ''}</div></td>
-        <td class="small">${date(o.start_date)} — ${date(o.end_date)}</td><td><b>${counts[i]}</b></td><td>${status('order', o.status)}</td></tr>`).join('')}
+        <td class="small">${date(o.start_date)} — ${date(o.end_date)}</td><td><b>${counts[i]}</b></td>
+        ${team ? `<td class="small">${asg[o.id] ? esc(memberLabel(team, asg[o.id])) : live(o) ? '<span class="chip warn">не назначен</span>' : '—'}</td>` : ''}<td>${status('order', o.status)}</td></tr>`).join('')}
       </tbody></table></div>`
+    : who !== 'all' ? emptyState(who === 'mine' ? 'У вас нет своих заказов' : 'Все заказы распределены', 'Откройте вкладку «Все», чтобы увидеть заказы коллег.', '<a class="btn ghost" href="#/orders">Все заказы</a>')
     : emptyState('Заказов пока нет', 'Разместите первый заказ: укажите технику, даты и адрес. Исполнители пришлют цены, вы выберете лучшее.', '<a class="btn" href="#/orders/new">Разместить заказ</a>')}`;
 }
 
@@ -108,7 +126,7 @@ async function detail(app, id) {
   const deal = o.status === 'NEGOTIATION' || o.status === 'CONVERTED_TO_DEAL'
     ? await q(sb.from('deals').select('id,number,status').eq('order_id', id).neq('status', 'CANCELLED').maybeSingle()) : null;
   const cheapest = Math.min(...active.filter((f) => f.status === 'SUBMITTED').map((f) => f.total_minor));
-  const canCancel = ['PUBLISHED', 'OFFERS_RECEIVED'].includes(o.status);
+  const canCancel = ['PUBLISHED', 'OFFERS_RECEIVED'].includes(o.status) && canManage();
 
   app.innerHTML = `
     <div class="crumbs"><a href="#/orders">Мои заказы</a> › <b>${esc(o.title)}</b></div>
@@ -116,6 +134,8 @@ async function detail(app, id) {
       ${o.visibility === 'DIRECT' ? '<span class="st gray">Личный запрос</span>' : ''}</div></div>
       ${canCancel ? '<button class="btn danger" id="cancelBtn">Отменить заказ</button>' : ''}</div>
     ${deal ? `<div class="next"><div><small>ЧТО ДАЛЬШЕ</small><b>Сделка ${esc(deal.number)}: ${deal.status === 'AWAITING_CONFIRMATION' ? 'ждём подтверждения исполнителя' : 'перейдите в сделку'}</b></div><a class="btn" href="#/deals/${deal.id}">Открыть сделку</a></div>` : ''}
+    <div id="assign"></div>
+    ${!canManage() ? `<div class="banner info">У вас роль «${ROLE_NAME[state.org.role] || state.org.role}» — только просмотр. Выбирать предложения и отменять заказ могут владелец, администратор и менеджер.</div>` : ''}
     ${['PUBLISHED', 'OFFERS_RECEIVED'].includes(o.status) ? `<div class="banner info">Приём предложений: ${new Date(o.deadline_at) > Date.now() ? 'ещё ' + timeLeft(o.deadline_at) : 'завершён — выберите предложение'}.</div>` : ''}
     <div class="cols">
       <div>
@@ -136,6 +156,8 @@ async function detail(app, id) {
       </div></aside>
     </div>`;
 
+  mountAssign(app.querySelector('#assign'), 'ORDER', id).catch(() => {});
+  if (!canManage()) app.querySelectorAll('[data-select],[data-decline]').forEach((b) => b.remove());
   app.querySelector('#cancelBtn')?.addEventListener('click', async () => {
     const r = await askReason('Отменить заказ?', 'Исполнители получат уведомление, их предложения закроются.', 'Причина', 'Отменить заказ');
     if (!r) return;
