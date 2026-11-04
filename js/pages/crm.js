@@ -85,7 +85,7 @@ export async function render(app, _p, query) {
     <div class="panel"><h2>Напоминания${due.length ? ` <span class="tab-cnt">${due.length}</span>` : ''}</h2>
       ${notes.length ? `<ul class="notes">${notes.slice(0, 30).map((n) => `<li class="${n.remind_on && n.remind_on <= today ? 'due' : ''}">
         <label class="check" style="margin:0"><input type="checkbox" data-done="${n.id}"> <span style="white-space:pre-wrap">${esc(n.body)}</span></label>
-        <div class="small muted"><a href="#/deals/${n.deal_id}">${esc(n.deals?.number || 'сделка')}</a>${n.remind_on ? ` · ${n.remind_on <= today ? '<b style="color:#9a3412">' : ''}напомнить ${date(n.remind_on)}${n.remind_on <= today ? '</b>' : ''}` : ''}</div></li>`).join('')}</ul>`
+        <div class="small muted"><a href="#/deals/${n.deal_id}">${esc(n.deals?.number || 'сделка')}</a>${n.remind_on ? ` · ${n.remind_on <= today ? '<b class="warn-text">' : ''}напомнить ${date(n.remind_on)}${n.remind_on <= today ? '</b>' : ''}` : ''}</div></li>`).join('')}</ul>`
         : '<p class="muted" style="margin:0">Открытых заметок нет. Заметку с датой напоминания можно добавить на странице любой сделки — блок «Мои заметки».</p>'}
     </div>
     ${deals.length ? `<div class="kanban">${STAGES.map(([s, t, hint]) => `<div class="kcol"><div class="khead"><b>${t}</b><span>${by(s).length}</span><small>${hint}</small></div>
