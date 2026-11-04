@@ -69,7 +69,7 @@ export async function render(app, { id }) {
         <div class="panel"><h2>Календарь занятости</h2>
           ${stale && !e.is_demo ? '<div class="banner warn">Исполнитель давно не обновлял календарь — доступность уточняется.</div>' : ''}
           <div class="cal-wrap" id="cal"><div class="skeleton" style="height:200px"></div></div>
-          <div class="legend"><span><i style="background:#f2f6f1"></i>свободно</span><span><i style="background:#f3d9d9"></i>занято</span><span><i style="background:var(--yellow)"></i>ваш выбор</span></div>
+          <div class="legend"><span><i class="free"></i>свободно</span><span><i class="busy"></i>занято</span><span><i class="sel"></i>ваш выбор</span></div>
         </div>
 
         <div class="panel"><h2>Исполнитель</h2>
