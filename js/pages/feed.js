@@ -1,5 +1,5 @@
 // Исполнитель: лента заказов, карточка заказа, форма предложения, мои предложения (SCR-ORD-06..09)
-import { sb, state, q, rpc, loadCategories, seenOrders, markOrderSeen, refreshCounters } from '../api.js';
+import { sb, state, q, rpc, loadCategories, seenOrders, markOrderSeen, refreshCounters, canManage } from '../api.js';
 import { esc, money, status, toast, busy, emptyState, errorState, date, period, FORMAT, dateTime, timeLeft, toMinor, fromMinor,
   statusLabel, qs, photoOf } from '../ui.js';
 import { go, route, refreshShell } from '../app.js';
@@ -107,7 +107,7 @@ async function orderPage(app, id) {
         ${myOffers.length ? `<div class="panel"><h2>Мои предложения по заказу</h2>${myOffers.map((f) => `<div class="row-item"><div class="grow">
           <b class="num">${money(f.total_minor)}</b> <span class="small muted">редакция №${f.rev} · ${dateTime(f.created_at)}</span>
           ${f.comment ? `<div class="small">${esc(f.comment)}</div>` : ''}</div>${status('offer', f.status)}
-          ${f.status === 'SUBMITTED' ? `<button class="btn ghost sm" data-wd="${f.id}">Отозвать</button>` : ''}</div>`).join('')}</div>` : ''}
+          ${f.status === 'SUBMITTED' && canManage() ? `<button class="btn ghost sm" data-wd="${f.id}">Отозвать</button>` : ''}</div>`).join('')}</div>` : ''}
       </div>
       <aside class="sticky"><div class="panel"><h2>${active ? 'Ваше предложение отправлено' : 'Ваше предложение'}</h2>
         ${active?.status === 'SUBMITTED' ? `<div class="banner ok" style="display:block">
@@ -115,8 +115,9 @@ async function orderPage(app, id) {
             <div class="small">${esc(myEq.find((e) => e.id === active.equipment_id)?.title || '')} · ${active.with_operator ? 'с оператором' : 'без оператора'} · редакция №${active.rev}</div>
             ${active.comment ? `<p class="small" style="margin:6px 0 0;white-space:pre-wrap">${esc(active.comment)}</p>` : ''}
             <div class="small muted" style="margin-top:6px">Заказчик получил уведомление. Ждём его решения.</div></div>
-          ${open ? '<button class="btn ghost wide" id="editOffer">Изменить предложение</button>' : ''}` : ''}
+          ${open && canManage() ? '<button class="btn ghost wide" id="editOffer">Изменить предложение</button>' : ''}` : ''}
         ${!open ? '<div class="banner warn">Приём предложений закрыт.</div>'
+        : !canManage() ? '<div class="banner info">У вас роль только для просмотра. Отправлять предложения могут владелец, администратор и менеджер.</div>'
         : !myEq.length ? `<div class="banner warn">Нет опубликованной техники категории «${esc(o.categories?.name)}». <a href="#/fleet/new">Добавить</a></div>`
         : active?.status === 'SELECTED' ? '<div class="banner ok">Заказчик выбрал ваше предложение — подтвердите сделку в разделе «Сделки».</div>'
         : `<form id="of" class="${active ? 'hidden' : ''}" ${active ? 'data-nodraft' : ''}>
