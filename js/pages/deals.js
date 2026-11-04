@@ -45,8 +45,8 @@ async function list(app, query) {
         <div class="grow"><b>${esc(d.number)} · ${esc(d.equipment?.title)}</b><div class="small muted">${esc(other || '')} · ${period(d.start_date, d.end_date)}</div>
         <div class="small num">${money(d.total_minor)}</div>
         ${team ? `<div class="small">${asg[d.id] ? `<span class="chip ${asg[d.id] === state.user.id ? 'me' : ''}">Ответственный: ${esc(memberLabel(team, asg[d.id]))}</span>` : live(d) ? '<span class="chip warn">Без ответственного</span>' : ''}</div>` : ''}
-        ${extWait[d.id] ? '<div class="small" style="color:#9a3412;font-weight:700">Ждёт вашего ответа: продление аренды</div>'
-          : needAction(d) ? '<div class="small" style="color:#9a3412;font-weight:700">Нужно ваше действие</div>' : ''}</div>${status('deal', d.status)}</a>`;
+        ${extWait[d.id] ? '<div class="small warn-text" style="font-weight:700">Ждёт вашего ответа: продление аренды</div>'
+          : needAction(d) ? '<div class="small warn-text" style="font-weight:700">Нужно ваше действие</div>' : ''}</div>${status('deal', d.status)}</a>`;
     }).join('')}</div>`
     : who !== 'all' ? emptyState(who === 'mine' ? 'У вас нет своих сделок' : 'Все сделки распределены', 'Откройте вкладку «Все», чтобы увидеть сделки коллег.', `<a class="btn ghost" href="#/deals?tab=${tab}">Все сделки</a>`)
     : emptyState('Сделок пока нет', tab === 'customer' ? 'Забронируйте технику в каталоге или разместите заказ.' : 'Сделки появятся, когда заказчики забронируют вашу технику или выберут ваше предложение.',
@@ -87,7 +87,7 @@ async function detail(app, id) {
   const next = nextStep(d, amCust, amProv);
   const activeDeal = ['CONFIRMED', 'IN_PROGRESS'].includes(d.status);
   if (ext && ext.requested_by_org !== state.org.id) next.text = 'Ответьте на предложение о продлении аренды — оно ниже';
-  if (activeDeal && !ext) next.buttons += `<button class="btn ghost sm" id="extendBtn" style="background:transparent;color:#fff;border-color:#ffffff44">Продлить аренду</button>`;
+  if (activeDeal && !ext) next.buttons += `<button class="btn ghost sm" id="extendBtn">Продлить аренду</button>`;
 
   app.innerHTML = `
     <div class="crumbs"><a href="#/deals">Сделки</a> › <b>${esc(d.number)}</b></div>
@@ -192,7 +192,7 @@ function party(role, org, contacts, show) {
 
 // Блок «Что дальше»: одно главное действие, ответственный и таймер (D100)
 function nextStep(d, amCust, amProv) {
-  const cancel = (t = 'Отменить') => `<button class="btn ghost sm" id="cancelBtn" style="background:transparent;color:#fff;border-color:#ffffff44">${t}</button>`;
+  const cancel = (t = 'Отменить') => `<button class="btn ghost sm" id="cancelBtn">${t}</button>`;
   switch (d.status) {
     case 'AWAITING_CONFIRMATION':
       return amProv
@@ -208,7 +208,7 @@ function nextStep(d, amCust, amProv) {
     case 'COMPLETION_PENDING':
       return amCust
         ? { text: 'Исполнитель завершил работы — подтвердите или верните на доработку', timer: new Date(new Date(d.updated_at).getTime() + 72 * 3600e3).toISOString(),
-          buttons: `<button class="btn" id="acceptBtn">Подтвердить завершение</button><button class="btn ghost sm" id="rejectBtn" style="background:transparent;color:#fff;border-color:#ffffff44">Вернуть на доработку</button>` }
+          buttons: `<button class="btn" id="acceptBtn">Подтвердить завершение</button><button class="btn ghost sm" id="rejectBtn">Вернуть на доработку</button>` }
         : { text: 'Ждём, когда заказчик подтвердит завершение (до 72 часов)', buttons: '' };
     case 'COMPLETED': return { text: 'Сделка завершена. Спасибо за работу!', buttons: '' };
     default: return { text: 'Сделка отменена', buttons: amCust && d.order_id ? `<a class="btn" href="#/orders/${d.order_id}">Вернуться к заказу</a>` : amCust ? '<a class="btn" href="#/catalog">Найти другую технику</a>' : '' };
