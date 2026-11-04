@@ -81,7 +81,7 @@ async function reviews(box) {
     .order('created_at', { ascending: false }).limit(100));
   box.innerHTML = rows.length ? `<div class="panel">${rows.map((r) => `<div class="row-item" style="align-items:flex-start"><div class="grow">
       <span class="rating">${'★'.repeat(r.overall)}</span> <b>${esc(r.au?.name)}</b> → ${esc(r.su?.name)} <span class="small muted">· ${dateTime(r.created_at)} · ${r.status}</span>
-      ${r.text ? `<p class="small" style="margin:4px 0">${esc(r.text)}</p>` : ''}${r.moderation_comment ? `<div class="small" style="color:#9a3412">Модерация: ${esc(r.moderation_comment)}</div>` : ''}</div>
+      ${r.text ? `<p class="small" style="margin:4px 0">${esc(r.text)}</p>` : ''}${r.moderation_comment ? `<div class="small warn-text">Модерация: ${esc(r.moderation_comment)}</div>` : ''}</div>
       <div class="actions" style="justify-content:flex-end">
         ${r.status !== 'TEXT_HIDDEN' ? `<button class="btn ghost sm" data-rv="${r.id}" data-s="TEXT_HIDDEN">Скрыть текст</button>` : ''}
         ${r.status !== 'EXCLUDED' ? `<button class="btn danger sm" data-rv="${r.id}" data-s="EXCLUDED">Исключить</button>` : ''}
@@ -109,7 +109,7 @@ async function orgs(box, { status: st, search }) {
       <div class="small muted">${esc(c[o.id]?.contact_person || '')} · ${esc(c[o.id]?.phone || '')} · ${esc(c[o.id]?.email || '')}</div>
       <div class="small muted">Роли: ${[o.can_order && 'заказчик', o.can_provide && 'исполнитель'].filter(Boolean).join(', ')} · обновлено ${dateTime(o.updated_at)}</div>
       <div class="small"><a href="https://egrul.nalog.ru/" target="_blank" rel="noopener">Проверить в ЕГРЮЛ/ЕГРИП →</a></div>
-      ${o.verification_comment ? `<div class="small" style="color:#9a3412">Комментарий: ${esc(o.verification_comment)}</div>` : ''}</div>
+      ${o.verification_comment ? `<div class="small warn-text">Комментарий: ${esc(o.verification_comment)}</div>` : ''}</div>
       <div class="actions" style="justify-content:flex-end">
         ${o.verification_status === 'VERIFIED'
           ? `<span class="small muted">Уже проверена</span><button class="btn danger sm" data-o="${o.id}" data-d="SUSPENDED">Приостановить</button>`
