@@ -35,14 +35,13 @@ export async function render(app) {
     <div class="page-head"><div><h1>Сотрудники</h1><p>${esc(o.name)} · у каждого свой вход и своя роль</p></div></div>
     <div class="cols">
       <div class="panel"><h2>Команда (${active.length})</h2>
-        <table class="table resp"><thead><tr><th>Сотрудник</th><th>Роль</th><th>Ведёт сделок</th><th>С нами с</th><th></th></tr></thead><tbody>
-        ${active.map((m) => `<tr><td><b>${esc(m.name || '—')}</b><div class="small muted">${esc(m.email)}</div></td>
-          <td>${admin && m.user_id !== state.user.id ? `<select class="inp" data-role="${m.user_id}" style="height:36px;width:auto">${Object.entries(ROLES).map(([k, v]) => `<option value="${k}" ${k === m.role ? 'selected' : ''}>${v}</option>`).join('')}</select>` : ROLES[m.role]}</td>
-          <td>${['OWNER', 'ADMIN', 'MANAGER'].includes(m.role) ? `<a href="#/crm?who=${m.user_id}"><b>${load[m.user_id] || 0}</b></a>` : '<span class="muted small">—</span>'}</td>
-          <td class="small">${date(m.joined_at)}</td>
-          <td>${m.user_id === state.user.id ? '<button class="btn ghost sm" data-leave>Выйти из организации</button>'
-            : `${iOwn ? `<button class="btn ghost sm" data-own="${m.user_id}" data-name="${esc(m.name || m.email)}">Сделать владельцем</button> ` : ''}${admin && m.role !== 'OWNER' || iOwn ? `<button class="btn danger sm" data-rm="${m.user_id}">Отключить</button>` : ''}`}</td></tr>`).join('')}
-        </tbody></table>
+        <div class="table-wrap"><table class="table resp team-t"><thead><tr><th>Сотрудник</th><th>Роль</th><th title="Сколько текущих сделок ведёт">Сделок</th></tr></thead><tbody>
+        ${active.map((m) => `<tr><td><b>${esc(m.name || '—')}</b><div class="small muted">${esc(m.email)} · в команде с ${date(m.joined_at)}</div>
+            <div class="row-actions">${m.user_id === state.user.id ? '<button class="btn ghost sm" data-leave>Выйти из организации</button>'
+            : `${iOwn ? `<button class="btn ghost sm" data-own="${m.user_id}" data-name="${esc(m.name || m.email)}">Сделать владельцем</button>` : ''}${admin && m.role !== 'OWNER' || iOwn ? `<button class="btn danger sm" data-rm="${m.user_id}">Отключить</button>` : ''}`}</div></td>
+          <td>${admin && m.user_id !== state.user.id ? `<select class="inp" data-role="${m.user_id}" style="height:36px;width:auto;max-width:100%">${Object.entries(ROLES).map(([k, v]) => `<option value="${k}" ${k === m.role ? 'selected' : ''}>${v}</option>`).join('')}</select>` : ROLES[m.role]}</td>
+          <td>${['OWNER', 'ADMIN', 'MANAGER'].includes(m.role) ? `<a href="#/crm?who=${m.user_id}"><b>${load[m.user_id] || 0}</b></a>` : '<span class="muted small">—</span>'}</td></tr>`).join('')}
+        </tbody></table></div>
         <div class="small muted" style="margin-top:10px">Роли: <b>владелец, администратор, менеджер</b> — работают со сделками, заказами и чатом;
           <b>согласующий, бухгалтер, наблюдатель</b> — только просмотр. Ответственным за сделку можно назначить только тех, кто работает со сделками.
           Если сотрудника отключить или перевести в «только просмотр», его сделки станут «без ответственного» — их увидят коллеги.</div>
