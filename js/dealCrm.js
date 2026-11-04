@@ -26,8 +26,8 @@ export async function renderExtension(box, d) {
         <b>${mine ? 'Вы предложили' : `${who(open) === 'заказчик' ? 'Заказчик' : 'Исполнитель'} предлагает`} продлить до ${date(open.new_end)}</b>
         (+${open.new_end && Math.round((new Date(open.new_end) - new Date(open.old_end)) / 864e5)} дн.), доплата <b class="num">${money(open.extra_minor)}</b>
         ${open.comment ? `<div class="small" style="margin-top:4px">${esc(open.comment)}</div>` : ''}
-        <div class="actions" style="margin-top:8px">${act ? (mine ? `<button class="btn ghost sm" id="extCancel">Отозвать запрос</button>`
-          : `<button class="btn sm" id="extOk">Принять продление</button><button class="btn ghost sm" id="extNo">Отклонить</button>`) : ''}</div></div>` : ''}
+        <div class="actions" style="margin-top:8px">${act ? (mine ? `<button class="btn ghost sm" data-ext-cancel>Отозвать запрос</button>`
+          : `<button class="btn sm" data-ext-ok>Принять продление</button><button class="btn ghost sm" data-ext-no>Отклонить</button>`) : ''}</div></div>` : ''}
     ${active && !open && act ? `<p class="small muted" style="margin-top:0">Сейчас аренда до ${date(d.end_date)} Любая сторона может предложить новую дату окончания и доплату — вторая сторона подтверждает.
       Календарь техники и сумма сделки обновятся автоматически.</p>
       <button class="btn ${left <= 2 ? '' : 'ghost'} sm" id="extNew">Предложить продление</button>` : ''}
@@ -38,22 +38,42 @@ export async function renderExtension(box, d) {
 
   const done = async (msg) => { toast(msg); await refreshCounters(); refreshShell(); route(); };
   box.querySelector('#extNew')?.addEventListener('click', () => extensionDialog(d, done));
-  box.querySelector('#extOk')?.addEventListener('click', (ev) => busy(ev.currentTarget, async () => {
+  bindExtensionButtons(box, open, done);
+}
+
+// Заметный блок сверху страницы сделки: есть запрос на продление
+export function extensionTopHtml(open, d, myOrgId, act) {
+  if (!open) return '';
+  const mine = open.requested_by_org === myOrgId;
+  const who = open.requested_by_org === d.customer_org_id ? 'Заказчик' : 'Исполнитель';
+  const days = Math.round((new Date(open.new_end) - new Date(open.old_end)) / 864e5);
+  return `<div class="ext-top ${mine ? 'mine' : ''}"><div><small>${mine ? 'ВЫ ПРЕДЛОЖИЛИ ПРОДЛЕНИЕ' : 'ПРЕДЛОЖЕНИЕ О ПРОДЛЕНИИ'}</small>
+      <b>${mine ? 'Ждём ответа второй стороны' : `${who} предлагает продлить аренду`}: до ${date(open.new_end)} (+${days} ${plural(days, 'день', 'дня', 'дней')}),
+      доплата <span class="num">${money(open.extra_minor)}</span></b>
+      ${open.comment ? `<div class="small" style="margin-top:4px">«${esc(open.comment)}»</div>` : ''}</div>
+    <div class="actions">${act && !mine ? `<button class="btn" data-ext-ok>Принять продление</button><button class="btn ghost sm" data-ext-no>Отклонить</button>` : ''}
+      ${act && mine ? '<button class="btn ghost sm" data-ext-cancel>Отозвать</button>' : ''}</div></div>`;
+}
+
+// Кнопки принятия/отклонения/отзыва — общие для верхнего блока и блока «Продление аренды»
+export function bindExtensionButtons(root, open, done) {
+  if (!open) return;
+  root.querySelectorAll('[data-ext-ok]').forEach((b) => b.addEventListener('click', () => busy(b, async () => {
     try { await rpc('decide_extension', { p_ext: open.id, p_accept: true, p_reason: null }); await done('Аренда продлена до ' + date(open.new_end)); }
     catch (e) { toast(e.message, true); }
-  }));
-  box.querySelector('#extNo')?.addEventListener('click', async () => {
-    const r = await askReason('Отклонить продление', 'Можно коротко объяснить причину — её увидит вторая сторона.', 'Причина', 'Отклонить');
+  })));
+  root.querySelectorAll('[data-ext-no]').forEach((b) => b.addEventListener('click', async () => {
+    const r = await askReason('Отклонить продление', 'Коротко объясните причину — её увидит вторая сторона.', 'Причина', 'Отклонить');
     if (!r) return;
     try { await rpc('decide_extension', { p_ext: open.id, p_accept: false, p_reason: r }); await done('Продление отклонено'); }
     catch (e) { toast(e.message, true); }
-  });
-  box.querySelector('#extCancel')?.addEventListener('click', (ev) => busy(ev.currentTarget, async () => {
-    try { await rpc('cancel_extension', { p_ext: open.id }); await done('Запрос отозван'); } catch (e) { toast(e.message, true); }
   }));
+  root.querySelectorAll('[data-ext-cancel]').forEach((b) => b.addEventListener('click', () => busy(b, async () => {
+    try { await rpc('cancel_extension', { p_ext: open.id }); await done('Запрос отозван'); } catch (e) { toast(e.message, true); }
+  })));
 }
 
-function extensionDialog(d, done) {
+export function extensionDialog(d, done) {
   const minEnd = new Date(new Date(d.end_date + 'T00:00:00').getTime() + 864e5).toLocaleDateString('sv-SE');
   const m = modal(`<h2>Продлить аренду</h2>
     <p class="small muted">Сейчас: ${date(d.start_date)} — ${date(d.end_date)}. Вторая сторона получит уведомление и подтвердит продление.</p>
