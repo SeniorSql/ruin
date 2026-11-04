@@ -99,6 +99,17 @@ export async function refreshCounters() {
       if (d.status === 'COMPLETION_PENDING') { if (mine) c.deals_customer++; else need[d.customer_org_id] = (need[d.customer_org_id] || 0) + 1; }
       else if (mine) c.deals_customer_wait++;
     }
+    // Продления, которые ждут ответа от моей стороны, — тоже «нужно ваше действие»
+    const { data: exts } = await sb.from('deal_extensions').select('deal_id,requested_by_org,deals(customer_org_id,provider_org_id)').eq('status', 'REQUESTED');
+    c.ext_wait = {};
+    for (const x of exts || []) {
+      const d = x.deals; if (!d) continue;
+      const me = [d.customer_org_id, d.provider_org_id].find((id) => ids.includes(id) && id !== x.requested_by_org);
+      if (!me) continue;
+      if (me !== state.org.id) { need[me] = (need[me] || 0) + 1; continue; }
+      c.ext_wait[x.deal_id] = true;
+      if (me === d.provider_org_id) c.deals_provider++; else c.deals_customer++;
+    }
     c.other_orgs = need;
   } catch {}
   await Promise.all([feedCounter(), crmCounter(), adminCounters()]);
