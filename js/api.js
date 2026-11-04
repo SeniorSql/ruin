@@ -79,13 +79,27 @@ export async function refreshCounters() {
   if (!state.org) { state.counters = {}; return; }
   try { state.counters = await rpc('my_counters', { p_org: state.org.id }) || {}; } catch { state.counters = {}; }
   // Раздельные счётчики «нужно ваше действие» для сделок заказчика и исполнителя
+  // плюс «ждёт другую сторону» и действия, которые ждут вас в других ваших организациях
   try {
-    const [prov, cust] = await Promise.all([
-      sb.from('deals').select('id', { count: 'exact', head: true }).eq('provider_org_id', state.org.id).eq('status', 'AWAITING_CONFIRMATION'),
-      sb.from('deals').select('id', { count: 'exact', head: true }).eq('customer_org_id', state.org.id).eq('status', 'COMPLETION_PENDING')
+    const ids = state.orgs.map((o) => o.id);
+    const [asProv, asCust] = await Promise.all([
+      sb.from('deals').select('provider_org_id,status').in('provider_org_id', ids).in('status', ['AWAITING_CONFIRMATION', 'COMPLETION_PENDING']),
+      sb.from('deals').select('customer_org_id,status').in('customer_org_id', ids).in('status', ['AWAITING_CONFIRMATION', 'COMPLETION_PENDING'])
     ]);
-    state.counters.deals_provider = prov.count || 0;
-    state.counters.deals_customer = cust.count || 0;
+    const need = {};
+    const c = state.counters;
+    c.deals_provider = 0; c.deals_customer = 0; c.deals_provider_wait = 0; c.deals_customer_wait = 0;
+    for (const d of asProv.data || []) {
+      const mine = d.provider_org_id === state.org.id;
+      if (d.status === 'AWAITING_CONFIRMATION') { if (mine) c.deals_provider++; else need[d.provider_org_id] = (need[d.provider_org_id] || 0) + 1; }
+      else if (mine) c.deals_provider_wait++;
+    }
+    for (const d of asCust.data || []) {
+      const mine = d.customer_org_id === state.org.id;
+      if (d.status === 'COMPLETION_PENDING') { if (mine) c.deals_customer++; else need[d.customer_org_id] = (need[d.customer_org_id] || 0) + 1; }
+      else if (mine) c.deals_customer_wait++;
+    }
+    c.other_orgs = need;
   } catch {}
 }
 

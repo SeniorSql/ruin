@@ -86,14 +86,20 @@ function renderTop() {
 function renderSide(active) {
   const c = state.counters || {};
   const o = state.org;
-  const link = (href, ic, text, cnt) =>
-    `<a href="${href}" class="${active === href ? 'active' : ''}">${icon(ic)}<span>${text}</span>${cnt ? `<span class="cnt">${cnt}</span>` : ''}</a>`;
+  // cnt — нужно ваше действие (жёлтый), wait — ждёт другую сторону (серый)
+  const link = (href, ic, text, cnt, wait) =>
+    `<a href="${href}" class="${active === href ? 'active' : ''}">${icon(ic)}<span>${text}</span>${cnt ? `<span class="cnt" title="Нужно ваше действие">${cnt}</span>` : ''}${wait ? `<span class="cnt wait" title="Ждёт другую сторону">${wait}</span>` : ''}</a>`;
+  const others = c.other_orgs || {};
+  const orgName = (x) => (x.type === 'PERSON' ? 'Я (частное лицо)' : x.name);
   let html = '';
   if (state.user && o) {
     html += `<div class="context"><small>ДЕЙСТВУЮ ОТ ИМЕНИ</small>
       <select id="ctxSel" aria-label="Рабочий контекст">${state.orgs.map((x) =>
-        `<option value="${x.id}" ${x.id === o.id ? 'selected' : ''}>${esc(x.type === 'PERSON' ? 'Я (частное лицо)' : x.name)}</option>`).join('')}</select>
+        `<option value="${x.id}" ${x.id === o.id ? 'selected' : ''}>${esc(orgName(x))}${others[x.id] ? ` — ждёт действий: ${others[x.id]}` : ''}</option>`).join('')}</select>
       ${o.type !== 'PERSON' ? `<div class="ctx-status">${status('org', o.verification_status)}</div>` : ''}</div>`;
+    // Действия, которые ждут вас в других ваших организациях
+    html += state.orgs.filter((x) => others[x.id]).map((x) =>
+      `<button class="ctx-alert" data-switch="${x.id}"><b>${esc(orgName(x))}</b>: ${others[x.id]} ${others[x.id] === 1 ? 'сделка ждёт' : 'сделки ждут'} вашего действия <span>Перейти →</span></button>`).join('');
   }
   html += `<div class="navs"><div class="nav-caption">МАРКЕТПЛЕЙС</div><nav class="nav">
     ${link('#/', 'home', 'Главная')}${link('#/catalog', 'grid', 'Каталог техники')}
@@ -101,12 +107,12 @@ function renderSide(active) {
   if (state.user && o) {
     if (o.can_order) {
       html += `<div class="nav-group customer"><div class="nav-role">${icon('list', 16)}<span>Я заказчик</span><small>арендую технику</small></div><nav class="nav">
-        ${link('#/orders', 'list', 'Мои заказы', c.orders_offers)}${link('#/deals?tab=customer', 'deal', 'Сделки', c.deals_customer)}</nav></div>`;
+        ${link('#/orders', 'list', 'Мои заказы', c.orders_offers)}${link('#/deals?tab=customer', 'deal', 'Сделки', c.deals_customer, c.deals_customer_wait)}</nav></div>`;
     }
     if (o.can_provide) {
       html += `<div class="nav-group provider"><div class="nav-role">${icon('truck', 16)}<span>Я исполнитель</span><small>сдаю технику</small></div><nav class="nav">
         ${link('#/fleet', 'truck', 'Моя техника')}${link('#/feed', 'feed', 'Лента заказов')}
-        ${link('#/offers', 'send', 'Мои предложения')}${link('#/deals?tab=provider', 'deal', 'Сделки', c.deals_provider)}</nav></div>`;
+        ${link('#/offers', 'send', 'Мои предложения')}${link('#/deals?tab=provider', 'deal', 'Сделки', c.deals_provider, c.deals_provider_wait)}</nav></div>`;
     }
     html += `<div class="nav-caption">АККАУНТ</div><nav class="nav">
       ${link('#/messages', 'chat', 'Сообщения', c.unread_messages)}${link('#/notifications', 'bell', 'Уведомления', c.notifications)}
@@ -125,9 +131,17 @@ function renderSide(active) {
   if (sel) sel.onchange = async () => {
     setOrg(sel.value);
     await refreshCounters();
-    toast('Теперь вы действуете от имени: ' + sel.options[sel.selectedIndex].text);
+    toast('Теперь вы действуете от имени: ' + sel.options[sel.selectedIndex].text.split(' — ')[0]);
     route();
   };
+  side.querySelectorAll('[data-switch]').forEach((b) => b.onclick = async () => {
+    setOrg(b.dataset.switch);
+    await refreshCounters();
+    const x = state.counters;
+    toast('Теперь вы действуете от имени: ' + orgName(state.org));
+    go(x.deals_provider ? '#/deals?tab=provider' : '#/deals?tab=customer');
+    if (location.hash.startsWith('#/deals')) route();
+  });
 }
 
 export function refreshShell() {

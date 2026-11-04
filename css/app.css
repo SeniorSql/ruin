@@ -56,6 +56,11 @@ h1,h2,h3{font-family:Manrope,'DM Sans',sans-serif;letter-spacing:-.4px;margin:0}
 .nav a:hover{background:#ecede9}
 .nav a.active{background:#21231f;color:#fff}
 .nav a.active svg{color:var(--yellow)}
+.nav .cnt.wait{background:#e3e4de;color:#4f534c;margin-left:auto}
+.nav .cnt+.cnt.wait{margin-left:4px}
+.ctx-alert{display:block;width:100%;text-align:left;border:1px solid #f0b84b;background:#fff3d1;color:#5e4100;border-radius:12px;padding:9px 11px;margin:-8px 0 16px;font-size:13px;line-height:1.4}
+.ctx-alert:hover{background:#ffeab0}
+.ctx-alert span{display:block;font-weight:800;color:#8a5b00;margin-top:2px}
 .nav .cnt{margin-left:auto;border-radius:6px;background:var(--yellow);color:#222;padding:1px 7px;font-size:12px;font-weight:800}
 /* выделенные блоки ролей в меню: заказчик — синий, исполнитель — жёлтый */
 .nav-group{border-radius:14px;padding:8px 6px 6px;margin:0 -6px 16px;border:1px solid}
