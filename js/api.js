@@ -101,6 +101,73 @@ export async function refreshCounters() {
     }
     c.other_orgs = need;
   } catch {}
+  await Promise.all([feedCounter(), crmCounter(), adminCounters()]);
+}
+
+// Просмотренные заказы ленты — отдельно для каждой организации (в этом браузере)
+const seenKey = () => 'ruin.seenOrders:' + state.org?.id;
+export function seenOrders() {
+  try { return new Set(JSON.parse(localStorage.getItem(seenKey()) || '[]')); } catch { return new Set(); }
+}
+export function markOrderSeen(id) {
+  const s = seenOrders(); s.add(id);
+  try { localStorage.setItem(seenKey(), JSON.stringify([...s].slice(-500))); } catch {}
+}
+
+// «Лента заказов»: новые открытые заказы под мою технику (или личные запросы мне), которые я ещё не открывал и не ответил
+async function feedCounter() {
+  const o = state.org, c = state.counters;
+  c.feed_new = 0;
+  if (!o?.can_provide || o.verification_status !== 'VERIFIED') return;
+  try {
+    const [eq, orders] = await Promise.all([
+      q(sb.from('equipment').select('category_id').eq('org_id', o.id).eq('status', 'PUBLISHED')),
+      q(sb.from('orders').select('id,category_id,visibility,invited_org_id').in('status', ['PUBLISHED', 'OFFERS_RECEIVED'])
+        .gt('deadline_at', new Date().toISOString()).neq('customer_org_id', o.id).limit(300))
+    ]);
+    const cats = new Set(eq.map((e) => e.category_id));
+    const fit = orders.filter((x) => (x.visibility === 'DIRECT' ? x.invited_org_id === o.id : cats.has(x.category_id)));
+    if (!fit.length) return;
+    const offered = new Set((await q(sb.from('offers').select('order_id').eq('provider_org_id', o.id).in('order_id', fit.map((x) => x.id)))).map((x) => x.order_id));
+    const seen = seenOrders();
+    c.feed_new = fit.filter((x) => !offered.has(x.id) && !seen.has(x.id)).length;
+    c.feed_new_ids = fit.filter((x) => !offered.has(x.id) && !seen.has(x.id)).map((x) => x.id);
+  } catch {}
+}
+
+// «Рабочий стол»: напоминания, срок которых наступил (таблица появляется после 07_crm.sql)
+async function crmCounter() {
+  const c = state.counters;
+  c.crm_due = 0;
+  if (!state.org) return;
+  try {
+    const { count, error } = await sb.from('deal_notes').select('id', { count: 'exact', head: true })
+      .eq('org_id', state.org.id).eq('done', false).not('remind_on', 'is', null).lte('remind_on', mskDate(0));
+    if (!error) c.crm_due = count || 0;
+  } catch {}
+}
+
+// Очереди админки: что ждёт решения администратора
+async function adminCounters() {
+  const c = state.counters;
+  c.admin = null;
+  if (!isAdmin()) return;
+  const n = async (b) => { const { count, error } = await b; return error ? 0 : count || 0; };
+  const head = { count: 'exact', head: true };
+  try {
+    const [orgs, equipment, disputes, reports] = await Promise.all([
+      n(sb.from('organizations').select('id', head).eq('verification_status', 'PENDING_REVIEW')),
+      n(sb.from('equipment').select('id', head).eq('status', 'PENDING_MODERATION')),
+      n(sb.from('disputes').select('id', head).in('status', ['OPEN', 'IN_REVIEW'])),
+      n(sb.from('listing_reports').select('id', head).eq('status', 'NEW'))
+    ]);
+    c.admin = { orgs, equipment, disputes, reports, total: orgs + equipment + disputes + reports };
+  } catch {}
+}
+
+// Дата по Москве в формате ГГГГ-ММ-ДД со сдвигом в днях
+export function mskDate(add = 0) {
+  return new Date(Date.now() + add * 864e5).toLocaleDateString('sv-SE', { timeZone: 'Europe/Moscow' });
 }
 
 export const isAdmin = () => !!state.profile?.is_platform_admin;

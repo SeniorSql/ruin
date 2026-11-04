@@ -16,7 +16,8 @@ const ICON = {
   heart: '<path d="M20.8 8.8c0 5.1-8.8 11-8.8 11s-8.8-5.9-8.8-11A4.7 4.7 0 0 1 12 6.4a4.7 4.7 0 0 1 8.8 2.4Z"/>',
   shield: '<path d="m12 3 8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="m8 12 2.5 2.5L16 9"/>',
   search: '<circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/>',
-  plus: '<path d="M12 5v14M5 12h14"/>'
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  desk: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16M5 8h2M11 8h2M17 8h2M11 12h2"/>'
 };
 export const icon = (name, size = 18) =>
   `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[name]}</svg>`;
@@ -32,7 +33,7 @@ const ROUTES = [
   ['orders', 'orders'], ['orders/new', 'orders'], ['orders/:id', 'orders'],
   ['feed', 'feed'], ['feed/:id', 'feed'], ['offers', 'feed'],
   ['deals', 'deals'], ['deals/:id', 'deals'], ['deals/:id/doc/:type', 'docs'],
-  ['company/:id', 'company'], ['team', 'team'], ['analytics', 'analytics'], ['reviews', 'reviews'],
+  ['company/:id', 'company'], ['team', 'team'], ['crm', 'crm'], ['analytics', 'analytics'], ['reviews', 'reviews'],
   ['messages', 'messages'], ['messages/:id', 'messages'],
   ['notifications', 'notifications'], ['favorites', 'favorites'],
   ['admin', 'admin'], ['terms', 'static'], ['privacy', 'static'], ['help', 'static']
@@ -111,13 +112,13 @@ function renderSide(active) {
     }
     if (o.can_provide) {
       html += `<div class="nav-group provider"><div class="nav-role">${icon('truck', 16)}<span>Я исполнитель</span><small>сдаю технику</small></div><nav class="nav">
-        ${link('#/fleet', 'truck', 'Моя техника')}${link('#/feed', 'feed', 'Лента заказов')}
+        ${link('#/crm', 'desk', 'Рабочий стол', c.crm_due)}${link('#/fleet', 'truck', 'Моя техника')}${link('#/feed', 'feed', 'Лента заказов', c.feed_new)}
         ${link('#/offers', 'send', 'Мои предложения')}${link('#/deals?tab=provider', 'deal', 'Сделки', c.deals_provider, c.deals_provider_wait)}</nav></div>`;
     }
     html += `<div class="nav-caption">АККАУНТ</div><nav class="nav">
       ${link('#/messages', 'chat', 'Сообщения', c.unread_messages)}${link('#/notifications', 'bell', 'Уведомления', c.notifications)}
       ${link('#/reviews', 'heart', 'Отзывы')}${link('#/analytics', 'grid', 'Аналитика')}${o.type !== 'PERSON' ? link('#/team', 'org', 'Сотрудники') : ''}
-      ${link('#/account', 'org', 'Профиль и организации')}${isAdmin() ? link('#/admin', 'shield', 'Админка') : ''}</nav>`;
+      ${link('#/account', 'org', 'Профиль и организации')}${isAdmin() ? link('#/admin', 'shield', 'Админка', c.admin?.total) : ''}</nav>`;
   }
   html += `</div>`;
   if (state.user && o && !o.can_provide) {
@@ -154,7 +155,7 @@ export function refreshShell() {
   const dealTab = query.tab || saved || (state.org?.can_order ? 'customer' : 'provider');
   const activeMap = { '': '#/', catalog: '#/catalog', item: '#/catalog', orders: path === 'orders/new' ? '#/orders/new' : '#/orders',
     deals: '#/deals?tab=' + dealTab, fleet: '#/fleet', feed: '#/feed', offers: '#/offers', messages: '#/messages',
-    notifications: '#/notifications', account: '#/account', admin: '#/admin', team: '#/team', analytics: '#/analytics', company: '#/catalog', reviews: '#/reviews' };
+    notifications: '#/notifications', account: '#/account', admin: '#/admin', team: '#/team', analytics: '#/analytics', company: '#/catalog', reviews: '#/reviews', crm: '#/crm' };
   renderTop();
   renderSide(activeMap[top] ?? (m ? '#/' + m.name : ''));
 }
@@ -257,6 +258,35 @@ async function boot() {
     e.target.dispatchEvent(new Event('input', { bubbles: true }));
   });
   document.addEventListener('focusin', (e) => { if (intField(e.target)) e.target.setAttribute('inputmode', 'numeric'); });
+  // Пары дат «начало — окончание» в любой форме: окончание нельзя выбрать раньше начала
+  const PAIR = { start: 'end', from: 'to', s: 'e' };
+  const isDate = (el) => el instanceof HTMLInputElement && el.type === 'date' && el.form;
+  const endOf = (el) => (PAIR[el.name] ? el.form.elements[PAIR[el.name]] : null);
+  const startOf = (el) => { const k = Object.keys(PAIR).find((x) => PAIR[x] === el.name); return k ? el.form.elements[k] : null; };
+  const limitEnd = (s, e) => {
+    if (!isDate(s) || !isDate(e)) return false;
+    if (e.dataset.baseMin === undefined) e.dataset.baseMin = e.min || '';
+    const base = e.dataset.baseMin;
+    e.min = s.value && s.value > base ? s.value : base;
+    if (s.value && e.value && e.value < s.value) { e.value = s.value; return true; }
+    return false;
+  };
+  document.addEventListener('change', (ev) => {
+    const t = ev.target;
+    if (!isDate(t)) return;
+    const e = endOf(t);
+    if (e && limitEnd(t, e)) {
+      toast('Окончание не может быть раньше начала — поставили дату начала');
+      e.dispatchEvent(new Event('change', { bubbles: true }));
+      return;
+    }
+    const s = startOf(t);
+    if (s && isDate(s) && s.value && t.value && t.value < s.value) {
+      t.value = s.value;
+      toast('Окончание не может быть раньше начала — поставили дату начала');
+    }
+  }, true);
+  document.addEventListener('focusin', (ev) => { const t = ev.target; if (isDate(t)) { const s = startOf(t); if (s) limitEnd(s, t); } });
   initDrafts();
   route();
 }

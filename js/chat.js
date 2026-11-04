@@ -3,7 +3,7 @@ import { sb, state, q, rpc, refreshCounters } from './api.js';
 import { esc, dateTime, toast } from './ui.js';
 
 export function mountChat(box, convId, title = 'Переписка') {
-  box.innerHTML = `<div class="chat"><div class="chat-head">${esc(title)}</div>
+  box.innerHTML = `<div class="chat"><div class="chat-head">${esc(title)}</div><div class="chat-guard"></div>
     <div class="chat-body" aria-live="polite"><div class="muted small">Загрузка…</div></div>
     <form class="chat-form"><textarea class="inp" name="t" placeholder="Сообщение… (Enter — отправить, Shift+Enter — новая строка)" maxlength="4000" aria-label="Сообщение"></textarea>
       <button class="btn dark">Отправить</button></form></div>`;
@@ -34,6 +34,22 @@ export function mountChat(box, convId, title = 'Переписка') {
       } else if (first) draw([]);
     } catch (err) { if (first) body.innerHTML = `<div class="muted">${esc(err.message)}</div>`; }
   }
+  // Защита от обмена контактами до подтверждения сделки: предупреждение и счётчик попыток
+  const guardBox = box.querySelector('.chat-guard');
+  const drawGuard = (g) => {
+    if (!g || g.open) { guardBox.innerHTML = ''; form.classList.remove('hidden'); return; }
+    if (g.blocked) {
+      guardBox.innerHTML = `<div class="banner err small" style="margin:0;border-radius:0">Переписка в этом диалоге закрыта до подтверждения сделки: было ${g.limit} попытки передать контакты.
+        Контакты сторон откроются автоматически, как только сделка будет подтверждена.</div>`;
+      form.classList.add('hidden');
+      return;
+    }
+    guardBox.innerHTML = `<div class="banner warn small" style="margin:0;border-radius:0">До подтверждения сделки телефоны, почта, ссылки и мессенджеры скрываются автоматически —
+      даже если писать их словами или по частям. После ${g.limit} попыток переписка закроется до подтверждения сделки${g.attempts ? ` (попыток: <b>${g.attempts} из ${g.limit}</b>)` : ''}.
+      Контакты откроются сами после подтверждения.</div>`;
+  };
+  const loadGuard = () => rpc('chat_guard', { p_conv: convId, p_org: state.org.id }).then(drawGuard).catch(() => {});
+  loadGuard();
   form.t.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
   form.onsubmit = async (e) => {
     e.preventDefault();
@@ -43,9 +59,14 @@ export function mountChat(box, convId, title = 'Переписка') {
     try {
       const r = await rpc('send_message', { p_conv: convId, p_org: state.org.id, p_body: text });
       form.t.value = '';
-      if (r?.masked) toast('Контакты в сообщении скрыты — они откроются после подтверждения сделки');
+      if (r?.masked) {
+        toast(r.attempts_left != null
+          ? `Контакты скрыты. Осталось попыток до закрытия переписки: ${r.attempts_left}`
+          : 'Контакты в сообщении скрыты — они откроются после подтверждения сделки', true);
+        loadGuard();
+      }
       await poll();
-    } catch (err) { toast(err.message, true); }
+    } catch (err) { toast(err.message, true); if (/закрыта до подтверждения/.test(err.message)) loadGuard(); }
     finally { form.querySelector('button').disabled = false; form.t.focus(); }
   };
   poll();
