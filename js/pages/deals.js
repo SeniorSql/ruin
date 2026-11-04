@@ -4,6 +4,7 @@ import { esc, money, status, toast, busy, askReason, confirmBox, emptyState, err
   POLICY, ORG_TYPE } from '../ui.js';
 import { breakdownHtml } from './item.js';
 import { renderExtras } from '../dealExtras.js';
+import { renderExtension, renderNotes } from '../dealCrm.js';
 import { mountChat } from '../chat.js';
 import { route, refreshShell } from '../app.js';
 
@@ -81,6 +82,7 @@ async function detail(app, id) {
             ${d.cancel_reason ? `<dt>Причина отмены</dt><dd>${esc(reasonText(d.cancel_reason))}</dd>` : ''}</dl>
           <h3 style="margin-top:16px">Стоимость</h3>${breakdownHtml(d.breakdown)}
         </div>
+        <div id="ext"></div>
         <div id="extras"><div class="skeleton" style="height:120px;margin-top:14px"></div></div>
         <div id="chat" style="margin-top:14px">${conv ? '' : '<p class="muted">Чат недоступен</p>'}</div>
       </div>
@@ -93,7 +95,8 @@ async function detail(app, id) {
           <h3>Адрес объекта</h3>
           <p style="margin:0">${priv?.address ? esc(priv.address) : '<span class="muted">Откроется после подтверждения сделки</span>'}</p>
         </div>
-        <div class="panel"><h2>История</h2><ul class="timeline">${events.map((ev) => `<li><b>${esc(EVENT[ev.type] || ev.type)}</b><div class="small muted">${dateTime(ev.ts)}</div></li>`).join('')}</ul></div>
+        <div id="notes"></div>
+        <div class="panel"><h2>История</h2><ul class="timeline">${events.map((ev) => `<li><b>${esc(eventText(ev))}</b><div class="small muted">${dateTime(ev.ts)}</div></li>`).join('')}</ul></div>
       </aside>
     </div>`;
 
@@ -125,6 +128,8 @@ async function detail(app, id) {
     catch (err) { toast(err.message, true); }
   });
 
+  renderExtension(app.querySelector('#ext'), d).catch(() => {});
+  renderNotes(app.querySelector('#notes'), d).catch(() => {});
   renderExtras(app.querySelector('#extras'), d).catch((err) => { app.querySelector('#extras').innerHTML = `<p class="muted">${esc(err.message)}</p>`; });
   if (conv) return mountChat(app.querySelector('#chat'), conv.id, 'Чат сделки');
 }
@@ -174,6 +179,26 @@ function cancelInfo(d) {
 const EVENT = {
   deal_created: 'Сделка создана', deal_confirmed_by_customer: 'Заказчик подтвердил условия', deal_confirmed: 'Сделка подтверждена',
   deal_cancelled: 'Сделка отменена', deal_started: 'Работы начались', deal_completion_requested: 'Исполнитель завершил работы',
-  deal_completion_rejected: 'Заказчик вернул на доработку', deal_completed: 'Сделка завершена'
+  deal_completion_rejected: 'Заказчик вернул на доработку', deal_completed: 'Сделка завершена',
+  handover_submitted: 'Исполнитель оформил акт', handover_confirmed: 'Заказчик подтвердил акт',
+  dispute_opened: 'Открыта претензия', dispute_decided: 'Принято решение по претензии',
+  extension_requested: 'Запрошено продление', extension_accepted: 'Аренда продлена', extension_declined: 'Продление отклонено'
 };
+// Текст события с подробностями из payload: какой акт, чем закончилась претензия и т. п.
+export function eventText(ev) {
+  const p = ev.payload || {};
+  const act = p.type === 'START' ? 'передачи техники' : p.type === 'END' ? 'возврата техники' : '';
+  switch (ev.type) {
+    case 'handover_submitted': return `Исполнитель оформил акт ${act}`;
+    case 'handover_confirmed': return `Заказчик подтвердил акт ${act}${p.remarks ? ' с замечаниями' : ''}`;
+    case 'deal_completed': return p.auto ? 'Сделка завершена автоматически (заказчик не ответил за 72 часа)' : 'Сделка завершена';
+    case 'deal_confirmed': return p.instant_book ? 'Сделка подтверждена автоматически (мгновенная бронь)' : 'Сделка подтверждена';
+    case 'deal_started': return p.handover ? 'Работы начались (по акту передачи)' : 'Работы начались';
+    case 'deal_cancelled': return p.actor === 'SYSTEM' ? 'Сделка отменена: исполнитель не ответил вовремя' : 'Сделка отменена';
+    case 'dispute_decided': return p.status === 'RESOLVED' ? 'Претензия признана обоснованной' : 'Претензия отклонена';
+    case 'extension_requested': return `Запрошено продление до ${p.new_end ? p.new_end.split('-').reverse().join('.') : ''}`;
+    case 'extension_accepted': return `Аренда продлена до ${p.new_end ? p.new_end.split('-').reverse().join('.') : ''}`;
+    default: return EVENT[ev.type] || 'Событие по сделке';
+  }
+}
 const reasonText = (r) => ({ PROVIDER_NO_RESPONSE: 'исполнитель не ответил за 12 часов' }[r] || r);

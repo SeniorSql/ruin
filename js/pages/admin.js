@@ -1,15 +1,21 @@
 // Админка: проверка организаций, модерация техники, жалобы (Модуль 12, SCR-ADM)
-import { sb, q, rpc, isAdmin } from '../api.js';
+import { sb, q, rpc, isAdmin, state, refreshCounters } from '../api.js';
 import { esc, status, toast, askReason, emptyState, errorState, dateTime, ORG_TYPE, photoOf, priceText, qs, money, mskToday } from '../ui.js';
-import { route } from '../app.js';
+import { route, refreshShell } from '../app.js';
 
 export async function render(app, _p, query) {
   if (!isAdmin()) { app.innerHTML = emptyState('Нет доступа', 'Раздел доступен только администраторам платформы.'); return; }
-  const tab = query.tab || 'stats';
-  const tabs = [['stats', 'Статистика'], ['orgs', 'Проверка организаций'], ['equipment', 'Модерация техники'], ['disputes', 'Претензии'],
-    ['reviews', 'Отзывы'], ['reports', 'Жалобы'], ['all', 'Все организации']];
+  await refreshCounters(); refreshShell();
+  const n = state.counters.admin || {};
+  // Если ничего не выбрано — открываем первую очередь, где есть работа
+  const firstQueue = ['equipment', 'orgs', 'disputes', 'reports'].find((k) => n[k]);
+  const tab = query.tab || firstQueue || 'stats';
+  const tabs = [['stats', 'Статистика'], ['orgs', 'Проверка организаций', n.orgs], ['equipment', 'Модерация техники', n.equipment], ['disputes', 'Претензии', n.disputes],
+    ['reviews', 'Отзывы'], ['reports', 'Жалобы', n.reports], ['all', 'Все организации']];
   app.innerHTML = `<div class="page-head"><div><h1>Админка</h1><p>Каждое решение записывается в журнал с автором, временем и причиной.</p></div></div>
-    <div class="tabs">${tabs.map(([k, t]) => `<a href="#/admin?tab=${k}" class="${k === tab ? 'on' : ''}">${t}</a>`).join('')}</div><div id="box"></div>`;
+    ${n.total ? `<div class="banner warn">Ждут вашего решения: ${[['orgs', 'организаций на проверке'], ['equipment', 'техники на модерации'], ['disputes', 'претензий'], ['reports', 'жалоб']]
+      .filter(([k]) => n[k]).map(([k, t]) => `<a href="#/admin?tab=${k}"><b>${n[k]}</b> ${t}</a>`).join(' · ')}</div>` : ''}
+    <div class="tabs">${tabs.map(([k, t, c]) => `<a href="#/admin?tab=${k}" class="${k === tab ? 'on' : ''} ${c ? 'need' : ''}">${t}${c ? `<span class="tab-cnt">${c}</span>` : ''}</a>`).join('')}</div><div id="box"></div>`;
   const box = app.querySelector('#box');
   try {
     if (tab === 'orgs') await orgs(box, { status: 'PENDING_REVIEW' });

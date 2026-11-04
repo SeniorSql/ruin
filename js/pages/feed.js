@@ -1,8 +1,8 @@
 // Исполнитель: лента заказов, карточка заказа, форма предложения, мои предложения (SCR-ORD-06..09)
-import { sb, state, q, rpc, loadCategories } from '../api.js';
+import { sb, state, q, rpc, loadCategories, seenOrders, markOrderSeen, refreshCounters } from '../api.js';
 import { esc, money, status, toast, busy, emptyState, errorState, date, period, FORMAT, dateTime, timeLeft, toMinor, fromMinor,
   statusLabel, qs, photoOf } from '../ui.js';
-import { go, route } from '../app.js';
+import { go, route, refreshShell } from '../app.js';
 
 export async function render(app, params, query, pattern) {
   await loadCategories();
@@ -37,9 +37,12 @@ async function feed(app, query) {
   try { rows = await q(b); } catch (err) { app.innerHTML = errorState(err); return; }
   const mine = rows.length ? await q(sb.from('offers').select('order_id,status').eq('provider_org_id', state.org.id).in('order_id', rows.map((r) => r.id))) : [];
   const myByOrder = Object.fromEntries(mine.map((x) => [x.order_id, x.status]));
+  const seen = seenOrders();
+  const fresh = rows.filter((o) => !myByOrder[o.id] && !seen.has(o.id)).length;
 
   app.innerHTML = `
-    <div class="page-head"><div><h1>Лента заказов</h1><p>Открытые заказы заказчиков. Отвечайте быстрее — это повышает шансы.</p></div></div>
+    <div class="page-head"><div><h1>Лента заказов</h1><p>Открытые заказы заказчиков. Отвечайте быстрее — это повышает шансы.</p></div>
+      ${fresh ? `<button class="btn ghost sm" id="seenAll">Отметить все просмотренными (${fresh})</button>` : ''}</div>
     ${!myEq.length ? '<div class="banner warn">У вас нет опубликованной техники — отправить предложение не получится. <a href="#/fleet/new">Добавить технику</a></div>' : ''}
     <form class="filters" id="ff">
       <select class="inp" name="cat"><option value="">Все категории</option>${cats.map((c) => `<option value="${c.id}" ${String(c.id) === f.cat ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
@@ -47,12 +50,17 @@ async function feed(app, query) {
       <label class="check" style="margin:0"><input type="checkbox" name="mine" value="1" ${f.mine === '1' ? 'checked' : ''}> Подходит моей технике</label>
       <button class="btn dark">Показать</button></form>
     ${rows.length ? `<div class="panel">${rows.map((o) => `<a class="row-item" href="#/feed/${o.id}">
-      <div class="grow"><b>${esc(o.title)}</b>
+      <div class="grow"><b>${esc(o.title)}</b>${!myByOrder[o.id] && !seen.has(o.id) ? '<span class="badge-new">НОВЫЙ</span>' : ''}
         <div class="small muted">${esc(o.categories?.name)} · ${o.qty} шт. · ${esc(o.city)}${o.district ? ', ' + esc(o.district) : ''} · ${FORMAT[o.format].toLowerCase()}</div>
         <div class="small">${period(o.start_date, o.end_date)}${o.budget_visible && o.budget_minor ? ' · бюджет ' + money(o.budget_minor) : ''}
           ${o.visibility === 'DIRECT' ? ' · <b>личный запрос вам</b>' : ''}</div></div>
       <div style="text-align:right">${myByOrder[o.id] ? status('offer', myByOrder[o.id]) : `<span class="small muted">приём ещё ${timeLeft(o.deadline_at)}</span>`}</div></a>`).join('')}</div>`
     : emptyState('Подходящих заказов сейчас нет', 'Мы пришлём уведомление, когда появится заказ для вашей техники. Можно снять фильтр «Подходит моей технике».')}`;
+  app.querySelector('#seenAll')?.addEventListener('click', async () => {
+    rows.forEach((o) => markOrderSeen(o.id));
+    (state.counters.feed_new_ids || []).forEach(markOrderSeen);
+    await refreshCounters(); route();
+  });
   app.querySelector('#ff').onsubmit = (e) => {
     e.preventDefault();
     const d = Object.fromEntries(new FormData(e.target));
@@ -65,6 +73,8 @@ async function orderPage(app, id) {
   try { o = await q(sb.from('orders').select('*, categories(name), organizations!orders_customer_org_id_fkey(name,type,verification_status)').eq('id', id).maybeSingle()); }
   catch (err) { app.innerHTML = errorState(err); return; }
   if (!o) { app.innerHTML = emptyState('Заказ недоступен', 'Заказ закрыт, отменён или не предназначен для вашей организации.'); return; }
+  // Заказ открыт — он больше не «новый», счётчик ленты уменьшается
+  if (!seenOrders().has(id)) { markOrderSeen(id); refreshCounters().then(refreshShell); }
   const [myEq, myOffers, offerCount] = await Promise.all([
     q(sb.from('equipment').select('*').eq('org_id', state.org.id).eq('status', 'PUBLISHED').eq('category_id', o.category_id)),
     q(sb.from('offers').select('*').eq('order_id', id).eq('provider_org_id', state.org.id).order('created_at', { ascending: false })),

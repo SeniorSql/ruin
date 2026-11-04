@@ -64,7 +64,9 @@ async function editor(app, o, id) {
       ${id && e.status === 'PUBLISHED' ? `<a class="btn ghost" href="#/item/${id}">Открыть в каталоге</a>` : ''}</div>
     ${e.moderation_comment && ['REJECTED', 'HIDDEN'].includes(e.status) ? `<div class="banner err">Комментарий модератора: ${esc(e.moderation_comment)}</div>` : ''}
     ${e.status === 'PENDING_MODERATION' ? '<div class="banner info">Карточка на модерации — обычно это занимает до 1 рабочего дня. Мы пришлём уведомление.</div>' : ''}
-    <div class="steps"><a href="#s1">1. Основное</a><a href="#s2">2. Характеристики</a><a href="#s3">3. Фото</a><a href="#s4">4. Место</a><a href="#s5">5. Цены и условия</a>${id ? '<a href="#s6">6. Календарь</a>' : ''}</div>
+    <div class="steps" id="steps">${[['s1', '1. Основное'], ['s2', '2. Характеристики'], ['s3', '3. Фото'], ['s4', '4. Место'], ['s5', '5. Цены и условия'], ...(id ? [['s6', '6. Календарь']] : [])]
+      .map(([k, t]) => `<button type="button" data-go="${k}"><i></i>${t}</button>`).join('')}
+      <span class="steps-legend small muted"><i class="ok"></i>заполнено <i class="todo"></i>нужно заполнить <i></i>необязательно</span></div>
     <form id="ef">
       <fieldset ${editable ? '' : 'disabled'} style="border:0;padding:0;margin:0">
       <div class="panel" id="s1"><h2>1. Основное</h2>
@@ -168,7 +170,35 @@ async function editor(app, o, id) {
       ${editable ? `<button type="button" data-del="${i}" aria-label="Удалить фото">×</button>` : ''}
       ${i === 0 ? '<span class="st ok" style="position:absolute;left:5px;bottom:5px">Главное</span>' : editable ? `<button type="button" data-main="${i}" style="left:5px;right:auto;width:auto;padding:0 6px;font-size:11px">Главное</button>` : ''}</div>`).join('')
       + (editable && photos.length < 20 ? `<label class="photo-add" for="file"><span>+ Добавить фото<br><small>${photos.length}/20</small></span></label>` : '');
+    markSteps();
   };
+  // --- кнопки разделов: прокрутка к блоку и цвет по заполненности обязательных полей ---
+  function markSteps() {
+    const filled = (n) => !!f[n]?.value.trim();
+    const st = {
+      s1: filled('category_id') && filled('brand') && filled('model') && filled('title') ? 'ok' : 'todo',
+      s2: [...app.querySelectorAll('[data-spec]')].some((i) => i.value !== '') ? 'ok' : '',
+      s3: photos.length >= 3 ? 'ok' : 'todo',
+      s4: filled('city') ? 'ok' : 'todo',
+      s5: (f.with_operator.checked || f.without_operator.checked) && (f.price_unit.value === 'NEGOTIABLE' || filled('price')) ? 'ok' : 'todo',
+      s6: ''
+    };
+    const tips = { ok: 'Обязательные поля заполнены', todo: 'Есть незаполненные обязательные поля', '': 'Необязательный раздел' };
+    app.querySelectorAll('#steps [data-go]').forEach((b) => {
+      b.className = st[b.dataset.go] || '';
+      b.title = b.dataset.go === 's3' && st.s3 === 'todo' ? `Нужно минимум 3 фото, сейчас ${photos.length}` : tips[st[b.dataset.go] || ''];
+    });
+  }
+  app.querySelector('#steps').addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-go]');
+    if (!b) return;
+    const el = app.querySelector('#' + b.dataset.go);
+    const top = el.getBoundingClientRect().top + window.scrollY - (app.querySelector('#steps').offsetHeight + 80);
+    window.scrollTo({ top, behavior: 'smooth' });
+    el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1200);
+  });
+  f.addEventListener('input', markSteps);
+  f.addEventListener('change', markSteps);
   drawPhotos();
   app.querySelector('#photos').addEventListener('click', (ev) => {
     const d = ev.target.closest('[data-del]'), mn = ev.target.closest('[data-main]');
