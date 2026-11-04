@@ -260,11 +260,14 @@ function priceRequestDialog(e, form) {
         <label class="f"><span>Окончание <i>*</i></span><input class="inp" type="date" name="end" required min="${mskToday(1)}" value="${form.end.value}"></label>
       </div>
       <div class="grid2">
-        <label class="f"><span>Город <i>*</i></span><input class="inp" name="city" required value="${esc(e.city)}"></label>
-        <label class="f"><span>Бюджет, ₽</span><input class="inp" name="budget" type="number" min="0" step="1" max="1000000000"></label>
+        <label class="f"><span>Город или посёлок объекта <i>*</i></span><input class="inp" name="city" required maxlength="100" placeholder="Например: Подольск"></label>
+        <label class="f"><span>Район</span><input class="inp" name="district" maxlength="100" placeholder="Необязательно"></label>
       </div>
-      <label class="f"><span>Адрес объекта <i>*</i></span><input class="inp" name="address" required maxlength="300"></label>
-      <label class="f"><span>Подробности</span><textarea class="inp" name="desc" maxlength="3000" placeholder="Объём работ, график, условия подъезда"></textarea></label>
+      <div class="hint" style="margin:-8px 0 12px">Город и район исполнитель увидит сразу — по ним он посчитает доставку.</div>
+      <label class="f"><span>Точный адрес объекта <i>*</i></span><input class="inp" name="address" required maxlength="300" placeholder="Улица, дом или ориентир">
+        <div class="hint">Откроется исполнителю только после подтверждения сделки.</div></label>
+      <label class="f"><span>Бюджет, ₽</span><input class="inp" name="budget" type="number" min="0" step="1" max="1000000000"></label>
+      <label class="f"><span>Подробности для исполнителя</span><textarea class="inp" name="desc" maxlength="3000" placeholder="Объём работ, график, условия подъезда. Без телефонов и ссылок."></textarea></label>
       <div class="form-error hidden" id="err"></div>
       <button class="btn wide">Отправить запрос</button>
     </form>`);
@@ -276,7 +279,7 @@ function priceRequestDialog(e, form) {
         const id = await rpc('create_order', {
           p_org: state.org.id, p_title: f.title.value, p_description: f.desc.value, p_category: e.category_id, p_qty: 1,
           p_format: form.op.value === '1' ? 'WITH_OPERATOR' : 'WITHOUT_OPERATOR', p_start: f.start.value, p_end: f.end.value,
-          p_city: f.city.value, p_district: null, p_address: f.address.value,
+          p_city: f.city.value, p_district: f.district.value || null, p_address: f.address.value,
           p_budget: f.budget.value ? Math.round(+f.budget.value * 100) : null, p_budget_visible: !!f.budget.value,
           p_deadline_hours: 72, p_equipment: e.id });
         m.close(); toast('Запрос отправлен исполнителю'); go('#/orders/' + id);
