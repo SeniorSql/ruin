@@ -75,7 +75,9 @@ function attach(form) {
     note.className = 'banner info small draft-note';
     note.innerHTML = `Восстановлен несохранённый черновик. <button type="button" class="link">Сбросить</button>`;
     note.querySelector('button').onclick = () => { store.del(form.__draftKey); note.remove(); location.reload(); };
-    form.prepend(note);
+    // Если форма сама разбита на колонки (сетка/флекс), плашку ставим над формой, иначе она займёт колонку и форма «разъедется»
+    const disp = getComputedStyle(form).display;
+    if (/grid|flex/.test(disp)) form.before(note); else form.prepend(note);
   }
   let timer;
   const onEdit = (e) => {
