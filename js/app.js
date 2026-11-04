@@ -32,7 +32,7 @@ const ROUTES = [
   ['orders', 'orders'], ['orders/new', 'orders'], ['orders/:id', 'orders'],
   ['feed', 'feed'], ['feed/:id', 'feed'], ['offers', 'feed'],
   ['deals', 'deals'], ['deals/:id', 'deals'], ['deals/:id/doc/:type', 'docs'],
-  ['company/:id', 'company'], ['team', 'team'], ['analytics', 'analytics'],
+  ['company/:id', 'company'], ['team', 'team'], ['analytics', 'analytics'], ['reviews', 'reviews'],
   ['messages', 'messages'], ['messages/:id', 'messages'],
   ['notifications', 'notifications'], ['favorites', 'favorites'],
   ['admin', 'admin'], ['terms', 'static'], ['privacy', 'static'], ['help', 'static']
@@ -116,7 +116,7 @@ function renderSide(active) {
     }
     html += `<div class="nav-caption">АККАУНТ</div><nav class="nav">
       ${link('#/messages', 'chat', 'Сообщения', c.unread_messages)}${link('#/notifications', 'bell', 'Уведомления', c.notifications)}
-      ${link('#/analytics', 'grid', 'Аналитика')}${o.type !== 'PERSON' ? link('#/team', 'org', 'Сотрудники') : ''}
+      ${link('#/reviews', 'heart', 'Отзывы')}${link('#/analytics', 'grid', 'Аналитика')}${o.type !== 'PERSON' ? link('#/team', 'org', 'Сотрудники') : ''}
       ${link('#/account', 'org', 'Профиль и организации')}${isAdmin() ? link('#/admin', 'shield', 'Админка') : ''}</nav>`;
   }
   html += `</div>`;
@@ -154,7 +154,7 @@ export function refreshShell() {
   const dealTab = query.tab || saved || (state.org?.can_order ? 'customer' : 'provider');
   const activeMap = { '': '#/', catalog: '#/catalog', item: '#/catalog', orders: path === 'orders/new' ? '#/orders/new' : '#/orders',
     deals: '#/deals?tab=' + dealTab, fleet: '#/fleet', feed: '#/feed', offers: '#/offers', messages: '#/messages',
-    notifications: '#/notifications', account: '#/account', admin: '#/admin', team: '#/team', analytics: '#/analytics', company: '#/catalog' };
+    notifications: '#/notifications', account: '#/account', admin: '#/admin', team: '#/team', analytics: '#/analytics', company: '#/catalog', reviews: '#/reviews' };
   renderTop();
   renderSide(activeMap[top] ?? (m ? '#/' + m.name : ''));
 }
