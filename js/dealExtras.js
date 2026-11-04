@@ -13,7 +13,7 @@ const CRIT = {
   PROVIDER: [['ON_TIME', 'Соблюдение сроков'], ['AS_DESCRIBED', 'Соответствие описанию'], ['EQUIPMENT_CONDITION', 'Состояние техники'], ['COMMUNICATION', 'Общение']],
   CUSTOMER: [['TERMS_COMPLIANCE', 'Соблюдение договорённостей'], ['PAYMENT_DISCIPLINE', 'Оплата'], ['SITE_READINESS', 'Готовность объекта'], ['COMMUNICATION', 'Общение']]
 };
-export const stars = (n) => '★'.repeat(n) + '<span style="color:#d5d6cf">' + '★'.repeat(5 - n) + '</span>';
+export const stars = (n) => '★'.repeat(n) + '<span class="star-off">' + '★'.repeat(5 - n) + '</span>';
 
 export async function renderExtras(box, d) {
   const amCust = state.org.id === d.customer_org_id;
@@ -53,7 +53,7 @@ export async function renderExtras(box, d) {
       <p class="small muted" style="margin-top:-6px">Исполнитель записывает отработанные часы, заказчик подтверждает. Без ответа 24 часа запись принимается автоматически.</p>
       ${work.length ? `<table class="table resp"><thead><tr><th>Дата</th><th>Что</th><th>Часов</th><th>Статус</th><th></th></tr></thead><tbody>
         ${work.map((w) => `<tr><td>${date(w.work_date)}</td><td>${w.kind === 'WORK' ? 'Работа' : 'Простой — ' + DOWNTIME[w.reason]}${w.comment ? `<div class="small muted">${esc(w.comment)}</div>` : ''}
-          ${w.customer_comment ? `<div class="small" style="color:#9a3412">Заказчик: ${esc(w.customer_comment)}</div>` : ''}</td>
+          ${w.customer_comment ? `<div class="small warn-text">Заказчик: ${esc(w.customer_comment)}</div>` : ''}</td>
           <td class="num">${Number(w.hours)}</td><td>${st(WS, w.status)}</td>
           <td>${amCust && act && w.status === 'RECORDED' ? `<div class="actions"><button class="btn sm" data-wok="${w.id}">Принять</button><button class="btn ghost sm" data-wno="${w.id}">Оспорить</button></div>` : ''}</td></tr>`).join('')}
         </tbody></table>
