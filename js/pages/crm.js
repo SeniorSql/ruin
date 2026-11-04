@@ -2,6 +2,7 @@
 import { sb, state, q, refreshCounters, mskDate } from '../api.js';
 import { esc, money, date, period, emptyState, errorState, plural, toast } from '../ui.js';
 import { route, refreshShell } from '../app.js';
+import { isTeam, loadTeam, assignees, memberLabel } from '../assign.js';
 
 const STAGES = [
   ['AWAITING_CONFIRMATION', 'Новые брони', 'Подтвердите в течение 12 часов'],
@@ -28,6 +29,15 @@ export async function render(app, _p, query) {
       deals.length ? q(sb.from('deal_extensions').select('deal_id,requested_by_org,new_end').eq('status', 'REQUESTED').in('deal_id', deals.map((d) => d.id))).catch(() => []) : []
     ]);
   } catch (err) { app.innerHTML = errorState(err); return; }
+  // Команда: чьи сделки показывать
+  const team = await isTeam() ? await loadTeam() : null;
+  const asg = team ? await assignees('DEAL', deals.map((d) => d.id)) : {};
+  const who = team ? (query.who || 'all') : 'all';
+  const live = (d) => d.status !== 'COMPLETED';
+  const cnt = team ? { mine: deals.filter((d) => live(d) && asg[d.id] === state.user.id).length, none: deals.filter((d) => live(d) && !asg[d.id]).length } : {};
+  if (who === 'mine') deals = deals.filter((d) => asg[d.id] === state.user.id);
+  else if (who === 'none') deals = deals.filter((d) => !asg[d.id]);
+  else if (who !== 'all') deals = deals.filter((d) => asg[d.id] === who);
   const noSql = notes === null;
   notes = notes || [];
   const extBy = Object.fromEntries(exts.map((x) => [x.deal_id, x]));
@@ -56,6 +66,7 @@ export async function render(app, _p, query) {
     if (d.status === 'AWAITING_CONFIRMATION' && d.hold_expires_at) chips.push(['hot', 'ответ до ' + new Date(d.hold_expires_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' })]);
     if (extBy[d.id]) chips.push([extBy[d.id].requested_by_org === o.id ? '' : 'hot', 'продление до ' + date(extBy[d.id].new_end)]);
     if (notesBy[d.id]) chips.push(['', `заметок: ${notesBy[d.id]}`]);
+    if (team) chips.push(asg[d.id] ? [asg[d.id] === state.user.id ? 'me' : '', esc(memberLabel(team, asg[d.id]))] : [live(d) ? 'warn' : '', 'без ответственного']);
     return `<a class="kcard" href="#/deals/${d.id}"><b>${esc(d.number)}</b><div class="small">${esc(d.equipment?.title || '')}</div>
       <div class="small muted">${esc(other || '')}</div><div class="small">${period(d.start_date, d.end_date)}</div>
       <div class="small num"><b>${money(d.total_minor)}</b></div>${chips.map(([c, t]) => `<span class="chip ${c}">${t}</span>`).join('')}</a>`;
@@ -65,6 +76,10 @@ export async function render(app, _p, query) {
     <div class="page-head"><div><h1>Рабочий стол</h1><p>Все сделки по этапам, напоминания и загрузка техники — в одном месте.</p></div>
       <a class="btn ghost" href="#/deals?tab=${role}">Список сделок</a></div>
     ${o.can_provide && o.can_order ? `<div class="tabs"><a href="#/crm?role=provider" class="${prov ? 'on' : ''}">Я исполнитель</a><a href="#/crm?role=customer" class="${!prov ? 'on' : ''}">Я заказчик</a></div>` : ''}
+    ${team ? `<div class="tabs small-tabs">${[['all', 'Все'], ['mine', 'Мои'], ['none', 'Без ответственного']].map(([k, t]) =>
+      `<a href="#/crm?role=${role}&who=${k}" class="${who === k ? 'on' : ''}">${t}${cnt[k] ? ` <span class="tab-cnt">${cnt[k]}</span>` : ''}</a>`).join('')}
+      <select class="inp" id="whoSel" aria-label="Сотрудник" style="height:34px;width:auto;margin-left:auto"><option value="">По сотруднику…</option>
+      ${team.filter((m) => ['OWNER', 'ADMIN', 'MANAGER'].includes(m.role)).map((m) => `<option value="${m.user_id}" ${who === m.user_id ? 'selected' : ''}>${esc(m.label)}</option>`).join('')}</select></div>` : ''}
     ${noSql ? '<div class="banner warn">Заметки и продления заработают после выполнения файла 07_crm.sql в Supabase.</div>' : ''}
     <div class="kpis">${kpi.map(([t, n, hot]) => `<div class="kpi ${hot ? 'hot' : ''}"><b>${n}</b><span>${t}</span></div>`).join('')}</div>
     <div class="panel"><h2>Напоминания${due.length ? ` <span class="tab-cnt">${due.length}</span>` : ''}</h2>
@@ -79,6 +94,7 @@ export async function render(app, _p, query) {
         prov ? '<a class="btn" href="#/feed">Лента заказов</a>' : '<a class="btn" href="#/catalog">В каталог</a>')}
     ${prov ? '<div class="panel" id="tl"><h2>Загрузка техники на 30 дней</h2><div class="skeleton" style="height:120px"></div></div>' : ''}`;
 
+  app.querySelector('#whoSel')?.addEventListener('change', (e) => { location.hash = `#/crm?role=${role}&who=${e.target.value || 'all'}`; });
   app.querySelectorAll('[data-done]').forEach((c) => c.onchange = async () => {
     const { error } = await sb.from('deal_notes').update({ done: true }).eq('id', c.dataset.done);
     if (error) return toast(error.message, true);
