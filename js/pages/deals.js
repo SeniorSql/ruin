@@ -4,7 +4,7 @@ import { esc, money, status, toast, busy, askReason, confirmBox, emptyState, err
   POLICY, ORG_TYPE } from '../ui.js';
 import { breakdownHtml } from './item.js';
 import { renderExtras } from '../dealExtras.js';
-import { renderExtension, renderNotes } from '../dealCrm.js';
+import { renderExtension, renderNotes, extensionTopHtml, bindExtensionButtons, extensionDialog } from '../dealCrm.js';
 import { mountChat } from '../chat.js';
 import { route, refreshShell } from '../app.js';
 
@@ -22,8 +22,9 @@ async function list(app, query) {
     rows = await q(sb.from('deals').select('*, equipment(title,photos), cust:organizations!deals_customer_org_id_fkey(name,type), prov:organizations!deals_provider_org_id_fkey(name)')
       .eq(tab === 'customer' ? 'customer_org_id' : 'provider_org_id', o.id).order('created_at', { ascending: false }).limit(200));
   } catch (err) { app.innerHTML = errorState(err); return; }
+  const extWait = state.counters.ext_wait || {};
   const needAction = (d) => (tab === 'provider' && ['AWAITING_CONFIRMATION', 'CONFIRMED', 'IN_PROGRESS'].includes(d.status))
-    || (tab === 'customer' && d.status === 'COMPLETION_PENDING');
+    || (tab === 'customer' && d.status === 'COMPLETION_PENDING') || !!extWait[d.id];
   app.innerHTML = `
     <div class="page-head"><div><h1>Сделки</h1><p>Брони и сделки по заказам. Сначала — те, где нужно ваше действие.</p></div></div>
     ${o.can_order && o.can_provide ? `<div class="tabs"><a href="#/deals?tab=customer" class="${tab === 'customer' ? 'on' : ''}">Я заказчик</a><a href="#/deals?tab=provider" class="${tab === 'provider' ? 'on' : ''}">Я исполнитель</a></div>` : ''}
@@ -33,21 +34,23 @@ async function list(app, query) {
       return `<a class="row-item" href="#/deals/${d.id}">${p ? `<img src="${esc(p.url)}" alt="" referrerpolicy="no-referrer">` : '<img alt="">'}
         <div class="grow"><b>${esc(d.number)} · ${esc(d.equipment?.title)}</b><div class="small muted">${esc(other || '')} · ${period(d.start_date, d.end_date)}</div>
         <div class="small num">${money(d.total_minor)}</div>
-        ${needAction(d) ? '<div class="small" style="color:#9a3412;font-weight:700">Нужно ваше действие</div>' : ''}</div>${status('deal', d.status)}</a>`;
+        ${extWait[d.id] ? '<div class="small" style="color:#9a3412;font-weight:700">Ждёт вашего ответа: продление аренды</div>'
+          : needAction(d) ? '<div class="small" style="color:#9a3412;font-weight:700">Нужно ваше действие</div>' : ''}</div>${status('deal', d.status)}</a>`;
     }).join('')}</div>`
     : emptyState('Сделок пока нет', tab === 'customer' ? 'Забронируйте технику в каталоге или разместите заказ.' : 'Сделки появятся, когда заказчики забронируют вашу технику или выберут ваше предложение.',
       tab === 'customer' ? '<a class="btn" href="#/catalog">В каталог</a>' : '<a class="btn" href="#/feed">Лента заказов</a>')}`;
 }
 
 async function detail(app, id) {
-  let d, events, priv, conv;
+  let d, events, priv, conv, ext;
   try {
     d = await q(sb.from('deals').select('*, equipment(id,title,photos,brand,model,year,city), cust:organizations!deals_customer_org_id_fkey(id,name,type,inn), prov:organizations!deals_provider_org_id_fkey(id,name,type,inn,verification_status)').eq('id', id).maybeSingle());
     if (!d) { app.innerHTML = emptyState('Сделка не найдена', 'Возможно, она относится к другой организации — переключите контекст слева.'); return; }
-    [events, priv, conv] = await Promise.all([
+    [events, priv, conv, ext] = await Promise.all([
       q(sb.from('deal_events').select('*').eq('deal_id', id).order('ts')),
       rpc('get_deal_private', { p_deal: id }),
-      q(sb.from('conversations').select('id').eq('deal_id', id).eq('type', 'DEAL').maybeSingle())
+      q(sb.from('conversations').select('id').eq('deal_id', id).eq('type', 'DEAL').maybeSingle()),
+      q(sb.from('deal_extensions').select('*').eq('deal_id', id).eq('status', 'REQUESTED').maybeSingle()).catch(() => null)
     ]);
   } catch (err) { app.innerHTML = errorState(err); return; }
 
@@ -62,6 +65,9 @@ async function detail(app, id) {
   refreshShell();
   const p = photoOf(d.equipment || {});
   const next = nextStep(d, amCust, amProv);
+  const activeDeal = ['CONFIRMED', 'IN_PROGRESS'].includes(d.status);
+  if (ext && ext.requested_by_org !== state.org.id) next.text = 'Ответьте на предложение о продлении аренды — оно ниже';
+  if (activeDeal && !ext) next.buttons += `<button class="btn ghost sm" id="extendBtn" style="background:transparent;color:#fff;border-color:#ffffff44">Продлить аренду</button>`;
 
   app.innerHTML = `
     <div class="crumbs"><a href="#/deals">Сделки</a> › <b>${esc(d.number)}</b></div>
@@ -69,6 +75,7 @@ async function detail(app, id) {
       <span class="muted small">· вы ${amCust ? 'заказчик' : 'исполнитель'}</span></div></div></div>
     <div class="next"><div><small>ЧТО ДАЛЬШЕ</small><b>${next.text}</b>${next.timer ? `<div class="small" style="color:#c4c7c1;margin-top:4px">Осталось: <span class="timer">${timeLeft(next.timer)}</span></div>` : ''}</div>
       <div class="actions">${act ? next.buttons : '<span class="small">Действия доступны ролям владелец, администратор, менеджер</span>'}</div></div>
+    ${extensionTopHtml(ext, d, state.org.id, act)}
     <div class="cols">
       <div>
         <div class="panel"><div class="row-item" style="padding-top:0">${p ? `<img src="${esc(p.url)}" alt="" referrerpolicy="no-referrer">` : ''}
@@ -128,6 +135,9 @@ async function detail(app, id) {
     catch (err) { toast(err.message, true); }
   });
 
+  const extDone = async (msg) => { toast(msg); await refreshCounters(); refreshShell(); route(); };
+  bindExtensionButtons(app.querySelector('.ext-top') || document.createElement('div'), ext, extDone);
+  on('#extendBtn', () => extensionDialog(d, extDone));
   renderExtension(app.querySelector('#ext'), d).catch(() => {});
   renderNotes(app.querySelector('#notes'), d).catch(() => {});
   renderExtras(app.querySelector('#extras'), d).catch((err) => { app.querySelector('#extras').innerHTML = `<p class="muted">${esc(err.message)}</p>`; });
