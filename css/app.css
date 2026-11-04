@@ -460,3 +460,19 @@ textarea.inp{height:auto;min-height:96px;padding:10px 12px;resize:vertical}
 }
 .layout>*{min-width:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ---- Работа командой (обновление 23) ---- */
+.context .ctx-role{font-size:12px;margin-top:6px;color:var(--muted)}
+.context .ctx-role b{color:var(--ink2)}
+.chip.me{background:#e6f4ea;color:#14532d}
+.chip.warn{background:#fff4e5;color:#9a3412}
+.tabs.small-tabs{align-items:center}
+.tabs.small-tabs a{padding:6px 12px;font-size:13px}
+.msg .who{display:block;font-size:11.5px;font-weight:700;color:#4b5049;margin-bottom:2px;white-space:normal}
+.assign{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:0 0 14px}
+.assign.empty{border-color:#f3c27a;background:#fffaf0}
+.assign small{display:block;font-size:11px;letter-spacing:.04em;color:var(--muted);font-weight:700}
+.assign b{display:block;font-size:16px}
+.assign .assign-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.assign .assign-actions select{height:36px;width:auto;max-width:260px}
+@media (max-width:600px){.assign .assign-actions,.assign .assign-actions select{width:100%;max-width:none}}
