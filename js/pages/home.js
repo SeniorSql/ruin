@@ -32,7 +32,7 @@ export async function render(app) {
   <section id="fresh">${skeleton(5)}</section>
   <div class="wide-banner"><div><b>Есть своя техника? Находите заказчиков на RUIN</b><p>Создайте организацию исполнителя, пройдите проверку и получайте заказы из вашего региона.</p></div>
     <a class="btn dark" href="${state.user ? '#/account' : '#/register'}">Стать исполнителем →</a></div>
-  <div class="wide-banner" style="background:#fff4c7"><div><b>Не нашли подходящую технику?</b><p id="ordersInfo">Разместите заказ — исполнители сами пришлют предложения.</p></div>
+  <div class="wide-banner accent"><div><b>Не нашли подходящую технику?</b><p id="ordersInfo">Разместите заказ — исполнители сами пришлют предложения.</p></div>
     <a class="btn dark" href="#/orders/new">Разместить заказ →</a></div>`;
 
   app.querySelector('#heroSearch').onsubmit = (e) => {
@@ -56,7 +56,7 @@ export async function render(app) {
   app.querySelector('#cats').innerHTML = shown.map((c) => {
     const list = byCat[c.id] || [];
     const p = list[0] && photoOf(list[0]);
-    return `<a class="cat" href="#/catalog?cat=${c.code}"><div class="cat-img" style="${p ? `background-image:url('${esc(p.url)}')` : 'background:#ecebe5'}"></div>
+    return `<a class="cat" href="#/catalog?cat=${c.code}"><div class="cat-img" style="${p ? `background-image:url('${esc(p.url)}')` : ''}"></div>
       <b>${esc(c.name)}</b><small>${list.length ? `${list.length} ${plural(list.length, 'предложение', 'предложения', 'предложений')}` : 'Пока нет предложений'}</small></a>`;
   }).join('');
 
