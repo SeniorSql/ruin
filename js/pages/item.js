@@ -168,6 +168,10 @@ export async function render(app, { id }) {
     // Блокируем только если действуем от организации-владельца: из личного профиля или другой компании запрос возможен
     const actingOwner = state.org?.id === e.org_id;
     const blocked = e.is_demo || actingOwner || e.status !== 'PUBLISHED';
+    if (state.user && state.org && !canManage()) {
+      cta.innerHTML = `<div class="banner info small">У вас роль «${{ APPROVER: 'Согласующий', FINANCE: 'Бухгалтер', VIEWER: 'Наблюдатель' }[state.org.role] || state.org.role}» — только просмотр. Бронировать и запрашивать цену могут владелец, администратор и менеджер.</div>`;
+      return;
+    }
     cta.innerHTML = `
       ${!negotiable ? `<button class="btn wide" id="bookBtn" ${canBook && !blocked ? '' : 'disabled'}>Забронировать</button>` : ''}
       <button class="btn ${negotiable ? '' : 'ghost'} wide" id="priceBtn" ${blocked ? 'disabled' : ''}>Запросить цену</button>
