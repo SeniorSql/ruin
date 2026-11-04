@@ -94,7 +94,7 @@ export async function render(app, _p, query) {
     res.querySelector('.products').insertAdjacentHTML('beforeend', rows.map((e) => {
       let html = productCard(e, favs, ratings);
       const stale = Date.now() - new Date(e.availability_confirmed_at) > STALE_DAYS * 864e5;
-      if (stale && !e.is_demo) html = html.replace('<div class="spacer">', '<div class="small" style="color:#9a3412;margin-top:6px">Доступность уточняется</div><div class="spacer">');
+      if (stale && !e.is_demo) html = html.replace('<div class="spacer">', '<div class="small warn-text" style="margin-top:6px">Доступность уточняется</div><div class="spacer">');
       return html;
     }).join(''));
     offset += rows.length; shown += rows.length;
