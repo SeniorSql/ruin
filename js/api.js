@@ -30,6 +30,8 @@ export function humanError(err) {
   if (/Failed to fetch|NetworkError/i.test(m)) return 'Нет связи с сервером. Проверьте интернет';
   if (/JWT expired/i.test(m)) return 'Сессия истекла — войдите снова';
   if (/violates row-level security|permission denied/i.test(m)) return 'Недостаточно прав для этого действия';
+  if (/orders_title_check/.test(m)) return 'Коротко опишите задачу: от 3 до 150 символов';
+  if (/check constraint|violates|null value in column/i.test(m)) return 'Некоторые поля заполнены неверно — проверьте форму и попробуйте снова';
   return m;
 }
 
