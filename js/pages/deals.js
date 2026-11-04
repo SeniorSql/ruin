@@ -15,6 +15,7 @@ export async function render(app, params, query, pattern) {
 async function list(app, query) {
   const o = state.org;
   const tab = query.tab || (o.can_order ? 'customer' : 'provider');
+  try { sessionStorage.setItem('ruin.dealTab', tab); } catch {}
   let rows;
   try {
     rows = await q(sb.from('deals').select('*, equipment(title,photos), cust:organizations!deals_customer_org_id_fkey(name,type), prov:organizations!deals_provider_org_id_fkey(name)')
@@ -56,6 +57,8 @@ async function detail(app, id) {
     return;
   }
   const act = canManage();
+  try { sessionStorage.setItem('ruin.dealTab', amCust ? 'customer' : 'provider'); } catch {}
+  refreshShell();
   const p = photoOf(d.equipment || {});
   const next = nextStep(d, amCust, amProv);
 

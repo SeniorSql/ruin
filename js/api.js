@@ -78,6 +78,15 @@ export function setOrg(id) {
 export async function refreshCounters() {
   if (!state.org) { state.counters = {}; return; }
   try { state.counters = await rpc('my_counters', { p_org: state.org.id }) || {}; } catch { state.counters = {}; }
+  // Раздельные счётчики «нужно ваше действие» для сделок заказчика и исполнителя
+  try {
+    const [prov, cust] = await Promise.all([
+      sb.from('deals').select('id', { count: 'exact', head: true }).eq('provider_org_id', state.org.id).eq('status', 'AWAITING_CONFIRMATION'),
+      sb.from('deals').select('id', { count: 'exact', head: true }).eq('customer_org_id', state.org.id).eq('status', 'COMPLETION_PENDING')
+    ]);
+    state.counters.deals_provider = prov.count || 0;
+    state.counters.deals_customer = cust.count || 0;
+  } catch {}
 }
 
 export const isAdmin = () => !!state.profile?.is_platform_admin;

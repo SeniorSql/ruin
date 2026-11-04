@@ -101,12 +101,12 @@ function renderSide(active) {
   if (state.user && o) {
     if (o.can_order) {
       html += `<div class="nav-group customer"><div class="nav-role">${icon('list', 16)}<span>Я заказчик</span><small>арендую технику</small></div><nav class="nav">
-        ${link('#/orders', 'list', 'Мои заказы', c.orders_offers)}${link('#/deals', 'deal', 'Сделки', c.deals_action)}</nav></div>`;
+        ${link('#/orders', 'list', 'Мои заказы', c.orders_offers)}${link('#/deals?tab=customer', 'deal', 'Сделки', c.deals_customer)}</nav></div>`;
     }
     if (o.can_provide) {
       html += `<div class="nav-group provider"><div class="nav-role">${icon('truck', 16)}<span>Я исполнитель</span><small>сдаю технику</small></div><nav class="nav">
         ${link('#/fleet', 'truck', 'Моя техника')}${link('#/feed', 'feed', 'Лента заказов')}
-        ${link('#/offers', 'send', 'Мои предложения')}${o.can_order ? '' : link('#/deals', 'deal', 'Сделки', c.deals_action)}</nav></div>`;
+        ${link('#/offers', 'send', 'Мои предложения')}${link('#/deals?tab=provider', 'deal', 'Сделки', c.deals_provider)}</nav></div>`;
     }
     html += `<div class="nav-caption">АККАУНТ</div><nav class="nav">
       ${link('#/messages', 'chat', 'Сообщения', c.unread_messages)}${link('#/notifications', 'bell', 'Уведомления', c.notifications)}
@@ -131,11 +131,15 @@ function renderSide(active) {
 }
 
 export function refreshShell() {
-  const { path } = parseHash();
+  const { path, query } = parseHash();
   const m = match(path);
   const top = path.split('/')[0];
+  // Для сделок подсвечиваем кнопку в блоке нужной роли (заказчик или исполнитель)
+  let saved = null;
+  try { saved = sessionStorage.getItem('ruin.dealTab'); } catch {}
+  const dealTab = query.tab || saved || (state.org?.can_order ? 'customer' : 'provider');
   const activeMap = { '': '#/', catalog: '#/catalog', item: '#/catalog', orders: path === 'orders/new' ? '#/orders/new' : '#/orders',
-    deals: '#/deals', fleet: '#/fleet', feed: '#/feed', offers: '#/offers', messages: '#/messages',
+    deals: '#/deals?tab=' + dealTab, fleet: '#/fleet', feed: '#/feed', offers: '#/offers', messages: '#/messages',
     notifications: '#/notifications', account: '#/account', admin: '#/admin', team: '#/team', analytics: '#/analytics', company: '#/catalog' };
   renderTop();
   renderSide(activeMap[top] ?? (m ? '#/' + m.name : ''));
