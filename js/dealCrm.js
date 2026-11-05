@@ -1,7 +1,19 @@
 // Продление аренды и личные заметки/напоминания по сделке («Рабочий стол»)
 import { sb, state, q, rpc, canManage, refreshCounters, mskDate } from './api.js';
-import { esc, money, toast, busy, modal, askReason, date, dateTime, toMinor, fromMinor, plural } from './ui.js';
+import { esc, money, toast, busy, modal, askReason, date, dateTime, toMinor, fromMinor, plural, confirmBox } from './ui.js';
 import { route, refreshShell } from './app.js';
+
+export const TRASH = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3"/></svg>';
+
+// Удалить заметку (с подтверждением). Возвращает true, если удалено.
+export async function deleteNote(id) {
+  if (!(await confirmBox('Удалить заметку?', 'Заметка удалится без возможности восстановления.', 'Удалить'))) return false;
+  const { data, error } = await sb.from('deal_notes').delete().eq('id', id).select('id');
+  if (error) { toast(error.message, true); return false; }
+  if (!data?.length) { toast('Не получилось удалить: нет прав или заметка уже удалена', true); return false; }
+  toast('Заметка удалена');
+  return true;
+}
 
 const EXT_ST = { REQUESTED: ['wait', 'Ждёт ответа'], ACCEPTED: ['ok', 'Принято'], DECLINED: ['err', 'Отклонено'], CANCELLED: ['closed', 'Отозвано'] };
 const daysTo = (d) => Math.round((new Date(d + 'T00:00:00') - new Date(mskDate(0) + 'T00:00:00')) / 864e5);
@@ -127,7 +139,8 @@ export async function renderNotes(box, d) {
       <div class="actions" style="margin-top:6px"><input class="inp" type="date" name="r" title="Напомнить" style="width:150px" min="${today}">
         <button class="btn dark sm">Добавить</button></div></form>
     ${rows.length ? `<ul class="notes">${rows.map((n) => `<li class="${n.done ? 'done' : ''} ${!n.done && n.remind_on && n.remind_on <= today ? 'due' : ''}">
-      <label class="check" style="margin:0"><input type="checkbox" data-done="${n.id}" ${n.done ? 'checked' : ''}> <span style="white-space:pre-wrap">${esc(n.body)}</span></label>
+      <div class="note-row"><label class="check" style="margin:0"><input type="checkbox" data-done="${n.id}" ${n.done ? 'checked' : ''}> <span style="white-space:pre-wrap">${esc(n.body)}</span></label>
+        <button type="button" class="note-del" data-del="${n.id}" title="Удалить заметку" aria-label="Удалить заметку">${TRASH}</button></div>
       <div class="small muted">${n.remind_on ? `напомнить ${date(n.remind_on)} · ` : ''}${dateTime(n.created_at)}</div></li>`).join('')}</ul>` : ''}
   </div>`;
   const f = box.querySelector('#nf');
@@ -148,6 +161,10 @@ export async function renderNotes(box, d) {
   box.querySelectorAll('[data-done]').forEach((c) => c.onchange = async () => {
     const { error } = await sb.from('deal_notes').update({ done: c.checked }).eq('id', c.dataset.done);
     if (error) return toast(error.message, true);
+    await refreshCounters(); refreshShell(); renderNotes(box, d);
+  });
+  box.querySelectorAll('[data-del]').forEach((b) => b.onclick = async () => {
+    if (!(await deleteNote(b.dataset.del))) return;
     await refreshCounters(); refreshShell(); renderNotes(box, d);
   });
 }
