@@ -424,7 +424,8 @@ textarea.inp{height:auto;min-height:96px;padding:10px 12px;resize:vertical}
 .tl th{font-weight:700;color:var(--muted);text-align:center;min-width:24px}.tl th small{display:block;font-weight:400;font-size:10px}.tl th.we{color:var(--orange)}
 .tl td{height:24px;background:var(--tl-empty);border-radius:5px;padding:0;position:relative}
 .tl td a{position:absolute;inset:0}
-.tl td.tl-name{background:none;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;padding-right:8px;font-size:13px}
+.tl td.tl-name{background:var(--panel);min-width:170px;max-width:220px;padding-right:8px;font-size:13px;line-height:1.25;position:sticky;left:0;z-index:1}
+.tl td.tl-name a{position:static;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .tl td.num{background:none;padding-left:8px}
 .tl .hold,.tl-legend .hold{background:#f6d77a}.tl .conf,.tl-legend .conf{background:#7fa6f0}.tl .act,.tl-legend .act{background:#4fb878}.tl .blk,.tl-legend .blk{background:#a9aca4}
 .tl-legend{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:8px;color:var(--muted)}
@@ -589,3 +590,15 @@ textarea.inp{height:auto;min-height:96px;padding:10px 12px;resize:vertical}
 .panel-head-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .panel-head-row h2{margin-bottom:0}
 #newOrg{scroll-margin-top:90px}
+/* Загрузка техники: фильтры */
+.tl-tools{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.tl-tools .inp{height:36px;width:auto;flex:1 1 160px;min-width:0}
+.tl-tools input[type=search]{flex:2 1 220px}
+.tl-quick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.tl-quick button{border:1px solid var(--line2);background:var(--surface);color:var(--ink2);border-radius:999px;padding:4px 11px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+.tl-quick button span{color:var(--muted);font-weight:600;margin-left:2px}
+.tl-quick button.on{background:var(--accent-soft);border-color:var(--accent-line);color:var(--ink)}
+.tl-dates{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-bottom:10px;color:var(--muted)}
+.tl-dates .inp{height:34px;width:auto}
+.tl-dates .btn{margin-left:auto}
+.tl-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 0}
