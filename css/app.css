@@ -556,6 +556,8 @@ textarea.inp{height:auto;min-height:96px;padding:10px 12px;resize:vertical}
   .table.resp thead{display:none}
   .table.resp tr{display:block;border-bottom:1px solid var(--line);padding:8px 0}
   .table.resp td{display:block;border:0;padding:3px 0}
+  .table.resp td[data-l]:not([data-l=""]):before{content:attr(data-l) ': ';color:var(--muted);font-size:12.5px;font-weight:600}
+  .table.resp td[data-l="Техника"]:first-child:not([data-l=""]):before,.table.resp td[data-l="Документ"]:not([data-l=""]):before,.table.resp td[data-l="Машинист"]:first-child:not([data-l=""]):before{content:none}
   .chat{height:70vh}
   .msg{max-width:90%}
   .tabs{width:auto}
@@ -602,3 +604,16 @@ textarea.inp{height:auto;min-height:96px;padding:10px 12px;resize:vertical}
 .tl-dates .inp{height:34px;width:auto}
 .tl-dates .btn{margin-left:auto}
 .tl-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 0}
+/* Учёт парка */
+.pk-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.pk-head h2{margin:0 auto 0 0}
+.pk-month{height:34px;width:auto}
+.pk-chip{display:inline-block;padding:1px 9px;border-radius:8px;font-size:12px;font-weight:700;white-space:nowrap;background:var(--surface3);color:var(--ink2)}
+.pk-chip.ok{background:var(--green-soft);color:var(--ok-ink)}
+.pk-chip.warn{background:var(--orange-soft);color:var(--wait-ink)}
+.pk-chip.bad{background:var(--red-soft);color:var(--err-ink)}
+.pk-cats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.pk-cats span{display:flex;flex-direction:column;background:var(--surface2);border-radius:12px;padding:8px 12px;font-size:12px;color:var(--muted)}
+.pk-cats b{font-size:15px;color:var(--ink)}
+.pk-total td{font-weight:800;border-top:2px solid var(--line2)}
+.pk-off{opacity:.6}
