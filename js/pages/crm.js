@@ -3,6 +3,7 @@ import { sb, state, q, refreshCounters, mskDate } from '../api.js';
 import { esc, money, date, period, emptyState, errorState, plural, toast } from '../ui.js';
 import { route, refreshShell } from '../app.js';
 import { isTeam, loadTeam, assignees, memberLabel } from '../assign.js';
+import { TRASH, deleteNote } from '../dealCrm.js';
 
 const STAGES = [
   ['AWAITING_CONFIRMATION', 'Новые брони', 'Подтвердите в течение 12 часов'],
@@ -84,7 +85,8 @@ export async function render(app, _p, query) {
     <div class="kpis">${kpi.map(([t, n, hot]) => `<div class="kpi ${hot ? 'hot' : ''}"><b>${n}</b><span>${t}</span></div>`).join('')}</div>
     <div class="panel"><h2>Напоминания${due.length ? ` <span class="tab-cnt">${due.length}</span>` : ''}</h2>
       ${notes.length ? `<ul class="notes">${notes.slice(0, 30).map((n) => `<li class="${n.remind_on && n.remind_on <= today ? 'due' : ''}">
-        <label class="check" style="margin:0"><input type="checkbox" data-done="${n.id}"> <span style="white-space:pre-wrap">${esc(n.body)}</span></label>
+        <div class="note-row"><label class="check" style="margin:0"><input type="checkbox" data-done="${n.id}"> <span style="white-space:pre-wrap">${esc(n.body)}</span></label>
+        <button type="button" class="note-del" data-del="${n.id}" title="Удалить заметку" aria-label="Удалить заметку">${TRASH}</button></div>
         <div class="small muted"><a href="#/deals/${n.deal_id}">${esc(n.deals?.number || 'сделка')}</a>${n.remind_on ? ` · ${n.remind_on <= today ? '<b class="warn-text">' : ''}напомнить ${date(n.remind_on)}${n.remind_on <= today ? '</b>' : ''}` : ''}</div></li>`).join('')}</ul>`
         : '<p class="muted" style="margin:0">Открытых заметок нет. Заметку с датой напоминания можно добавить на странице любой сделки — блок «Мои заметки».</p>'}
     </div>
@@ -99,6 +101,9 @@ export async function render(app, _p, query) {
     const { error } = await sb.from('deal_notes').update({ done: true }).eq('id', c.dataset.done);
     if (error) return toast(error.message, true);
     toast('Отмечено как выполненное'); await refreshCounters(); refreshShell(); route();
+  });
+  app.querySelectorAll('[data-del]').forEach((b) => b.onclick = async () => {
+    if (await deleteNote(b.dataset.del)) { await refreshCounters(); refreshShell(); route(); }
   });
   if (prov) timeline(app.querySelector('#tl'), o, deals).catch((e) => { app.querySelector('#tl').innerHTML += `<p class="muted">${esc(e.message)}</p>`; });
 }
