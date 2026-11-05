@@ -123,6 +123,7 @@ export async function renderNotes(box, d) {
     <p class="small muted" style="margin-top:-6px">Видны только вашей организации. Укажите дату — напоминание появится на «Рабочем столе».</p>
     <form id="nf" data-nodraft>
       <textarea class="inp" name="b" rows="2" maxlength="2000" placeholder="Например: позвонить прорабу, уточнить подачу на 8:00" required></textarea>
+      <div class="small muted note-count" aria-live="polite">0 / 2000</div>
       <div class="actions" style="margin-top:6px"><input class="inp" type="date" name="r" title="Напомнить" style="width:150px" min="${today}">
         <button class="btn dark sm">Добавить</button></div></form>
     ${rows.length ? `<ul class="notes">${rows.map((n) => `<li class="${n.done ? 'done' : ''} ${!n.done && n.remind_on && n.remind_on <= today ? 'due' : ''}">
@@ -130,6 +131,12 @@ export async function renderNotes(box, d) {
       <div class="small muted">${n.remind_on ? `напомнить ${date(n.remind_on)} · ` : ''}${dateTime(n.created_at)}</div></li>`).join('')}</ul>` : ''}
   </div>`;
   const f = box.querySelector('#nf');
+  const cnt = f.querySelector('.note-count');
+  f.b.addEventListener('input', () => {
+    const n = f.b.value.length;
+    cnt.textContent = `${n} / 2000`;
+    cnt.classList.toggle('warn-text', n >= 1800);
+  });
   f.onsubmit = (ev) => {
     ev.preventDefault();
     busy(f.querySelector('button'), async () => {
