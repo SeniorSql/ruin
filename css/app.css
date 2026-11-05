@@ -627,3 +627,8 @@ textarea.inp{height:auto;min-height:96px;padding:10px 12px;resize:vertical}
 .pw-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;display:grid;place-items:center;border:0;border-radius:10px;background:transparent;color:var(--muted);cursor:pointer}
 .pw-eye:hover{color:var(--ink);background:var(--hover)}
 .pw-eye:focus-visible{outline:2px solid var(--accent-ring);outline-offset:1px}
+/* Длинные слова и ссылки без пробелов не вылезают за рамки */
+body{overflow-wrap:break-word}
+.notes li,.notes .check{min-width:0}
+.notes .check>span{min-width:0;overflow-wrap:anywhere;word-break:break-word}
+.note-count{text-align:right;margin-top:2px}
