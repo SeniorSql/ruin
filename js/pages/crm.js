@@ -103,9 +103,10 @@ export async function render(app, _p, query) {
   if (prov) timeline(app.querySelector('#tl'), o, deals).catch((e) => { app.querySelector('#tl').innerHTML += `<p class="muted">${esc(e.message)}</p>`; });
 }
 
-// Шкала занятости: строки — техника, столбцы — дни
+// Шкала занятости: строки — техника, столбцы — дни. Над таблицей — фильтры, поиск и сортировка
+const TL_PAGE = 15;
 async function timeline(box, o, deals) {
-  const eq = await q(sb.from('equipment').select('id,title,status').eq('org_id', o.id).in('status', ['PUBLISHED', 'HIDDEN']).order('title'));
+  const eq = await q(sb.from('equipment').select('id,title,status,categories(name)').eq('org_id', o.id).in('status', ['PUBLISHED', 'HIDDEN']).order('title'));
   if (!eq.length) { box.innerHTML = '<h2>Загрузка техники на 30 дней</h2><p class="muted">Нет опубликованной техники.</p>'; return; }
   const days = Array.from({ length: 30 }, (_, i) => mskDate(i));
   const from = days[0], to = days[29];
@@ -123,13 +124,63 @@ async function timeline(box, o, deals) {
   }
   const cls = (b) => (b.type !== 'DEAL' ? 'blk' : b.status === 'HOLD' ? 'hold' : b.status === 'ACTIVE' ? 'act' : 'conf');
   const tip = (b, d) => (b.type !== 'DEAL' ? 'Блокировка владельцем' : `${deal[b.deal_id]?.number || 'Сделка'} · ${{ HOLD: 'ждёт подтверждения', CONFIRMED: 'подтверждена', ACTIVE: 'в работе' }[b.status]} · ${date(d)}`);
+
+  // Данные по каждой машине — для фильтров
+  const rows = eq.map((e) => {
+    const row = cells[e.id] || {};
+    const busyN = days.filter((d) => row[d]).length;
+    return { e, row, busyN, pct: Math.round((100 * busyN) / 30), cat: e.categories?.name || 'Без вида',
+      busyToday: !!row[from], hold: days.some((d) => row[d]?.status === 'HOLD') };
+  });
+  const cats = [...new Set(rows.map((r) => r.cat))].sort((a, b) => a.localeCompare(b, 'ru'));
+  const QUICK = [['all', 'Все'], ['free', 'Свободны сегодня'], ['busy', 'Заняты сегодня'], ['hold', 'Ждут подтверждения'], ['idle', 'Без броней']];
+  const quickTest = { all: () => true, free: (r) => !r.busyToday, busy: (r) => r.busyToday, hold: (r) => r.hold, idle: (r) => r.busyN === 0 };
+  const st = { q: '', cat: '', quick: 'all', a: '', b: '', sort: 'name', limit: TL_PAGE };
+
+  const head = `<thead><tr><th></th>${days.map((d) => { const dt = new Date(d + 'T12:00:00'); const we = [0, 6].includes(dt.getDay());
+    return `<th class="${we ? 'we' : ''}">${dt.getDate()}<small>${dt.toLocaleDateString('ru-RU', { weekday: 'short' })}</small></th>`; }).join('')}<th>Загрузка</th></tr></thead>`;
+  const tr = (r) => `<tr><td class="tl-name"><a href="#/fleet/${r.e.id}" title="${esc(r.e.title)}">${esc(r.e.title)}</a></td>${days.map((d) => { const b = r.row[d];
+    return b ? `<td class="${cls(b)}" title="${esc(tip(b, d))}">${b.deal_id && deal[b.deal_id] ? `<a href="#/deals/${b.deal_id}" aria-label="${esc(tip(b, d))}"></a>` : ''}</td>` : '<td></td>'; }).join('')}
+    <td class="num"><b>${r.pct}%</b></td></tr>`;
+
   box.innerHTML = `<h2>Загрузка техники на 30 дней</h2>
+    <div class="tl-tools">
+      <input class="inp" type="search" id="tlQ" placeholder="Поиск по названию" aria-label="Поиск техники">
+      ${cats.length > 1 ? `<select class="inp" id="tlCat" aria-label="Вид техники"><option value="">Все виды</option>${cats.map((c) => `<option>${esc(c)}</option>`).join('')}</select>` : ''}
+      <select class="inp" id="tlSort" aria-label="Сортировка"><option value="name">По названию</option><option value="load-desc">Загрузка: больше</option><option value="load-asc">Загрузка: меньше</option></select>
+    </div>
+    <div class="tl-quick" id="tlQuick">${QUICK.map(([k, t]) => `<button type="button" data-q="${k}">${t} <span></span></button>`).join('')}</div>
+    <div class="tl-dates small"><span>Свободна все дни с</span><input class="inp" type="date" id="tlA" min="${from}" max="${to}"><span>по</span><input class="inp" type="date" id="tlB" min="${from}" max="${to}"><button type="button" class="btn ghost sm hidden" id="tlReset">Сбросить фильтры</button></div>
     <div class="tl-legend small"><i class="hold"></i>ждёт подтверждения <i class="conf"></i>подтверждено <i class="act"></i>в работе <i class="blk"></i>блокировка <i></i>свободно</div>
-    <div class="tl-wrap"><table class="tl"><thead><tr><th></th>${days.map((d) => { const dt = new Date(d + 'T12:00:00'); const we = [0, 6].includes(dt.getDay());
-      return `<th class="${we ? 'we' : ''}">${dt.getDate()}<small>${dt.toLocaleDateString('ru-RU', { weekday: 'short' })}</small></th>`; }).join('')}<th>Загрузка</th></tr></thead>
-    <tbody>${eq.map((e) => { const row = cells[e.id] || {}; const busyN = days.filter((d) => row[d]).length;
-      return `<tr><td class="tl-name"><a href="#/fleet/${e.id}">${esc(e.title)}</a></td>${days.map((d) => { const b = row[d];
-        return b ? `<td class="${cls(b)}" title="${esc(tip(b, d))}">${b.deal_id && deal[b.deal_id] ? `<a href="#/deals/${b.deal_id}" aria-label="${esc(tip(b, d))}"></a>` : ''}</td>` : '<td></td>'; }).join('')}
-        <td class="num"><b>${Math.round((100 * busyN) / 30)}%</b></td></tr>`; }).join('')}</tbody></table></div>
+    <div id="tlBody"></div>
     <p class="small muted" style="margin-bottom:0">Нажмите на занятый день — откроется сделка. Свободные окна можно закрыть блокировкой в карточке техники (раздел «Календарь»).</p>`;
+
+  const $ = (s) => box.querySelector(s);
+  const draw = () => {
+    const base = rows.filter((r) => (!st.q || r.e.title.toLowerCase().includes(st.q)) && (!st.cat || r.cat === st.cat) &&
+      (!st.a || days.filter((d) => d >= st.a && d <= (st.b || st.a)).every((d) => !r.row[d])));
+    box.querySelectorAll('#tlQuick [data-q]').forEach((b) => { b.classList.toggle('on', b.dataset.q === st.quick); b.querySelector('span').textContent = base.filter(quickTest[b.dataset.q]).length; });
+    const byName = (x, y) => x.e.title.localeCompare(y.e.title, 'ru');
+    const list = base.filter(quickTest[st.quick]).sort((x, y) => st.sort === 'load-desc' ? y.pct - x.pct || byName(x, y) : st.sort === 'load-asc' ? x.pct - y.pct || byName(x, y) : byName(x, y));
+    $('#tlReset').classList.toggle('hidden', !(st.q || st.cat || st.quick !== 'all' || st.a || st.b));
+    const shown = list.slice(0, st.limit);
+    $('#tlBody').innerHTML = (list.length ? `<div class="tl-wrap"><table class="tl">${head}<tbody>${shown.map(tr).join('')}</tbody></table></div>`
+      : '<p class="muted" style="margin:10px 0">Под эти условия техники нет.</p>')
+      + (rows.length > TL_PAGE || list.length !== rows.length ? `<div class="tl-foot small muted">Показано ${shown.length} из ${list.length}${list.length !== rows.length ? ` (всего машин ${rows.length})` : ''}
+        ${list.length > shown.length ? `<button type="button" class="btn ghost sm" id="tlMore">Показать ещё ${Math.min(TL_PAGE, list.length - shown.length)}</button>` : ''}</div>` : '');
+    $('#tlMore')?.addEventListener('click', () => { st.limit += TL_PAGE; draw(); });
+  };
+  const set = (k, v) => { st[k] = v; st.limit = TL_PAGE; draw(); };
+  $('#tlQ').addEventListener('input', (e) => set('q', e.target.value.trim().toLowerCase()));
+  $('#tlCat')?.addEventListener('change', (e) => set('cat', e.target.value));
+  $('#tlSort').addEventListener('change', (e) => set('sort', e.target.value));
+  box.querySelectorAll('#tlQuick [data-q]').forEach((b) => b.addEventListener('click', () => set('quick', b.dataset.q)));
+  $('#tlA').addEventListener('change', (e) => { if (!e.target.value) { st.b = ''; $('#tlB').value = ''; } else if (st.b && e.target.value > st.b) { $('#tlB').value = e.target.value; st.b = e.target.value; } set('a', e.target.value); });
+  $('#tlB').addEventListener('change', (e) => { if (e.target.value && !st.a) { $('#tlA').value = e.target.value; st.a = e.target.value; } else if (st.a && e.target.value && e.target.value < st.a) { $('#tlA').value = e.target.value; st.a = e.target.value; } set('b', e.target.value); });
+  $('#tlReset').addEventListener('click', () => {
+    Object.assign(st, { q: '', cat: '', quick: 'all', a: '', b: '', limit: TL_PAGE });
+    $('#tlQ').value = ''; $('#tlA').value = ''; $('#tlB').value = ''; if ($('#tlCat')) $('#tlCat').value = '';
+    draw();
+  });
+  draw();
 }
