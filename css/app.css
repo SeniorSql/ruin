@@ -632,3 +632,8 @@ body{overflow-wrap:break-word}
 .notes li,.notes .check{min-width:0}
 .notes .check>span{min-width:0;overflow-wrap:anywhere;word-break:break-word}
 .note-count{text-align:right;margin-top:2px}
+/* Удаление заметки */
+.note-row{display:flex;align-items:flex-start;gap:8px}
+.note-row .check{flex:1}
+.note-del{flex:none;width:30px;height:30px;display:grid;place-items:center;border:0;border-radius:9px;background:transparent;color:var(--muted);cursor:pointer;opacity:.7}
+.note-del:hover{opacity:1;color:var(--red);background:var(--red-soft)}
