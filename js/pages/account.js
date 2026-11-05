@@ -7,6 +7,7 @@ export async function render(app) {
   const contacts = await q(sb.from('org_contacts').select('*').in('org_id', state.orgs.map((o) => o.id)));
   const cById = Object.fromEntries(contacts.map((c) => [c.org_id, c]));
   const invites = await rpc('my_invitations').catch(() => []);
+  const hasOrg = state.orgs.some((o) => o.type !== 'PERSON');
 
   app.innerHTML = `
     <div class="page-head"><div><h1>Профиль и организации</h1><p>От имени организации вы бронируете технику, размещаете заказы и сдаёте технику.</p></div></div>
@@ -16,8 +17,9 @@ export async function render(app) {
       <div>
         <div class="panel"><h2>Мои организации</h2>
           ${state.orgs.map((o) => orgCard(o, cById[o.id])).join('')}
+          ${hasOrg ? `<div class="add-org-row"><button class="btn ghost" id="addOrg" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Добавить организацию</button></div>` : ''}
         </div>
-        <div class="panel" id="newOrg"><h2>Создать организацию</h2>
+        <div class="panel${hasOrg ? ' hidden' : ''}" id="newOrg"><div class="panel-head-row"><h2>Создать организацию</h2>${hasOrg ? '<button class="btn ghost sm" id="cancelOrg" type="button">Отмена</button>' : ''}</div>
           <p class="muted" style="margin-top:-6px">Нужна, чтобы сдавать технику (исполнитель) или заказывать от имени компании. После создания отправьте её на проверку — обычно это занимает 1 рабочий день.</p>
           <form id="of">
             <div class="form-error hidden"></div>
@@ -72,6 +74,18 @@ export async function render(app) {
   }));
   app.querySelectorAll('[data-edit]').forEach((b) => b.onclick = () =>
     editOrg(state.orgs.find((o) => o.id === b.dataset.edit), cById[b.dataset.edit] || {}));
+
+  const addBtn = app.querySelector('#addOrg'), newOrg = app.querySelector('#newOrg');
+  if (addBtn) {
+    addBtn.onclick = () => {
+      newOrg.classList.remove('hidden'); addBtn.parentElement.classList.add('hidden');
+      newOrg.scrollIntoView({ behavior: 'smooth', block: 'start' }); newOrg.querySelector('[name=type]').focus({ preventScroll: true });
+    };
+    app.querySelector('#cancelOrg').onclick = () => {
+      newOrg.classList.add('hidden'); addBtn.parentElement.classList.remove('hidden');
+      newOrg.querySelector('#of').reset(); newOrg.querySelector('.form-error').classList.add('hidden');
+    };
+  }
 
   app.querySelector('#of').onsubmit = (e) => {
     e.preventDefault();
