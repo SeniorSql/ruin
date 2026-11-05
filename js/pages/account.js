@@ -1,5 +1,5 @@
 // Профиль, организации и проверка (SCR-IDN-04, 06, 07)
-import { sb, state, q, rpc, loadMe, setOrg, refreshCounters, isOwnerAdmin } from '../api.js';
+import { sb, state, q, rpc, loadMe, setOrg, refreshCounters, isOwnerAdmin, isAdmin } from '../api.js';
 import { esc, status, ORG_TYPE, toast, busy, modal, confirmBox } from '../ui.js';
 import { go, refreshShell, route } from '../app.js';
 
@@ -58,8 +58,11 @@ export async function render(app) {
           <div class="divider"></div>
           <div class="actions"><button class="btn ghost sm" id="outAll">Выйти на всех устройствах</button><button class="btn danger sm" id="out">Выйти</button></div>
         </div>
+        <div class="panel" id="msgr"><h2>Уведомления в мессенджерах</h2><div class="skeleton" style="height:60px"></div></div>
       </aside>
     </div>`;
+
+  messengers(app.querySelector('#msgr'));
 
   app.querySelectorAll('[data-accept]').forEach((b) => b.onclick = () => busy(b, async () => {
     try { const org = await rpc('accept_invitation', { p_id: b.dataset.accept }); await loadMe(); setOrg(org); await refreshCounters(); refreshShell(); toast('Вы присоединились к организации'); route(); }
@@ -120,6 +123,69 @@ export async function render(app) {
   };
   app.querySelector('#outAll').onclick = async () => { await sb.auth.signOut({ scope: 'global' }); await loadMe(); refreshShell(); go('#/'); };
   app.querySelector('#out').onclick = async () => { await sb.auth.signOut(); await loadMe(); refreshShell(); go('#/'); };
+}
+
+// Уведомления в Telegram / MAX: привязка через одноразовый код и бота
+async function messengers(box) {
+  const head = '<h2>Уведомления в мессенджерах</h2>';
+  let ch, bot;
+  try {
+    ch = await q(sb.from('notify_channels').select('channel,username,enabled,linked_at').eq('user_id', state.user.id));
+    bot = (await q(sb.from('app_settings').select('value').eq('key', 'public.tg_bot')))[0]?.value || '';
+  } catch {
+    box.innerHTML = head + '<p class="small muted" style="margin:0">Заработают после настройки на стороне сайта.</p>';
+    return;
+  }
+  const tgc = ch.find((c) => c.channel === 'TG');
+  const admin = isAdmin();
+  box.innerHTML = `${head}
+    <p class="small muted" style="margin-top:-6px">Новые брони, сообщения, сроки документов и ТО — сразу в телефон.</p>
+    <div class="msgr-row"><div class="grow"><b>Telegram</b><div class="small muted">${tgc ? (tgc.enabled ? 'подключён' : 'выключен') + (tgc.username ? ' · @' + esc(tgc.username) : '') : bot ? 'не подключён' : 'бот ещё не настроен'}</div></div>
+      ${tgc ? `${tgc.enabled ? '<button class="btn ghost sm" id="tgTest">Проверить</button>' : ''}<button class="btn ghost sm" id="tgToggle">${tgc.enabled ? 'Выключить' : 'Включить'}</button>`
+        : bot ? '<button class="btn sm" id="tgLink">Подключить</button>' : ''}</div>
+    <div class="msgr-row"><div class="grow"><b>MAX</b><div class="small muted">скоро — бот на проверке в MAX</div></div></div>
+    ${tgc ? '<button class="linkish small" id="tgUnlink" type="button">Отвязать Telegram</button>' : ''}
+    ${admin ? `<div class="divider"></div><div class="small muted">Админ площадки: после смены токена бота нажмите, чтобы подключить бота к сайту.</div>
+      <button class="btn ghost sm" id="tgSetup" style="margin-top:6px">Настроить Telegram-бота${bot ? ' (@' + esc(bot) + ')' : ''}</button>` : ''}`;
+
+  box.querySelector('#tgLink')?.addEventListener('click', (e) => busy(e.currentTarget, async () => {
+    try {
+      const code = await rpc('notify_link_code', { p_channel: 'TG' });
+      const url = `https://t.me/${bot}?start=${code}`;
+      const w = window.open(url, '_blank', 'noopener');
+      box.querySelector('#tgLink').outerHTML = `<a class="btn sm" href="${url}" target="_blank" rel="noopener">Открыть Telegram</a>`;
+      if (!w) toast('Нажмите «Открыть Telegram», затем «Старт» в боте');
+      else toast('В Telegram нажмите «Старт» — и вернитесь сюда');
+      // Ждём, пока бот привяжет аккаунт
+      for (let i = 0; i < 60; i++) {
+        await new Promise((r) => setTimeout(r, 3000));
+        if (!document.body.contains(box)) return;
+        const r = await q(sb.from('notify_channels').select('channel').eq('user_id', state.user.id).eq('channel', 'TG'));
+        if (r.length) { toast('Telegram подключён'); messengers(box); return; }
+      }
+    } catch (err) { toast(err.message, true); }
+  }));
+  box.querySelector('#tgTest')?.addEventListener('click', (e) => busy(e.currentTarget, async () => {
+    try { await rpc('notify_test', { p_org: state.org.id }); toast('Отправили проверочное уведомление в Telegram'); }
+    catch (err) { toast(err.message, true); }
+  }));
+  box.querySelector('#tgToggle')?.addEventListener('click', (e) => busy(e.currentTarget, async () => {
+    try { await rpc('notify_set_channel', { p_channel: 'TG', p_enabled: !tgc.enabled, p_unlink: false }); messengers(box); }
+    catch (err) { toast(err.message, true); }
+  }));
+  box.querySelector('#tgUnlink')?.addEventListener('click', async () => {
+    if (!(await confirmBox('Отвязать Telegram?', 'Уведомления перестанут приходить в Telegram. Подключить снова можно в любой момент.', 'Отвязать'))) return;
+    try { await rpc('notify_set_channel', { p_channel: 'TG', p_enabled: false, p_unlink: true }); messengers(box); }
+    catch (err) { toast(err.message, true); }
+  });
+  box.querySelector('#tgSetup')?.addEventListener('click', (e) => busy(e.currentTarget, async () => {
+    const { data, error } = await sb.functions.invoke('tg-bot', { body: { action: 'setup' } });
+    let msg = data?.error;
+    if (error) { try { msg = (await error.context.json()).error; } catch { msg = error.message; } }
+    if (msg || !data?.ok) return toast(msg || data?.description || 'Не получилось', true);
+    toast('Бот @' + data.bot + ' подключён к сайту');
+    messengers(box);
+  }));
 }
 
 function orgCard(o, c = {}) {
