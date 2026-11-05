@@ -2,6 +2,7 @@
 import { sb, state, q, rpc, loadMe, setOrg, refreshCounters, isOwnerAdmin, isAdmin } from '../api.js';
 import { esc, status, ORG_TYPE, toast, busy, modal, confirmBox } from '../ui.js';
 import { go, refreshShell, route } from '../app.js';
+import { withActionCode } from '../actionCode.js';
 
 export async function render(app) {
   const contacts = await q(sb.from('org_contacts').select('*').in('org_id', state.orgs.map((o) => o.id)));
@@ -235,10 +236,14 @@ function editOrg(o, c) {
     const f = e.target;
     busy(f.querySelector('button'), async () => {
       try {
-        await rpc('update_organization', {
+        const args = {
           p_org: o.id, p_name: f.name.value, p_inn: person ? o.inn : f.inn.value.trim(), p_ogrn: person ? null : f.ogrn.value,
           p_city: f.city.value, p_can_order: person ? true : f.order.checked, p_can_provide: person ? false : f.provide.checked,
-          p_phone: f.phone.value, p_email: f.email.value, p_contact: f.contact.value });
+          p_phone: f.phone.value, p_email: f.email.value, p_contact: f.contact.value };
+        // Смена названия, ИНН или ОГРН — важное действие: подтверждаем кодом из мессенджера
+        const reqChanged = !person && (f.name.value.trim() !== (o.name || '') || f.inn.value.trim() !== (o.inn || '') || f.ogrn.value.trim() !== (o.ogrn || ''));
+        if (reqChanged) await withActionCode('org_requisites', (code) => rpc('update_organization', { ...args, p_code: code }));
+        else await rpc('update_organization', args);
         await loadMe(); refreshShell(); m.close(); toast('Сохранено'); route();
       } catch (err) { const el = f.querySelector('.form-error'); el.textContent = err.message; el.classList.remove('hidden'); }
     });
