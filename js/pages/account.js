@@ -126,66 +126,74 @@ export async function render(app) {
 }
 
 // Уведомления в Telegram / MAX: привязка через одноразовый код и бота
+const MSGR = { TG: { name: 'Telegram', key: 'public.tg_bot', at: '@', link: (bot, code) => `https://t.me/${bot}?start=${code}` },
+  MAX: { name: 'MAX', key: 'public.max_bot', at: '', link: (bot, code) => `https://max.ru/${bot}?start=${code}` } };
 async function messengers(box) {
   const head = '<h2>Уведомления в мессенджерах</h2>';
-  let ch, bot;
+  let ch, bots;
   try {
     ch = await q(sb.from('notify_channels').select('channel,username,enabled,linked_at').eq('user_id', state.user.id));
-    bot = (await q(sb.from('app_settings').select('value').eq('key', 'public.tg_bot')))[0]?.value || '';
+    const s = await q(sb.from('app_settings').select('key,value').in('key', ['public.tg_bot', 'public.max_bot']));
+    bots = { TG: s.find((x) => x.key === 'public.tg_bot')?.value || '', MAX: s.find((x) => x.key === 'public.max_bot')?.value || '' };
   } catch {
     box.innerHTML = head + '<p class="small muted" style="margin:0">Заработают после настройки на стороне сайта.</p>';
     return;
   }
-  const tgc = ch.find((c) => c.channel === 'TG');
+  const mine = (k) => ch.find((c) => c.channel === k);
+  const row = (k) => {
+    const c = mine(k), bot = bots[k], m = MSGR[k];
+    return `<div class="msgr-row"><div class="grow"><b>${m.name}</b><div class="small muted">${c ? (c.enabled ? 'подключён' : 'выключен') + (c.username ? ' · @' + esc(c.username) : '') : bot ? 'не подключён' : 'бот ещё не настроен'}</div></div>
+      ${c ? `${c.enabled ? `<button class="btn ghost sm" data-test="${k}">Проверить</button>` : ''}<button class="btn ghost sm" data-toggle="${k}">${c.enabled ? 'Выключить' : 'Включить'}</button>`
+        : bot ? `<button class="btn sm" data-link="${k}">Подключить</button>` : ''}</div>`;
+  };
   const admin = isAdmin();
   box.innerHTML = `${head}
     <p class="small muted" style="margin-top:-6px">Новые брони, сообщения, сроки документов и ТО — сразу в телефон.</p>
-    <div class="msgr-row"><div class="grow"><b>Telegram</b><div class="small muted">${tgc ? (tgc.enabled ? 'подключён' : 'выключен') + (tgc.username ? ' · @' + esc(tgc.username) : '') : bot ? 'не подключён' : 'бот ещё не настроен'}</div></div>
-      ${tgc ? `${tgc.enabled ? '<button class="btn ghost sm" id="tgTest">Проверить</button>' : ''}<button class="btn ghost sm" id="tgToggle">${tgc.enabled ? 'Выключить' : 'Включить'}</button>`
-        : bot ? '<button class="btn sm" id="tgLink">Подключить</button>' : ''}</div>
-    <div class="msgr-row"><div class="grow"><b>MAX</b><div class="small muted">скоро — бот на проверке в MAX</div></div></div>
-    ${tgc ? '<button class="linkish small" id="tgUnlink" type="button">Отвязать Telegram</button>' : ''}
+    ${row('TG')}${row('MAX')}
+    ${['TG', 'MAX'].filter(mine).map((k) => `<button class="linkish small" data-unlink="${k}" type="button">Отвязать ${MSGR[k].name}</button>`).join(' ')}
     ${admin ? `<div class="divider"></div><div class="small muted">Админ площадки: после смены токена бота нажмите, чтобы подключить бота к сайту.</div>
-      <button class="btn ghost sm" id="tgSetup" style="margin-top:6px">Настроить Telegram-бота${bot ? ' (@' + esc(bot) + ')' : ''}</button>` : ''}`;
+      <div class="actions" style="margin-top:6px">${['TG', 'MAX'].map((k) => `<button class="btn ghost sm" data-setup="${k}">Настроить ${MSGR[k].name}${bots[k] ? ' (' + MSGR[k].at + esc(bots[k]) + ')' : ''}</button>`).join('')}</div>` : ''}`;
 
-  box.querySelector('#tgLink')?.addEventListener('click', (e) => busy(e.currentTarget, async () => {
+  box.querySelectorAll('[data-link]').forEach((b) => b.addEventListener('click', () => busy(b, async () => {
+    const k = b.dataset.link, m = MSGR[k];
     try {
-      const code = await rpc('notify_link_code', { p_channel: 'TG' });
-      const url = `https://t.me/${bot}?start=${code}`;
+      const url = m.link(bots[k], await rpc('notify_link_code', { p_channel: k }));
       const w = window.open(url, '_blank', 'noopener');
-      box.querySelector('#tgLink').outerHTML = `<a class="btn sm" href="${url}" target="_blank" rel="noopener">Открыть Telegram</a>`;
-      if (!w) toast('Нажмите «Открыть Telegram», затем «Старт» в боте');
-      else toast('В Telegram нажмите «Старт» — и вернитесь сюда');
-      // Ждём, пока бот привяжет аккаунт
-      for (let i = 0; i < 60; i++) {
+      b.outerHTML = `<a class="btn sm" href="${url}" target="_blank" rel="noopener">Открыть ${m.name}</a>`;
+      toast(w ? `В ${m.name} нажмите «Старт» — и вернитесь сюда` : `Нажмите «Открыть ${m.name}», затем «Старт» в боте`);
+      // Ждём, пока бот привяжет аккаунт (ссылка живёт 15 минут)
+      for (let i = 0; i < 300; i++) {
         await new Promise((r) => setTimeout(r, 3000));
         if (!document.body.contains(box)) return;
-        const r = await q(sb.from('notify_channels').select('channel').eq('user_id', state.user.id).eq('channel', 'TG'));
-        if (r.length) { toast('Telegram подключён'); messengers(box); return; }
+        const r = await q(sb.from('notify_channels').select('channel').eq('user_id', state.user.id).eq('channel', k));
+        if (r.length) { toast(`${m.name} подключён`); messengers(box); return; }
       }
     } catch (err) { toast(err.message, true); }
-  }));
-  box.querySelector('#tgTest')?.addEventListener('click', (e) => busy(e.currentTarget, async () => {
-    try { await rpc('notify_test', { p_org: state.org.id }); toast('Отправили проверочное уведомление в Telegram'); }
+  })));
+  box.querySelectorAll('[data-test]').forEach((b) => b.addEventListener('click', () => busy(b, async () => {
+    try { await rpc('notify_test', { p_org: state.org.id }); toast('Отправили проверочное уведомление во все подключённые мессенджеры'); }
+    catch (err) { toast(err.message, true); }
+  })));
+  box.querySelectorAll('[data-toggle]').forEach((b) => b.addEventListener('click', () => busy(b, async () => {
+    const k = b.dataset.toggle;
+    try { await rpc('notify_set_channel', { p_channel: k, p_enabled: !mine(k).enabled, p_unlink: false }); messengers(box); }
+    catch (err) { toast(err.message, true); }
+  })));
+  box.querySelectorAll('[data-unlink]').forEach((b) => b.addEventListener('click', async () => {
+    const k = b.dataset.unlink, m = MSGR[k];
+    if (!(await confirmBox(`Отвязать ${m.name}?`, `Уведомления перестанут приходить в ${m.name}. Подключить снова можно в любой момент.`, 'Отвязать'))) return;
+    try { await rpc('notify_set_channel', { p_channel: k, p_enabled: false, p_unlink: true }); messengers(box); }
     catch (err) { toast(err.message, true); }
   }));
-  box.querySelector('#tgToggle')?.addEventListener('click', (e) => busy(e.currentTarget, async () => {
-    try { await rpc('notify_set_channel', { p_channel: 'TG', p_enabled: !tgc.enabled, p_unlink: false }); messengers(box); }
-    catch (err) { toast(err.message, true); }
-  }));
-  box.querySelector('#tgUnlink')?.addEventListener('click', async () => {
-    if (!(await confirmBox('Отвязать Telegram?', 'Уведомления перестанут приходить в Telegram. Подключить снова можно в любой момент.', 'Отвязать'))) return;
-    try { await rpc('notify_set_channel', { p_channel: 'TG', p_enabled: false, p_unlink: true }); messengers(box); }
-    catch (err) { toast(err.message, true); }
-  });
-  box.querySelector('#tgSetup')?.addEventListener('click', (e) => busy(e.currentTarget, async () => {
-    const { data, error } = await sb.functions.invoke('tg-bot', { body: { action: 'setup' } });
+  box.querySelectorAll('[data-setup]').forEach((b) => b.addEventListener('click', () => busy(b, async () => {
+    const k = b.dataset.setup;
+    const { data, error } = await sb.functions.invoke('tg-bot', { body: { action: 'setup', channel: k } });
     let msg = data?.error;
     if (error) { try { msg = (await error.context.json()).error; } catch { msg = error.message; } }
     if (msg || !data?.ok) return toast(msg || data?.description || 'Не получилось', true);
-    toast('Бот @' + data.bot + ' подключён к сайту');
+    toast(`Бот ${MSGR[k].at}${data.bot} подключён к сайту`);
     messengers(box);
-  }));
+  })));
 }
 
 function orgCard(o, c = {}) {
