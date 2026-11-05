@@ -336,6 +336,30 @@ async function boot() {
   }, true);
   document.addEventListener('focusin', (ev) => { const t = ev.target; if (isDate(t)) { const s = startOf(t); if (s) limitEnd(s, t); } });
   initDrafts();
+  // «Глазик» у всех полей пароля: показать / скрыть введённое
+  const EYE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const EYE_OFF = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A10.9 10.9 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a10 10 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+  const addEyes = (root) => root.querySelectorAll?.('input[type=password]:not([data-eye])').forEach((inp) => {
+    inp.dataset.eye = '1';
+    const wrap = document.createElement('span');
+    wrap.className = 'pw-wrap';
+    inp.parentNode.insertBefore(wrap, inp);
+    wrap.appendChild(inp);
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'pw-eye'; b.innerHTML = EYE;
+    b.setAttribute('aria-label', 'Показать пароль'); b.title = 'Показать пароль';
+    b.onclick = () => {
+      const show = inp.type === 'password';
+      inp.type = show ? 'text' : 'password';
+      b.innerHTML = show ? EYE_OFF : EYE;
+      const t = show ? 'Скрыть пароль' : 'Показать пароль';
+      b.setAttribute('aria-label', t); b.title = t;
+      inp.focus();
+    };
+    wrap.appendChild(b);
+  });
+  addEyes(document);
+  new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => n.nodeType === 1 && addEyes(n)))).observe(document.body, { childList: true, subtree: true });
   // «Как пользоваться» — открыть знакомство с сайтом заново
   document.addEventListener('click', (e) => {
     const a = e.target.closest('[data-onb]');
