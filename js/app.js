@@ -19,6 +19,7 @@ const ICON = {
   search: '<circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   desk: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16M5 8h2M11 8h2M17 8h2M11 12h2"/>',
+  gauge: '<path d="M3.5 17a9 9 0 1 1 17 0"/><path d="m12 13 4-5"/><circle cx="12" cy="13" r="1.4"/><path d="M6 21h12"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/>',
   auto: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17Z" fill="currentColor"/>'
@@ -53,7 +54,7 @@ const ROUTES = [
   ['orders', 'orders'], ['orders/new', 'orders'], ['orders/:id', 'orders'],
   ['feed', 'feed'], ['feed/:id', 'feed'], ['offers', 'feed'],
   ['deals', 'deals'], ['deals/:id', 'deals'], ['deals/:id/doc/:type', 'docs'],
-  ['company/:id', 'company'], ['team', 'team'], ['crm', 'crm'], ['analytics', 'analytics'], ['reviews', 'reviews'],
+  ['company/:id', 'company'], ['team', 'team'], ['crm', 'crm'], ['park', 'park'], ['analytics', 'analytics'], ['reviews', 'reviews'],
   ['messages', 'messages'], ['messages/:id', 'messages'],
   ['notifications', 'notifications'], ['favorites', 'favorites'],
   ['admin', 'admin'], ['terms', 'static'], ['privacy', 'static'], ['help', 'static']
@@ -140,7 +141,7 @@ function renderSide(active) {
     }
     if (o.can_provide) {
       html += `<div class="nav-group provider"><div class="nav-role">${icon('truck', 16)}<span>Я исполнитель</span><small>сдаю технику</small></div><nav class="nav">
-        ${link('#/crm', 'desk', 'Рабочий стол', c.crm_due)}${link('#/fleet', 'truck', 'Моя техника')}${link('#/feed', 'feed', 'Лента заказов', c.feed_new)}
+        ${link('#/crm', 'desk', 'Рабочий стол', c.crm_due)}${link('#/fleet', 'truck', 'Моя техника')}${link('#/park', 'gauge', 'Учёт парка')}${link('#/feed', 'feed', 'Лента заказов', c.feed_new)}
         ${link('#/offers', 'send', 'Мои предложения')}${link('#/deals?tab=provider', 'deal', 'Сделки', c.deals_provider, c.deals_provider_wait)}</nav></div>`;
     }
     html += `<div class="nav-caption">АККАУНТ</div><nav class="nav">
@@ -186,7 +187,7 @@ export function refreshShell() {
   const dealTab = query.tab || saved || (state.org?.can_order ? 'customer' : 'provider');
   const activeMap = { '': '#/', catalog: '#/catalog', item: '#/catalog', orders: path === 'orders/new' ? '#/orders/new' : '#/orders',
     deals: '#/deals?tab=' + dealTab, fleet: '#/fleet', feed: '#/feed', offers: '#/offers', messages: '#/messages',
-    notifications: '#/notifications', account: '#/account', admin: '#/admin', team: '#/team', analytics: '#/analytics', company: '#/catalog', reviews: '#/reviews', crm: '#/crm' };
+    notifications: '#/notifications', account: '#/account', admin: '#/admin', team: '#/team', analytics: '#/analytics', company: '#/catalog', reviews: '#/reviews', crm: '#/crm', park: '#/park' };
   renderTop();
   renderSide(activeMap[top] ?? (m ? '#/' + m.name : ''));
 }
