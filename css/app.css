@@ -583,3 +583,9 @@ textarea.inp{height:auto;min-height:96px;padding:10px 12px;resize:vertical}
 .assign .assign-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .assign .assign-actions select{height:36px;width:auto;max-width:260px}
 @media (max-width:600px){.assign .assign-actions,.assign .assign-actions select{width:100%;max-width:none}}
+/* Мои организации: свёрнутая форма */
+.add-org-row{padding-top:12px;margin-top:4px;border-top:1px dashed var(--line2)}
+.add-org-row .btn{width:100%;justify-content:center}
+.panel-head-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.panel-head-row h2{margin-bottom:0}
+#newOrg{scroll-margin-top:90px}
