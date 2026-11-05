@@ -202,9 +202,25 @@ const FOOTER = `<footer class="foot"><span>© RUIN, ${new Date().getFullYear()}<
 
 export async function route() {
   // Ссылки из писем Supabase приходят с токеном в адресе — ждём, пока библиотека его обработает
-  if (/access_token=|error_description=/.test(location.hash)) {
+  if (/error_description=/.test(location.hash)) {
+    // Ссылка из письма не сработала (устарела, уже использована или её «открыл» почтовый антивирус)
+    const p = new URLSearchParams(location.hash.slice(1));
+    const d = p.get('error_description') || '';
+    const expired = p.get('error_code') === 'otp_expired' || /expired|invalid/i.test(d);
+    history.replaceState(null, '', location.pathname + location.search);
+    document.getElementById('app').innerHTML = `<div class="panel"><h2>Ссылка из письма не сработала</h2>
+      <p>${expired ? 'Ссылка устарела или уже была использована. Так бывает, если письмо открыли повторно или почтовый сервис сам проверил ссылку.' : 'Ошибка: ' + esc(d)}</p>
+      <p class="muted">Запросите новое письмо и откройте ссылку из него сразу, один раз.</p>
+      <div class="actions"><a class="btn" href="#/forgot">Отправить письмо для смены пароля</a><a class="btn ghost" href="#/login">Войти</a></div></div>`;
+    return;
+  }
+  if (/access_token=/.test(location.hash)) {
     document.getElementById('app').innerHTML = '<div class="panel">Входим…</div>';
-    setTimeout(() => { if (/access_token=/.test(location.hash)) go('#/'); }, 2500);
+    // Библиотека сама заберёт ключ из адреса; если это смена пароля — откроется #/reset, иначе идём на главную
+    setTimeout(() => {
+      if (location.hash.startsWith('#/reset')) return;
+      if (location.hash === '#/') route(); else go('#/');
+    }, 2500);
     return;
   }
   const { path, query } = parseHash();
