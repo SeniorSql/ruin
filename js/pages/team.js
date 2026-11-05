@@ -3,6 +3,7 @@ import { sb, state, rpc, isOwnerAdmin, loadMe } from '../api.js';
 import { dropTeamCache } from '../assign.js';
 import { esc, toast, busy, confirmBox, emptyState, errorState, date } from '../ui.js';
 import { route, refreshShell, go } from '../app.js';
+import { withActionCode } from '../actionCode.js';
 
 const ROLES = { OWNER: 'Владелец', ADMIN: 'Администратор', MANAGER: 'Менеджер', APPROVER: 'Согласующий', FINANCE: 'Бухгалтер', VIEWER: 'Наблюдатель' };
 const ROLE_HINT = {
@@ -68,7 +69,7 @@ export async function render(app) {
   });
   app.querySelectorAll('[data-own]').forEach((b) => b.onclick = async () => {
     if (!await confirmBox('Передать права владельца?', `Владельцем станет ${b.dataset.name}. Вы останетесь в организации с ролью «Администратор». Вернуть права сможет только новый владелец.`, 'Передать', true)) return;
-    try { await rpc('transfer_ownership', { p_org: o.id, p_user: b.dataset.own }); await loadMe(); refreshShell(); toast('Права владельца переданы'); route(); } catch (e) { toast(e.message, true); }
+    try { await withActionCode('transfer_ownership', (code) => rpc('transfer_ownership', { p_org: o.id, p_user: b.dataset.own, p_code: code })); await loadMe(); refreshShell(); toast('Права владельца переданы'); route(); } catch (e) { toast(e.message, true); }
   });
   app.querySelector('[data-leave]')?.addEventListener('click', async () => {
     if (!await confirmBox('Выйти из организации?', 'Вы потеряете доступ к её технике, заказам и сделкам.', 'Выйти', true)) return;
