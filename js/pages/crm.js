@@ -93,7 +93,7 @@ export async function render(app, _p, query) {
     ${deals.length ? `<div class="kanban">${STAGES.map(([s, t, hint]) => `<div class="kcol"><div class="khead"><b>${t}</b><span>${by(s).length}</span><small>${hint}</small></div>
       ${by(s).map(card).join('') || '<div class="small muted" style="padding:8px">Пусто</div>'}</div>`).join('')}</div>`
       : emptyState('Сделок пока нет', prov ? 'Сделки появятся, когда заказчики забронируют вашу технику или выберут ваше предложение.' : 'Забронируйте технику или разместите заказ.',
-        prov ? '<a class="btn" href="#/feed">Лента заказов</a>' : '<a class="btn" href="#/catalog">В каталог</a>')}
+        prov ? (o.can_provide ? '<a class="btn" href="#/feed">Лента заказов</a>' : '') : '<a class="btn" href="#/catalog">В каталог</a>')}
     ${prov ? '<div class="panel" id="tl"><h2>Загрузка техники на 30 дней</h2><div class="skeleton" style="height:120px"></div></div>' : ''}`;
 
   app.querySelector('#whoSel')?.addEventListener('change', (e) => { location.hash = `#/crm?role=${role}&who=${e.target.value || 'all'}`; });
