@@ -146,7 +146,7 @@ function renderSide(active) {
     }
     if (actsAsProvider(o)) {
       html += `<div class="nav-group provider"><div class="nav-role">${icon('truck', 16)}<span>${t('Я исполнитель', 'I am a provider')}</span><small>${t('сдаю технику', 'I rent out machinery')}</small></div><nav class="nav">
-        ${!o.can_provide ? `<a href="#/account" class="role-off">${t('Сдача техники на паузе — техника скрыта из каталога. Возобновить →', 'Renting out is paused — machinery hidden from the catalogue. Resume →')}</a>` : ''}
+        ${!o.can_provide ? `<a href="#/account" class="role-off">${t('Роль исполнителя выключена — техника скрыта из каталога. Включить →', 'Provider role is off — machinery hidden from the catalogue. Turn on →')}</a>` : ''}
         ${link('#/crm', 'desk', t('Рабочий стол', 'Desk'), c.crm_due)}${link('#/fleet', 'truck', t('Моя техника', 'My machinery'))}${link('#/park', 'gauge', t('Учёт парка', 'Fleet management'))}${o.can_provide ? link('#/feed', 'feed', t('Лента заказов', 'Order feed'), c.feed_new) : ''}
         ${link('#/offers', 'send', t('Мои предложения', 'My offers'))}${link('#/deals?tab=provider', 'deal', t('Сделки', 'Deals'), c.deals_provider, c.deals_provider_wait)}</nav></div>`;
     }
@@ -159,7 +159,7 @@ function renderSide(active) {
   html += `</div>`;
   html += themeSeg();
   if (state.user && o && !o.can_provide) {
-    html += `<div class="side-note"><b>${t('Есть своя техника?', 'Own machinery?')}</b>${t('Создайте организацию исполнителя и получайте заказы.', 'Create a provider organisation and get orders.')} <a href="#/account">${t('Начать →', 'Start →')}</a></div>`;
+    html += `<div class="side-note"><b>${t('Есть своя техника?', 'Own machinery?')}</b>${t('Создайте организацию исполнителя и получайте заказы.', 'Create a provider organisation and get orders.')} <a href="#/account?become=provider">${t('Начать →', 'Start →')}</a></div>`;
   } else if (!state.user) {
     html += `<div class="side-note"><b>${t('Техника рядом — проще, чем кажется', 'Machinery nearby — easier than you think')}</b>${t('Сравнивайте предложения проверенных исполнителей и бронируйте онлайн.', 'Compare offers from verified providers and book online.')}</div>`;
   }
