@@ -1,5 +1,5 @@
 // «Рабочий стол»: сделки по этапам, напоминания, продления и загрузка техники на 30 дней (мини-CRM)
-import { sb, state, q, refreshCounters, mskDate } from '../api.js';
+import { sb, state, q, refreshCounters, mskDate, actsAsProvider, actsAsCustomer } from '../api.js';
 import { esc, money, date, period, emptyState, errorState, plural, toast } from '../ui.js';
 import { route, refreshShell } from '../app.js';
 import { isTeam, loadTeam, assignees, memberLabel } from '../assign.js';
@@ -17,7 +17,7 @@ const inDays = (n) => (n === 0 ? 'сегодня' : n === 1 ? 'завтра' : n
 
 export async function render(app, _p, query) {
   const o = state.org;
-  const role = query.role || (o.can_provide ? 'provider' : 'customer');
+  const role = query.role || (actsAsProvider(o) ? 'provider' : 'customer');
   const prov = role === 'provider';
   const today = mskDate(0);
   let deals, notes, exts;
@@ -76,7 +76,7 @@ export async function render(app, _p, query) {
   app.innerHTML = `
     <div class="page-head"><div><h1>Рабочий стол</h1><p>Все сделки по этапам, напоминания и загрузка техники — в одном месте.</p></div>
       <a class="btn ghost" href="#/deals?tab=${role}">Список сделок</a></div>
-    ${o.can_provide && o.can_order ? `<div class="tabs"><a href="#/crm?role=provider" class="${prov ? 'on' : ''}">Я исполнитель</a><a href="#/crm?role=customer" class="${!prov ? 'on' : ''}">Я заказчик</a></div>` : ''}
+    ${actsAsProvider(o) && actsAsCustomer(o) ? `<div class="tabs"><a href="#/crm?role=provider" class="${prov ? 'on' : ''}">Я исполнитель</a><a href="#/crm?role=customer" class="${!prov ? 'on' : ''}">Я заказчик</a></div>` : ''}
     ${team ? `<div class="tabs small-tabs">${[['all', 'Все'], ['mine', 'Мои'], ['none', 'Без ответственного']].map(([k, t]) =>
       `<a href="#/crm?role=${role}&who=${k}" class="${who === k ? 'on' : ''}">${t}${cnt[k] ? ` <span class="tab-cnt">${cnt[k]}</span>` : ''}</a>`).join('')}
       <select class="inp" id="whoSel" aria-label="Сотрудник" style="height:34px;width:auto;margin-left:auto"><option value="">По сотруднику…</option>
