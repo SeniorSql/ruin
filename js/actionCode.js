@@ -2,7 +2,7 @@
 import { sb, rpc } from './api.js';
 import { modal, toast, busy } from './ui.js';
 
-const LABEL = { transfer_ownership: 'передачи прав владельца', org_requisites: 'смены реквизитов организации' };
+const LABEL = { transfer_ownership: 'передачи прав владельца', org_requisites: 'смены реквизитов организации', org_delete: 'удаления организации' };
 
 async function sendCode(purpose) {
   const { data, error } = await sb.functions.invoke('tg-bot', { body: { action: 'code', purpose } });
