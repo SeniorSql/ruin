@@ -85,7 +85,7 @@ export async function render(app, _p, query) {
         <div class="kpi ${toSoon.length ? 'hot' : ''}"><b>${toSoon.length}</b><span>Пора на ТО</span></div>
         <div class="kpi"><b class="num">${money(Math.round(sum((p) => p.rev - p.svc - p.exp)))}</b><span>Прибыль за ${monthName(month)}</span></div>
       </div>
-      ${!eq.length ? emptyState('Техники пока нет', 'Добавьте технику — и здесь появится её учёт.', '<a class="btn" href="#/fleet/new">Добавить технику</a>') : `
+      ${!eq.length ? emptyState('Техники пока нет', 'Добавьте технику — и здесь появится её учёт.', o.can_provide ? '<a class="btn" href="#/fleet/new">Добавить технику</a>' : '') : `
       <div class="panel"><h2>Машины</h2><div class="table-wrap"><table class="table resp pk-t">
         <thead><tr><th>Техника</th><th>Машинист</th><th>Моточасы</th><th>ТО</th><th>Документы</th><th>Прибыль за месяц</th><th></th></tr></thead><tbody>
         ${eq.map((e) => { const c = card[e.id]; const n = nextTo(c); const left = n != null ? n - c.hours_meter : null;
