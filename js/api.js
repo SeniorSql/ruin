@@ -74,6 +74,11 @@ export async function loadMe() {
     const { data: c, error: ce } = await sb.from('user_consents').select('id').eq('user_id', state.user.id).eq('doc', 'pd_consent').eq('version', CONSENT_VERSION).limit(1);
     state.needConsent = !ce && !c?.length;
   } catch { state.needConsent = false; }
+  // Подключён ли мессенджер (для приглашения «Получайте уведомления в Telegram»)
+  try {
+    const { data: ch } = await sb.from('notify_channels').select('channel').eq('user_id', state.user.id).eq('enabled', true).limit(1);
+    state.msgrLinked = !!ch?.length;
+  } catch { state.msgrLinked = true; }
   state.orgs = (members || []).map((m) => ({ ...m.organizations, role: m.role }))
     .sort((a, b) => (a.type === 'PERSON') - (b.type === 'PERSON') || a.created_at.localeCompare(b.created_at));
   // Есть ли у организации сделки/техника в роли исполнителя или заказчика — даже если галочку роли потом сняли.
