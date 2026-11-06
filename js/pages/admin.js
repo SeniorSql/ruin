@@ -85,13 +85,20 @@ async function reviews(box) {
       <div class="actions" style="justify-content:flex-end">
         ${r.status !== 'TEXT_HIDDEN' ? `<button class="btn ghost sm" data-rv="${r.id}" data-s="TEXT_HIDDEN">Скрыть текст</button>` : ''}
         ${r.status !== 'EXCLUDED' ? `<button class="btn danger sm" data-rv="${r.id}" data-s="EXCLUDED">Исключить</button>` : ''}
-        ${r.status !== 'PUBLISHED' && r.status !== 'SUBMITTED' ? `<button class="btn ghost sm" data-rv="${r.id}" data-s="PUBLISHED">Вернуть</button>` : ''}</div></div>`).join('')}
+        ${r.status !== 'PUBLISHED' && r.status !== 'SUBMITTED' ? `<button class="btn ghost sm" data-rv="${r.id}" data-s="PUBLISHED">Вернуть</button>` : ''}
+        <button class="btn danger sm" data-rvdel="${r.id}">Удалить</button></div></div>`).join('')}
       <p class="small muted">Негативный отзыв без нарушений скрывать нельзя. Скрытие — только за оскорбления, контакты, персональные данные; исключение — за накрутку или отзыв не по сделке.</p></div>`
     : emptyState('Отзывов пока нет', 'Отзывы появятся после завершённых сделок.');
   box.querySelectorAll('[data-rv]').forEach((b) => b.onclick = async () => {
     let c = null;
     if (b.dataset.s !== 'PUBLISHED') { c = await askReason('Нарушение', 'Какое правило нарушено. Это записывается в журнал.', 'Нарушение', 'Применить'); if (!c) return; }
     try { await rpc('admin_moderate_review', { p_review: b.dataset.rv, p_status: b.dataset.s, p_comment: c }); toast('Готово'); route(); } catch (e) { toast(e.message, true); }
+  });
+  // Полное удаление отзыва (например, тестового). Копия и причина остаются в журнале.
+  box.querySelectorAll('[data-rvdel]').forEach((b) => b.onclick = async () => {
+    const reason = await askReason('Удалить отзыв навсегда?', 'Отзыв исчезнет у всех, рейтинг пересчитается. Вернуть нельзя. Копия и причина сохранятся в журнале.', 'Причина удаления', 'Удалить');
+    if (!reason) return;
+    try { await rpc('admin_delete_review', { p_review: b.dataset.rvdel, p_reason: reason }); toast('Отзыв удалён'); route(); } catch (e) { toast(e.message, true); }
   });
 }
 
