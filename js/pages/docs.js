@@ -1,6 +1,6 @@
 // Документы сделки для печати и сохранения в PDF (Модуль 5, упрощённо: формируются из данных сделки в браузере)
 import { sb, state, q, rpc } from '../api.js';
-import { esc, money, date, dateTime, period, POLICY, ORG_TYPE, errorState, emptyState } from '../ui.js';
+import { esc, money, date, dateTime, period, POLICY, ORG_TYPE, errorState, emptyState, WORDMARK } from '../ui.js';
 
 const TITLES = { request: 'Заявка-подтверждение', contract: 'Договор', 'handover-START': 'Акт приёма-передачи техники', 'handover-END': 'Акт возврата техники', act: 'Акт выполненных работ (оказанных услуг)' };
 
@@ -74,7 +74,7 @@ export async function render(app, { id, type }) {
   document.body.classList.add('doc-mode');
   app.innerHTML = `<div class="doc-bar"><button class="btn" data-print>Скачать PDF / печать</button>
       <a class="btn ghost" href="#/deals/${d.id}">← К сделке</a><span class="small muted">В окне печати выберите «Сохранить как PDF»</span></div>
-    <article class="doc"><header><div class="doc-logo">RUIN<span>.</span></div><div class="small">Сформировано на платформе RUIN · ${today}</div></header>
+    <article class="doc"><header><div class="doc-logo">${WORDMARK}</div><div class="small">Сформировано на платформе RUIN · ${today}</div></header>
       <h1>${TITLES[type] || 'Документ'} № ${esc(d.number)}</h1>${body}</article>`;
   return () => document.body.classList.remove('doc-mode');
 }
