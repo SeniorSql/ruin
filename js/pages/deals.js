@@ -50,7 +50,7 @@ async function list(app, query) {
     }).join('')}</div>`
     : who !== 'all' ? emptyState(who === 'mine' ? 'У вас нет своих сделок' : 'Все сделки распределены', 'Откройте вкладку «Все», чтобы увидеть сделки коллег.', `<a class="btn ghost" href="#/deals?tab=${tab}">Все сделки</a>`)
     : emptyState('Сделок пока нет', tab === 'customer' ? 'Забронируйте технику в каталоге или разместите заказ.' : 'Сделки появятся, когда заказчики забронируют вашу технику или выберут ваше предложение.',
-      tab === 'customer' ? '<a class="btn" href="#/catalog">В каталог</a>' : '<a class="btn" href="#/feed">Лента заказов</a>')}`;
+      tab === 'customer' ? '<a class="btn" href="#/catalog">В каталог</a>' : (o.can_provide ? '<a class="btn" href="#/feed">Лента заказов</a>' : ''))}`;
 }
 
 async function detail(app, id) {
