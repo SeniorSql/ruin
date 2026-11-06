@@ -1,5 +1,5 @@
 // Сделки: список и рабочее пространство сделки (SCR-DEAL-01, D100)
-import { sb, state, q, rpc, canManage, refreshCounters } from '../api.js';
+import { sb, state, q, rpc, canManage, refreshCounters, actsAsProvider, actsAsCustomer } from '../api.js';
 import { esc, money, status, toast, busy, askReason, confirmBox, emptyState, errorState, period, dateTime, timeLeft, photoOf,
   POLICY, ORG_TYPE } from '../ui.js';
 import { breakdownHtml } from './item.js';
@@ -16,7 +16,7 @@ export async function render(app, params, query, pattern) {
 
 async function list(app, query) {
   const o = state.org;
-  const tab = query.tab || (o.can_order ? 'customer' : 'provider');
+  const tab = query.tab || (actsAsCustomer(o) ? 'customer' : 'provider');
   try { sessionStorage.setItem('ruin.dealTab', tab); } catch {}
   let rows;
   try {
@@ -36,7 +36,7 @@ async function list(app, query) {
   if (who === 'none') rows = rows.filter((d) => !asg[d.id]);
   app.innerHTML = `
     <div class="page-head"><div><h1>Сделки</h1><p>Брони и сделки по заказам. Сначала — те, где нужно ваше действие.</p></div></div>
-    ${o.can_order && o.can_provide ? `<div class="tabs"><a href="#/deals?tab=customer" class="${tab === 'customer' ? 'on' : ''}">Я заказчик</a><a href="#/deals?tab=provider" class="${tab === 'provider' ? 'on' : ''}">Я исполнитель</a></div>` : ''}
+    ${actsAsCustomer(o) && actsAsProvider(o) ? `<div class="tabs"><a href="#/deals?tab=customer" class="${tab === 'customer' ? 'on' : ''}">Я заказчик</a><a href="#/deals?tab=provider" class="${tab === 'provider' ? 'on' : ''}">Я исполнитель</a></div>` : ''}
     ${team ? assignFilterHtml(who, '#/deals?tab=' + tab, counts) : ''}
     ${rows.length ? `<div class="panel">${rows.sort((a, b) => needAction(b) - needAction(a)).map((d) => {
       const p = photoOf(d.equipment || {});
