@@ -149,7 +149,7 @@ export async function render(app) {
 const MSGR = { TG: { name: 'Telegram', key: 'public.tg_bot', at: '@', link: (bot, code) => `https://t.me/${bot}?start=${code}` },
   MAX: { name: 'MAX', key: 'public.max_bot', at: '', link: (bot, code) => `https://max.ru/${bot}?start=${code}` } };
 async function messengers(box) {
-  const head = '<h2>Уведомления в мессенджерах</h2>';
+  const head = '<h2>Уведомления</h2>';
   let ch, bots;
   try {
     ch = await q(sb.from('notify_channels').select('channel,username,enabled,linked_at').eq('user_id', state.user.id));
@@ -164,15 +164,38 @@ async function messengers(box) {
     const c = mine(k), bot = bots[k], m = MSGR[k];
     return `<div class="msgr-row"><div class="grow"><b>${m.name}</b><div class="small muted">${c ? (c.enabled ? 'подключён' : 'выключен') + (c.username ? ' · @' + esc(c.username) : '') : bot ? 'не подключён' : 'бот ещё не настроен'}</div></div>
       ${c ? `${c.enabled ? `<button class="btn ghost sm" data-test="${k}">Проверить</button>` : ''}<button class="btn ghost sm" data-toggle="${k}">${c.enabled ? 'Выключить' : 'Включить'}</button>`
-        : bot ? `<button class="btn sm" data-link="${k}">Подключить</button>` : ''}</div>`;
+        : !bot ? '' : k === 'TG'
+          ? `<button class="btn sm" data-tg1 type="button">Подключить в один клик</button>`
+          : `<button class="btn sm" data-link="${k}">Подключить</button>`}</div>
+      ${!c && bot && k === 'TG' ? `<div class="small muted" style="margin:-4px 0 8px">Откроется окно Telegram — нажмите «Разрешить». Искать бота не нужно. <button class="linkish small" data-link="TG" type="button">Или через бота</button></div>` : ''}`;
   };
   const admin = isAdmin();
+  const emailOn = state.profile?.email_notify !== false;
   box.innerHTML = `${head}
-    <p class="small muted" style="margin-top:-6px">Новые брони, сообщения, сроки документов и ТО — сразу в телефон.</p>
+    <p class="small muted" style="margin-top:-6px">Новые брони, сообщения, сроки документов и ТО — сразу в телефон или на почту.</p>
     ${row('TG')}${row('MAX')}
+    <div class="msgr-row"><div class="grow"><b>Email</b><div class="small muted">${emailOn ? 'на ' + esc(state.user.email) : 'выключен'} · приходит, если не подключён мессенджер</div></div>
+      <button class="btn ghost sm" data-email type="button">${emailOn ? 'Выключить' : 'Включить'}</button></div>
     ${['TG', 'MAX'].filter(mine).map((k) => `<button class="linkish small" data-unlink="${k}" type="button">Отвязать ${MSGR[k].name}</button>`).join(' ')}
-    ${admin ? `<div class="divider"></div><div class="small muted">Админ площадки: после смены токена бота нажмите, чтобы подключить бота к сайту.</div>
-      <div class="actions" style="margin-top:6px">${['TG', 'MAX'].map((k) => `<button class="btn ghost sm" data-setup="${k}">Настроить ${MSGR[k].name}${bots[k] ? ' (' + MSGR[k].at + esc(bots[k]) + ')' : ''}</button>`).join('')}</div>` : ''}`;
+    ${admin ? `<div class="divider"></div><div class="small muted">Админ площадки: после смены токена бота нажмите, чтобы подключить бота к сайту. «Почта» и «Коды по номеру» — проверочная отправка, после неё включаются коды подтверждения на почту / в Telegram по номеру телефона.</div>
+      <div class="actions" style="margin-top:6px">${['TG', 'MAX'].map((k) => `<button class="btn ghost sm" data-setup="${k}">Настроить ${MSGR[k].name}${bots[k] ? ' (' + MSGR[k].at + esc(bots[k]) + ')' : ''}</button>`).join('')}
+        <button class="btn ghost sm" data-setup="EMAIL">Почта: проверить и включить</button><button class="btn ghost sm" data-setup="GATEWAY">Коды по номеру: проверить и включить</button></div>` : ''}`;
+
+  // Telegram в один клик: заранее загружаем окно Telegram, чтобы браузер не заблокировал его
+  const tg1 = box.querySelector('[data-tg1]');
+  if (tg1) {
+    import('../tglogin.js').then((m) => m.prepareTelegram()).catch(() => {});
+    tg1.addEventListener('click', async () => {
+      try {
+        const m = await import('../tglogin.js');
+        if (await m.connectTelegram()) { toast('Telegram подключён — уведомления будут приходить туда'); messengers(box); }
+      } catch (err) { toast(err.message, true); }
+    });
+  }
+  box.querySelector('[data-email]').addEventListener('click', (e) => busy(e.currentTarget, async () => {
+    try { await rpc('set_email_notify', { p_on: !emailOn }); state.profile.email_notify = !emailOn; toast(emailOn ? 'Письма с уведомлениями выключены' : 'Письма с уведомлениями включены'); messengers(box); }
+    catch (err) { toast(err.message, true); }
+  }));
 
   box.querySelectorAll('[data-link]').forEach((b) => b.addEventListener('click', () => busy(b, async () => {
     const k = b.dataset.link, m = MSGR[k];
@@ -211,7 +234,7 @@ async function messengers(box) {
     let msg = data?.error;
     if (error) { try { msg = (await error.context.json()).error; } catch { msg = error.message; } }
     if (msg || !data?.ok) return toast(msg || data?.description || 'Не получилось', true);
-    toast(`Бот ${MSGR[k].at}${data.bot} подключён к сайту`);
+    toast(k === 'EMAIL' ? `Письмо отправлено с ${data.bot} — коды на почту включены` : k === 'GATEWAY' ? 'Код отправлен в Telegram по номеру — коды по номеру включены' : `Бот ${MSGR[k].at}${data.bot} подключён к сайту`);
     messengers(box);
   })));
 }
