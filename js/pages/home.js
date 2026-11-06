@@ -33,7 +33,7 @@ export async function render(app) {
   <div class="section-head"><div><div class="eyebrow">${t('ПРЕДЛОЖЕНИЯ ИСПОЛНИТЕЛЕЙ', 'PROVIDER OFFERS')}</div><h2>${t('Свежая техника в каталоге', 'New in the catalogue')}</h2></div><a class="see-all" href="#/catalog">${t('Смотреть все', 'See all')} <span>→</span></a></div>
   <section id="fresh">${skeleton(5)}</section>
   <div class="wide-banner"><div><b>${t('Есть своя техника? Находите заказчиков на RUIN', 'Own machinery? Find customers on RUIN')}</b><p>${t('Создайте организацию исполнителя, пройдите проверку и получайте заказы из вашего региона.', 'Create a provider organisation, get verified and receive orders from your region.')}</p></div>
-    <a class="btn dark" href="${state.user ? '#/account' : '#/register'}">${t('Стать исполнителем →', 'Become a provider →')}</a></div>
+    <a class="btn dark" href="${state.user ? '#/account?become=provider' : '#/register'}">${t('Стать исполнителем →', 'Become a provider →')}</a></div>
   <div class="wide-banner accent"><div><b>${t('Не нашли подходящую технику?', 'Could not find the right machine?')}</b><p id="ordersInfo">${t('Разместите заказ — исполнители сами пришлют предложения.', 'Post an order — providers will send you offers.')}</p></div>
     <a class="btn dark" href="#/orders/new">${t('Разместить заказ →', 'Post an order →')}</a></div>`;
 
