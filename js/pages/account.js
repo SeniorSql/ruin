@@ -1,6 +1,6 @@
 // Профиль, организации и проверка (SCR-IDN-04, 06, 07)
 import { sb, state, q, rpc, loadMe, setOrg, refreshCounters, isOwnerAdmin, isAdmin } from '../api.js';
-import { esc, status, ORG_TYPE, toast, busy, modal, confirmBox } from '../ui.js';
+import { esc, status, ORG_TYPE, toast, busy, modal, confirmBox, date } from '../ui.js';
 import { go, refreshShell, route } from '../app.js';
 import { withActionCode } from '../actionCode.js';
 
@@ -227,7 +227,23 @@ export async function deleteOrgFlow(orgId) {
   let p;
   try { p = await rpc('org_delete_preview', { p_org: orgId }); } catch (err) { toast(err.message, true); return false; }
   if (p.active_deals > 0) {
-    await confirmBox('Пока удалить нельзя', `У организации «${esc(p.name)}» есть незавершённые сделки: ${p.active_deals}. Завершите или отмените их, затем удалите организацию.`, 'Понятно');
+    // Показываем, какие именно сделки мешают, и даём перейти в каждую
+    const ROLE = { PROVIDER: 'вы — исполнитель', CUSTOMER: 'вы — заказчик' };
+    const rows = (p.active_list || []).map((d) => `<div class="row-item" style="align-items:center">
+        <div class="grow"><b>${esc(d.number)}</b> ${status('deal', d.status)}
+          <div class="small muted">${esc(d.title || '')} · ${date(d.start)}${d.end !== d.start ? ' — ' + date(d.end) : ''} · ${ROLE[d.role] || ''}</div></div>
+        <button class="btn sm" type="button" data-open-deal="${d.id}">Открыть сделку →</button></div>`).join('');
+    const m = modal(`<h2>Пока удалить нельзя</h2>
+      <p>У организации <b>${esc(p.name)}</b> ${p.active_deals === 1 ? 'есть незавершённая сделка' : `есть незавершённые сделки: ${p.active_deals}`}. Пока она идёт, у второй стороны должны остаться сделка и документы.</p>
+      <div class="panel" style="padding:4px 14px;margin:0 0 12px">${rows}</div>
+      <p class="small muted" style="margin:0 0 12px">Откройте сделку и нажмите «Отменить сделку» или доведите её до завершения. Затем вернитесь сюда и снова нажмите «Удалить».</p>
+      <div class="actions"><button class="btn ghost" type="button" data-c>Понятно</button></div>`);
+    m.el.querySelector('[data-c]').onclick = () => m.close();
+    m.el.querySelectorAll('[data-open-deal]').forEach((b) => b.onclick = () => {
+      // Переключаемся на эту организацию, чтобы сделка открылась с нужными правами
+      if (state.orgs.some((o) => o.id === orgId)) setOrg(orgId);
+      m.close(); go('#/deals/' + b.dataset.openDeal);
+    });
     return false;
   }
   const del = p.mode === 'DELETE';
