@@ -2,6 +2,7 @@
 import { sb, state, q, rpc, loadCategories } from '../api.js';
 import { esc, skeleton, qs, toMinor, mskToday, plural } from '../ui.js';
 import { EQ_SELECT, productCard, loadFavs, bindFavs, loadRatings } from '../cards.js';
+import { t, catName } from '../i18n.js';
 
 const PAGE = 48;
 const STALE_DAYS = 7;
@@ -13,29 +14,29 @@ export async function render(app, _p, query) {
   const cat = cats.find((c) => c.code === f.cat);
 
   app.innerHTML = `
-    <div class="crumbs"><a href="#/">RUIN</a> › <b>Каталог</b>${cat ? ' › ' + esc(cat.name) : ''}</div>
-    <div class="page-head"><div><h1>${cat ? esc(cat.name) : 'Каталог техники'}</h1><p>Аренда с оператором и без. Цены от исполнителей, бронь онлайн.</p></div></div>
+    <div class="crumbs"><a href="#/">RUIN</a> › <b>${t('Каталог', 'Catalogue')}</b>${cat ? ' › ' + esc(catName(cat)) : ''}</div>
+    <div class="page-head"><div><h1>${cat ? esc(catName(cat)) : t('Каталог техники', 'Machinery catalogue')}</h1><p>${t('Аренда с оператором и без. Цены от исполнителей, бронь онлайн.', 'Rental with or without an operator. Prices from providers, online booking.')}</p></div></div>
     <form class="filters" id="flt">
-      <input class="inp" name="q" value="${esc(f.q)}" placeholder="Марка, модель, задача" aria-label="Поиск">
-      <select class="inp" name="cat" aria-label="Категория"><option value="">Все категории</option>
-        ${cats.map((c) => `<option value="${c.code}" ${c.code === f.cat ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
-      <input class="inp" name="city" value="${esc(f.city)}" placeholder="Город" aria-label="Город" style="min-width:130px;width:140px">
-      <select class="inp" name="fmt" aria-label="Формат"><option value="">Любой формат</option>
-        <option value="op" ${f.fmt === 'op' ? 'selected' : ''}>С оператором</option><option value="noop" ${f.fmt === 'noop' ? 'selected' : ''}>Без оператора</option></select>
-      <input class="inp" name="max" type="number" min="0" step="1" max="1000000000" value="${esc(f.max)}" placeholder="Цена до, ₽" aria-label="Цена до" style="width:130px;min-width:0">
-      <label class="small muted">Свободна с <input class="inp" type="date" name="from" value="${esc(f.from)}" min="${mskToday(1)}" style="width:150px;min-width:0"></label>
-      <label class="small muted">по <input class="inp" type="date" name="to" value="${esc(f.to)}" min="${mskToday(1)}" style="width:150px;min-width:0"></label>
-      <select class="inp" name="sort" aria-label="Сортировка">
-        <option value="new" ${f.sort === 'new' ? 'selected' : ''}>Сначала новые</option>
-        <option value="price_asc" ${f.sort === 'price_asc' ? 'selected' : ''}>Сначала дешевле</option>
-        <option value="price_desc" ${f.sort === 'price_desc' ? 'selected' : ''}>Сначала дороже</option></select>
-      ${f.from ? `<label class="check" style="margin:0"><input type="checkbox" name="stale" value="1" ${f.stale ? 'checked' : ''}> Показать с уточнением</label>` : ''}
-      <button class="btn dark">Показать</button>
-      ${Object.entries(f).some(([k, v]) => v && k !== 'sort') ? '<a class="pill" href="#/catalog">Сбросить</a>' : ''}
+      <input class="inp" name="q" value="${esc(f.q)}" placeholder="${t('Марка, модель, задача', 'Brand, model, task')}" aria-label="${t('Поиск', 'Search')}">
+      <select class="inp" name="cat" aria-label="${t('Категория', 'Category')}"><option value="">${t('Все категории', 'All categories')}</option>
+        ${cats.map((c) => `<option value="${c.code}" ${c.code === f.cat ? 'selected' : ''}>${esc(catName(c))}</option>`).join('')}</select>
+      <input class="inp" name="city" value="${esc(f.city)}" placeholder="${t('Город', 'City')}" aria-label="${t('Город', 'City')}" style="min-width:130px;width:140px">
+      <select class="inp" name="fmt" aria-label="${t('Формат', 'Format')}"><option value="">${t('Любой формат', 'Any format')}</option>
+        <option value="op" ${f.fmt === 'op' ? 'selected' : ''}>${t('С оператором', 'With operator')}</option><option value="noop" ${f.fmt === 'noop' ? 'selected' : ''}>${t('Без оператора', 'Without operator')}</option></select>
+      <input class="inp" name="max" type="number" min="0" step="1" max="1000000000" value="${esc(f.max)}" placeholder="${t('Цена до, ₽', 'Max price, ₽')}" aria-label="${t('Цена до', 'Max price')}" style="width:130px;min-width:0">
+      <label class="small muted">${t('Свободна с', 'Free from')} <input class="inp" type="date" name="from" value="${esc(f.from)}" min="${mskToday(1)}" style="width:150px;min-width:0"></label>
+      <label class="small muted">${t('по', 'to')} <input class="inp" type="date" name="to" value="${esc(f.to)}" min="${mskToday(1)}" style="width:150px;min-width:0"></label>
+      <select class="inp" name="sort" aria-label="${t('Сортировка', 'Sort')}">
+        <option value="new" ${f.sort === 'new' ? 'selected' : ''}>${t('Сначала новые', 'Newest first')}</option>
+        <option value="price_asc" ${f.sort === 'price_asc' ? 'selected' : ''}>${t('Сначала дешевле', 'Cheapest first')}</option>
+        <option value="price_desc" ${f.sort === 'price_desc' ? 'selected' : ''}>${t('Сначала дороже', 'Most expensive first')}</option></select>
+      ${f.from ? `<label class="check" style="margin:0"><input type="checkbox" name="stale" value="1" ${f.stale ? 'checked' : ''}> ${t('Показать с уточнением', 'Include unconfirmed')}</label>` : ''}
+      <button class="btn dark">${t('Показать', 'Show')}</button>
+      ${Object.entries(f).some(([k, v]) => v && k !== 'sort') ? `<a class="pill" href="#/catalog">${t('Сбросить', 'Reset')}</a>` : ''}
     </form>
     <div class="results-info" id="info"></div>
     <div id="res">${skeleton(8)}</div>
-    <div style="text-align:center;margin-top:16px"><button class="btn ghost hidden" id="more">Показать ещё</button></div>`;
+    <div style="text-align:center;margin-top:16px"><button class="btn ghost hidden" id="more">${t('Показать ещё', 'Show more')}</button></div>`;
 
   app.querySelector('#flt').onsubmit = (e) => {
     e.preventDefault();
@@ -81,11 +82,10 @@ export async function render(app, _p, query) {
     const total = rows.total ?? rows.length;
     if (first) {
       app.querySelector('#info').textContent = total
-        ? `Найдено ${total} ${plural(total, 'предложение', 'предложения', 'предложений')}` : '';
+        ? t(`Найдено ${total} ${plural(total, 'предложение', 'предложения', 'предложений')}`, `Found ${total} ${total === 1 ? 'offer' : 'offers'}`) : '';
       if (!rows.length) {
-        res.innerHTML = `<div class="panel empty"><b>Ничего не нашлось</b>Попробуйте убрать часть фильтров или поискать другую категорию.
-          Или разместите заказ — исполнители сами пришлют предложения.
-          <div class="actions" style="justify-content:center"><a class="btn ghost" href="#/catalog">Сбросить фильтры</a><a class="btn" href="#/orders/new${qs({ cat: f.cat })}">Разместить заказ</a></div></div>`;
+        res.innerHTML = `<div class="panel empty"><b>${t('Ничего не нашлось', 'Nothing found')}</b>${t('Попробуйте убрать часть фильтров или поискать другую категорию. Или разместите заказ — исполнители сами пришлют предложения.', 'Try removing some filters or another category. Or post an order — providers will send you offers.')}
+          <div class="actions" style="justify-content:center"><a class="btn ghost" href="#/catalog">${t('Сбросить фильтры', 'Reset filters')}</a><a class="btn" href="#/orders/new${qs({ cat: f.cat })}">${t('Разместить заказ', 'Post an order')}</a></div></div>`;
         return;
       }
       res.innerHTML = '<div class="products"></div>';
@@ -94,7 +94,7 @@ export async function render(app, _p, query) {
     res.querySelector('.products').insertAdjacentHTML('beforeend', rows.map((e) => {
       let html = productCard(e, favs, ratings);
       const stale = Date.now() - new Date(e.availability_confirmed_at) > STALE_DAYS * 864e5;
-      if (stale && !e.is_demo) html = html.replace('<div class="spacer">', '<div class="small warn-text" style="margin-top:6px">Доступность уточняется</div><div class="spacer">');
+      if (stale && !e.is_demo) html = html.replace('<div class="spacer">', '<div class="small warn-text" style="margin-top:6px">' + t('Доступность уточняется', 'Availability to be confirmed') + '</div><div class="spacer">');
       return html;
     }).join(''));
     offset += rows.length; shown += rows.length;
