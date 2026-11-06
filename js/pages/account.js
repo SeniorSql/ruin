@@ -4,7 +4,7 @@ import { esc, status, ORG_TYPE, toast, busy, modal, confirmBox, date } from '../
 import { go, refreshShell, route } from '../app.js';
 import { withActionCode } from '../actionCode.js';
 
-export async function render(app) {
+export async function render(app, _p, query = {}) {
   const contacts = await q(sb.from('org_contacts').select('*').in('org_id', state.orgs.map((o) => o.id)));
   const cById = Object.fromEntries(contacts.map((c) => [c.org_id, c]));
   const invites = await rpc('my_invitations').catch(() => []);
@@ -22,6 +22,7 @@ export async function render(app) {
         </div>
         <div class="panel${hasOrg ? ' hidden' : ''}" id="newOrg"><div class="panel-head-row"><h2>Создать организацию</h2>${hasOrg ? '<button class="btn ghost sm" id="cancelOrg" type="button">Отмена</button>' : ''}</div>
           <p class="muted" style="margin-top:-6px">Нужна, чтобы сдавать технику (исполнитель) или заказывать от имени компании. После создания отправьте её на проверку — обычно это занимает 1 рабочий день.</p>
+          <div class="banner info become-hint hidden"><div>Чтобы сдавать технику, укажите, как вы платите налоги. Частным лицам удобнее всего <b>«Самозанятый»</b> — нужен только ИНН (статус оформляется за 5 минут в приложении «Мой налог»). Имя и телефон мы подставили из профиля.</div></div>
           <form id="of">
             <div class="form-error hidden"></div>
             <label class="f"><span>Тип <i>*</i></span><select class="inp" name="type" required>
@@ -78,27 +79,30 @@ export async function render(app) {
   }));
   app.querySelectorAll('[data-edit]').forEach((b) => b.onclick = () =>
     editOrg(state.orgs.find((o) => o.id === b.dataset.edit), cById[b.dataset.edit] || {}));
-  // Пауза / возобновление сдачи техники
-  app.querySelectorAll('[data-pause]').forEach((b) => b.onclick = async () => {
-    const ok = await confirmBox('Поставить сдачу техники на паузу?', `Что произойдёт:<ul style="margin:8px 0">
-      <li>техника скроется из каталога — новых броней не будет;</li><li>лента заказов закроется, неотвеченные предложения будут отозваны;</li>
-      <li>сделки, техника, учёт парка и рабочий стол останутся доступны.</li></ul>Вернуть всё можно одной кнопкой «Возобновить» — техника сама вернётся в каталог.`, 'Поставить на паузу', true);
-    if (!ok) return;
-    busy(b, async () => {
-      try { await rpc('set_provider_pause', { p_org: b.dataset.pause, p_pause: true }); await loadMe(); await refreshCounters(); refreshShell(); toast('Сдача техники на паузе'); route(); }
-      catch (err) { toast(err.message, true); }
-    });
-  });
-  app.querySelectorAll('[data-resume]').forEach((b) => b.onclick = () => busy(b, async () => {
-    try { await rpc('set_provider_pause', { p_org: b.dataset.resume, p_pause: false }); await loadMe(); await refreshCounters(); refreshShell(); toast('Сдача техники возобновлена — техника вернулась в каталог'); route(); }
-    catch (err) { toast(err.message, true); }
-  }));
   app.querySelectorAll('[data-delorg]').forEach((b) => b.onclick = () => busy(b, async () => {
     if (!(await deleteOrgFlow(b.dataset.delorg))) return;
     await loadMe(); if (state.org) setOrg(state.org.id); await refreshCounters(); refreshShell(); route();
   }));
 
   const addBtn = app.querySelector('#addOrg'), newOrg = app.querySelector('#newOrg');
+  // Частное лицо → исполнитель в один шаг: открываем форму с уже заполненными данными
+  const becomeProvider = () => {
+    const f = newOrg.querySelector('#of');
+    const pc = cById[state.orgs.find((o) => o.type === 'PERSON')?.id] || {};
+    f.type.value = 'SELF_EMPLOYED';
+    if (!f.name.value) f.name.value = state.profile?.full_name || '';
+    if (!f.phone.value) f.phone.value = pc.phone || '';
+    f.provide.checked = true; f.order.checked = true;
+    newOrg.classList.remove('hidden'); addBtn?.parentElement.classList.add('hidden');
+    newOrg.querySelector('.become-hint')?.classList.remove('hidden');
+    newOrg.scrollIntoView({ behavior: 'smooth', block: 'start' }); f.inn.focus({ preventScroll: true });
+  };
+  app.querySelectorAll('[data-become]').forEach((b) => b.onclick = becomeProvider);
+  if (query.become === 'provider') {
+    // Убираем метку из адреса, чтобы форма не открылась снова при перерисовке страницы
+    history.replaceState(null, '', location.pathname + location.search + '#/account');
+    setTimeout(becomeProvider, 50);
+  }
   if (addBtn) {
     addBtn.onclick = () => {
       newOrg.classList.remove('hidden'); addBtn.parentElement.classList.add('hidden');
@@ -107,6 +111,7 @@ export async function render(app) {
     app.querySelector('#cancelOrg').onclick = () => {
       newOrg.classList.add('hidden'); addBtn.parentElement.classList.remove('hidden');
       newOrg.querySelector('#of').reset(); newOrg.querySelector('.form-error').classList.add('hidden');
+      newOrg.querySelector('.become-hint').classList.add('hidden');
     };
   }
 
@@ -246,10 +251,9 @@ function orgCard(o, c = {}) {
     <div class="grow">
       <b>${esc(o.type === 'PERSON' ? 'Частное лицо — ' + o.name : o.name)} ${current ? '<span class="st ok">Текущая</span>' : ''}</b>
       <div class="small muted">${ORG_TYPE[o.type]}${o.inn ? ' · ИНН ' + esc(o.inn) : ''} · роль: ${esc(o.role)} ·
-        ${[o.can_order && 'заказчик', (o.can_provide || o.has_provider_data) && 'исполнитель'].filter(Boolean).join(' и ')}</div>
-      ${o.type !== 'PERSON' && (o.can_provide || o.has_provider_data) ? `<div class="small" style="margin-top:6px">Сдача техники: ${o.can_provide
-        ? '<span class="st ok">активна</span>'
-        : '<span class="st warn">на паузе</span> <span class="muted">— техника скрыта из каталога, новые брони и лента заказов закрыты</span>'}</div>` : ''}
+        ${[o.can_order && 'заказчик', o.can_provide && 'исполнитель'].filter(Boolean).join(' и ')}</div>
+      ${o.type !== 'PERSON' && !o.can_provide && o.has_provider_data ? '<div class="small warn-text" style="margin-top:6px">Роль исполнителя выключена — техника скрыта из каталога. Включить: «Изменить» → галочка «Исполнитель».</div>' : ''}
+      ${o.type === 'PERSON' && !state.orgs.some((x) => x.type !== 'PERSON' && x.can_provide) ? '<div class="small muted" style="margin-top:6px">Есть своя техника? Сдавайте её на RUIN — оформление займёт пару минут.</div>' : ''}
       ${o.type !== 'PERSON' ? `<div style="margin-top:6px">${status('org', o.verification_status)}</div>` : ''}
       ${o.verification_comment && o.verification_status !== 'VERIFIED' ? `<div class="banner warn" style="margin:8px 0 0">Комментарий проверки: ${esc(o.verification_comment)}</div>` : ''}
       ${o.type !== 'PERSON' && o.verification_status === 'DRAFT' ? '<div class="small muted" style="margin-top:6px">Чтобы публиковать технику и отправлять предложения, отправьте организацию на проверку.</div>' : ''}
@@ -258,8 +262,7 @@ function orgCard(o, c = {}) {
       ${!current ? `<button class="btn ghost sm" data-use="${o.id}">Сделать текущей</button>` : ''}
       ${isOwnerAdmin(o) ? `<button class="btn ghost sm" data-edit="${o.id}">Изменить</button>` : ''}
       ${canVerify ? `<button class="btn sm" data-verify="${o.id}">Отправить на проверку</button>` : ''}
-      ${o.type !== 'PERSON' && o.has_provider_data && isOwnerAdmin(o)
-        ? (o.can_provide ? `<button class="btn ghost sm" data-pause="${o.id}">Поставить на паузу</button>` : `<button class="btn sm" data-resume="${o.id}">Возобновить сдачу техники</button>`) : ''}
+      ${o.type === 'PERSON' && !state.orgs.some((x) => x.type !== 'PERSON' && x.can_provide) ? '<button class="btn sm" data-become type="button">Хочу сдавать технику</button>' : ''}
       ${o.type !== 'PERSON' && o.role === 'OWNER' ? `<button class="btn danger sm" data-delorg="${o.id}">Удалить</button>` : ''}
     </div></div>`;
 }
@@ -327,9 +330,7 @@ function editOrg(o, c) {
       <label class="f"><span>${person ? 'Имя' : 'Название'}</span><input class="inp" name="name" value="${esc(o.name)}" required></label>
       ${person ? '' : `<div class="grid2"><label class="f"><span>ИНН</span><input class="inp" name="inn" value="${esc(o.inn || '')}" required></label>
         <label class="f"><span>ОГРН</span><input class="inp" name="ogrn" value="${esc(o.ogrn || '')}"></label></div>
-        ${o.has_provider_data
-          ? `<div class="small muted" style="margin:0 0 8px">Исполнитель: сдача техники ${o.can_provide ? 'активна' : 'на паузе'}. Приостановить или возобновить — кнопкой в карточке организации.</div>`
-          : `<label class="check"><input type="checkbox" name="provide" ${o.can_provide ? 'checked' : ''}> <span>Исполнитель</span></label>`}
+        <label class="check"><input type="checkbox" name="provide" ${o.can_provide ? 'checked' : ''}> <span>Исполнитель — сдаю технику в аренду</span></label>
         <label class="check"><input type="checkbox" name="order" ${o.can_order ? 'checked' : ''}> <span>Заказчик</span></label>`}
       <label class="f"><span>Город</span><input class="inp" name="city" value="${esc(o.city || '')}"></label>
       <div class="grid2"><label class="f"><span>Телефон</span><input class="inp" name="phone" value="${esc(c.phone || '')}"></label>
@@ -343,14 +344,20 @@ function editOrg(o, c) {
       try {
         const args = {
           p_org: o.id, p_name: f.name.value, p_inn: person ? o.inn : f.inn.value.trim(), p_ogrn: person ? null : f.ogrn.value,
-          // Исполнитель с техникой или сделками управляется паузой, здесь роль не меняется
           p_city: f.city.value, p_can_order: person ? true : f.order.checked,
-          p_can_provide: person ? false : (f.provide ? f.provide.checked : o.can_provide),
+          p_can_provide: person ? false : f.provide.checked,
           p_phone: f.phone.value, p_email: f.email.value, p_contact: f.contact.value };
-        // Хотя бы одна роль (исполнитель на паузе тоже считается). Снятие роли заказчика при открытых
-        // заказах и сделках запрещает сервер — он вернёт понятное сообщение со списком.
-        if (!person && !f.order.checked && !(f.provide ? f.provide.checked : o.has_provider_data)) {
+        // Хотя бы одна роль. Снятие роли заказчика при открытых заказах и сделках запрещает сервер —
+        // он вернёт понятное сообщение со списком.
+        if (!person && !f.order.checked && !f.provide.checked) {
           throw new Error('Оставьте хотя бы одну роль: заказчик или исполнитель');
+        }
+        // Снимают «Исполнитель», а техника уже есть — объясняем, что будет (сервер сам скроет и потом вернёт технику)
+        if (!person && o.can_provide && !f.provide.checked && o.has_provider_data) {
+          const ok = await confirmBox('Выключить роль исполнителя?', `Что произойдёт:<ul style="margin:8px 0">
+            <li>ваша техника скроется из каталога — новых броней не будет;</li><li>лента заказов закроется, неотвеченные предложения будут отозваны;</li>
+            <li>текущие сделки, карточки техники и история останутся.</li></ul>Поставите галочку обратно — техника сама вернётся в каталог.`, 'Выключить');
+          if (!ok) return;
         }
         // Смена названия, ИНН или ОГРН — важное действие: подтверждаем кодом из мессенджера
         const reqChanged = !person && (f.name.value.trim() !== (o.name || '') || f.inn.value.trim() !== (o.inn || '') || f.ogrn.value.trim() !== (o.ogrn || ''));
