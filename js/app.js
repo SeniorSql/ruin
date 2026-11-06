@@ -1,6 +1,6 @@
 // Точка входа: шапка, меню, маршрутизация по #/адресам
-import { sb, configured, state, loadMe, setOrg, refreshCounters, loadCategories, isAdmin, canManage } from './api.js';
-import { esc, status, initials, toast } from './ui.js';
+import { sb, configured, state, loadMe, setOrg, refreshCounters, loadCategories, isAdmin, canManage, CONSENT_VERSION } from './api.js';
+import { esc, status, initials, toast, modal } from './ui.js';
 import { initDrafts } from './drafts.js';
 import { maybeShowOnboarding, showOnboarding } from './onboarding.js';
 const ICON = {
@@ -57,7 +57,7 @@ const ROUTES = [
   ['company/:id', 'company'], ['team', 'team'], ['crm', 'crm'], ['park', 'park'], ['analytics', 'analytics'], ['reviews', 'reviews'],
   ['messages', 'messages'], ['messages/:id', 'messages'],
   ['notifications', 'notifications'], ['favorites', 'favorites'],
-  ['admin', 'admin'], ['terms', 'static'], ['privacy', 'static'], ['help', 'static']
+  ['admin', 'admin'], ['terms', 'static'], ['privacy', 'static'], ['consent', 'static'], ['help', 'static']
 ];
 
 function match(path) {
@@ -197,7 +197,7 @@ let cleanup = null;
 const PUBLIC = new Set(['home', 'catalog', 'item', 'auth', 'static', 'company']);
 
 const FOOTER = `<footer class="foot"><span>© RUIN, ${new Date().getFullYear()}</span><a href="#" data-onb>Как пользоваться</a><a href="#/help">Помощь</a>
-  <a href="#/terms">Пользовательское соглашение</a><a href="#/privacy">Персональные данные</a>
+  <a href="#/terms">Пользовательское соглашение</a><a href="#/privacy">Политика обработки ПДн</a><a href="#/consent">Согласие на обработку ПДн</a>
   <span>Фото техники — Wikimedia Commons, свободные лицензии, авторы указаны на фото</span></footer>`;
 
 export async function route() {
@@ -248,11 +248,31 @@ export async function route() {
     const page = await import(`./pages/${m.mod}.js`);
     cleanup = await page.render(app, m.params, query, m.pattern);
     if (!app.querySelector('.foot')) app.insertAdjacentHTML('beforeend', FOOTER);
+    if (m.mod !== 'static') askConsent();
   } catch (err) {
     console.error(err);
     app.innerHTML = `<div class="panel empty"><b>Что-то пошло не так</b>${esc(err.message)}<div><button class="btn ghost" onclick="location.reload()">Обновить</button></div></div>`;
   }
   window.scrollTo(0, 0);
+}
+
+// Пользователи, зарегистрированные до появления отдельного согласия (или до новой редакции), подтверждают его один раз
+let consentOpen = false;
+function askConsent() {
+  if (!state.user || !state.needConsent || consentOpen) return;
+  consentOpen = true;
+  const m = modal(`<h2>Обновили документы</h2>
+    <p>Мы оформили отдельное <a href="#/consent" target="_blank">согласие на обработку персональных данных</a>, обновили <a href="#/privacy" target="_blank">политику</a> и <a href="#/terms" target="_blank">пользовательское соглашение</a>. Чтобы продолжить работу, подтвердите согласие.</p>
+    <form id="cf"><label class="check"><input type="checkbox" name="pd" required><span>Даю согласие на обработку персональных данных и принимаю пользовательское соглашение</span></label>
+      <div class="actions"><button class="btn">Подтвердить</button><button class="btn ghost" type="button" data-out>Выйти из аккаунта</button></div></form>`,
+    { onClose: () => { consentOpen = false; } });
+  m.el.querySelector('[data-out]').onclick = async () => { await sb.auth.signOut(); m.close(); await loadMe(); refreshShell(); go('#/'); };
+  m.el.querySelector('#cf').onsubmit = async (e) => {
+    e.preventDefault();
+    const { error } = await sb.rpc('accept_consents', { p_version: CONSENT_VERSION });
+    if (error) return toast(error.message, true);
+    state.needConsent = false; m.close(); toast('Спасибо, согласие сохранено');
+  };
 }
 
 // ---------- запуск ----------
