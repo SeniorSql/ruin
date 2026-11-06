@@ -44,7 +44,7 @@ async function list(app, o) {
         ${e.moderation_comment && e.status === 'REJECTED' ? `<div class="small" style="color:var(--red)">Модератор: ${esc(e.moderation_comment)}</div>` : ''}</div>
         ${status('equipment', e.status)}</a>`;
     }).join('')}</div>`
-    : emptyState('Пока нет техники', 'Добавьте первую единицу — заказчики увидят её в каталоге после модерации.', canManage() ? '<a class="btn" href="#/fleet/new">Добавить технику</a>' : '')}`;
+    : emptyState('Пока нет техники', 'Добавьте первую единицу — заказчики увидят её в каталоге после модерации.', canManage() && o.can_provide ? '<a class="btn" href="#/fleet/new">Добавить технику</a>' : '')}`;
 }
 
 async function editor(app, o, id) {
