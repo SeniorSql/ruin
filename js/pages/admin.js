@@ -1,5 +1,5 @@
 // Админка: проверка организаций, модерация техники, жалобы (Модуль 12, SCR-ADM)
-import { sb, q, rpc, isAdmin, state, refreshCounters } from '../api.js';
+import { sb, q, rpc, isAdmin, state, refreshCounters, loadMe } from '../api.js';
 import { esc, status, toast, askReason, emptyState, errorState, dateTime, ORG_TYPE, photoOf, priceText, qs, money, mskToday } from '../ui.js';
 import { route, refreshShell } from '../app.js';
 
@@ -104,18 +104,19 @@ async function orgs(box, { status: st, search }) {
   const c = Object.fromEntries(contacts.map((x) => [x.org_id, x]));
   box.innerHTML = `${search !== undefined ? `<form class="filters" id="sf"><input class="inp" name="s" value="${esc(search)}" placeholder="Название или ИНН"><button class="btn dark">Найти</button></form>` : ''}
     ${rows.length ? `<div class="panel">${rows.map((o) => `<div class="row-item" style="align-items:flex-start"><div class="grow">
-      <b>${esc(o.name)}</b> ${status('org', o.verification_status)}
+      <b>${esc(o.name)}</b> ${o.closed_at ? `<span class="st err">Закрыта ${dateTime(o.closed_at)}</span>` : status('org', o.verification_status)}
       <div class="small">${ORG_TYPE[o.type]} · ИНН ${esc(o.inn || '—')} · ОГРН ${esc(o.ogrn || '—')} · ${esc(o.city || '')}</div>
       <div class="small muted">${esc(c[o.id]?.contact_person || '')} · ${esc(c[o.id]?.phone || '')} · ${esc(c[o.id]?.email || '')}</div>
       <div class="small muted">Роли: ${[o.can_order && 'заказчик', o.can_provide && 'исполнитель'].filter(Boolean).join(', ')} · обновлено ${dateTime(o.updated_at)}</div>
       <div class="small"><a href="https://egrul.nalog.ru/" target="_blank" rel="noopener">Проверить в ЕГРЮЛ/ЕГРИП →</a></div>
       ${o.verification_comment ? `<div class="small warn-text">Комментарий: ${esc(o.verification_comment)}</div>` : ''}</div>
       <div class="actions" style="justify-content:flex-end">
-        ${o.verification_status === 'VERIFIED'
+        ${o.closed_at ? '' : o.verification_status === 'VERIFIED'
           ? `<span class="small muted">Уже проверена</span><button class="btn danger sm" data-o="${o.id}" data-d="SUSPENDED">Приостановить</button>`
           : `<button class="btn sm" data-o="${o.id}" data-d="VERIFIED">Подтвердить</button>
              <button class="btn ghost sm" data-o="${o.id}" data-d="REQUIRES_UPDATE">На доработку</button>
              <button class="btn danger sm" data-o="${o.id}" data-d="REJECTED">Отклонить</button>`}
+        ${o.closed_at ? '' : `<button class="btn ghost sm" data-delorg="${o.id}">Удалить организацию</button>`}
       </div></div>`).join('')}</div>` : emptyState(st ? 'Очередь пуста' : 'Ничего не найдено', st
         ? 'Новых заявок нет. Организация попадает сюда, когда её владелец нажимает «Отправить на проверку» в разделе «Профиль и организации».'
         : 'Попробуйте другое название или ИНН.')}`;
@@ -128,6 +129,10 @@ async function orgs(box, { status: st, search }) {
     }
     try { await rpc('admin_review_org', { p_org: b.dataset.o, p_decision: b.dataset.d, p_comment: comment }); toast('Решение сохранено'); route(); }
     catch (err) { toast(err.message, true); }
+  });
+  box.querySelectorAll('[data-delorg]').forEach((b) => b.onclick = async () => {
+    const { deleteOrgFlow } = await import('./account.js');
+    if (await deleteOrgFlow(b.dataset.delorg)) { await loadMe(); refreshShell(); route(); }
   });
 }
 
