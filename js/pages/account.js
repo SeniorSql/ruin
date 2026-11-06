@@ -78,6 +78,21 @@ export async function render(app) {
   }));
   app.querySelectorAll('[data-edit]').forEach((b) => b.onclick = () =>
     editOrg(state.orgs.find((o) => o.id === b.dataset.edit), cById[b.dataset.edit] || {}));
+  // Пауза / возобновление сдачи техники
+  app.querySelectorAll('[data-pause]').forEach((b) => b.onclick = async () => {
+    const ok = await confirmBox('Поставить сдачу техники на паузу?', `Что произойдёт:<ul style="margin:8px 0">
+      <li>техника скроется из каталога — новых броней не будет;</li><li>лента заказов закроется, неотвеченные предложения будут отозваны;</li>
+      <li>сделки, техника, учёт парка и рабочий стол останутся доступны.</li></ul>Вернуть всё можно одной кнопкой «Возобновить» — техника сама вернётся в каталог.`, 'Поставить на паузу', true);
+    if (!ok) return;
+    busy(b, async () => {
+      try { await rpc('set_provider_pause', { p_org: b.dataset.pause, p_pause: true }); await loadMe(); await refreshCounters(); refreshShell(); toast('Сдача техники на паузе'); route(); }
+      catch (err) { toast(err.message, true); }
+    });
+  });
+  app.querySelectorAll('[data-resume]').forEach((b) => b.onclick = () => busy(b, async () => {
+    try { await rpc('set_provider_pause', { p_org: b.dataset.resume, p_pause: false }); await loadMe(); await refreshCounters(); refreshShell(); toast('Сдача техники возобновлена — техника вернулась в каталог'); route(); }
+    catch (err) { toast(err.message, true); }
+  }));
   app.querySelectorAll('[data-delorg]').forEach((b) => b.onclick = () => busy(b, async () => {
     if (!(await deleteOrgFlow(b.dataset.delorg))) return;
     await loadMe(); if (state.org) setOrg(state.org.id); await refreshCounters(); refreshShell(); route();
@@ -208,7 +223,10 @@ function orgCard(o, c = {}) {
     <div class="grow">
       <b>${esc(o.type === 'PERSON' ? 'Частное лицо — ' + o.name : o.name)} ${current ? '<span class="st ok">Текущая</span>' : ''}</b>
       <div class="small muted">${ORG_TYPE[o.type]}${o.inn ? ' · ИНН ' + esc(o.inn) : ''} · роль: ${esc(o.role)} ·
-        ${[o.can_order && 'заказчик', o.can_provide && 'исполнитель'].filter(Boolean).join(' и ')}</div>
+        ${[o.can_order && 'заказчик', (o.can_provide || o.has_provider_data) && 'исполнитель'].filter(Boolean).join(' и ')}</div>
+      ${o.type !== 'PERSON' && (o.can_provide || o.has_provider_data) ? `<div class="small" style="margin-top:6px">Сдача техники: ${o.can_provide
+        ? '<span class="st ok">активна</span>'
+        : '<span class="st warn">на паузе</span> <span class="muted">— техника скрыта из каталога, новые брони и лента заказов закрыты</span>'}</div>` : ''}
       ${o.type !== 'PERSON' ? `<div style="margin-top:6px">${status('org', o.verification_status)}</div>` : ''}
       ${o.verification_comment && o.verification_status !== 'VERIFIED' ? `<div class="banner warn" style="margin:8px 0 0">Комментарий проверки: ${esc(o.verification_comment)}</div>` : ''}
       ${o.type !== 'PERSON' && o.verification_status === 'DRAFT' ? '<div class="small muted" style="margin-top:6px">Чтобы публиковать технику и отправлять предложения, отправьте организацию на проверку.</div>' : ''}
@@ -217,6 +235,8 @@ function orgCard(o, c = {}) {
       ${!current ? `<button class="btn ghost sm" data-use="${o.id}">Сделать текущей</button>` : ''}
       ${isOwnerAdmin(o) ? `<button class="btn ghost sm" data-edit="${o.id}">Изменить</button>` : ''}
       ${canVerify ? `<button class="btn sm" data-verify="${o.id}">Отправить на проверку</button>` : ''}
+      ${o.type !== 'PERSON' && o.has_provider_data && isOwnerAdmin(o)
+        ? (o.can_provide ? `<button class="btn ghost sm" data-pause="${o.id}">Поставить на паузу</button>` : `<button class="btn sm" data-resume="${o.id}">Возобновить сдачу техники</button>`) : ''}
       ${o.type !== 'PERSON' && o.role === 'OWNER' ? `<button class="btn danger sm" data-delorg="${o.id}">Удалить</button>` : ''}
     </div></div>`;
 }
@@ -284,7 +304,9 @@ function editOrg(o, c) {
       <label class="f"><span>${person ? 'Имя' : 'Название'}</span><input class="inp" name="name" value="${esc(o.name)}" required></label>
       ${person ? '' : `<div class="grid2"><label class="f"><span>ИНН</span><input class="inp" name="inn" value="${esc(o.inn || '')}" required></label>
         <label class="f"><span>ОГРН</span><input class="inp" name="ogrn" value="${esc(o.ogrn || '')}"></label></div>
-        <label class="check"><input type="checkbox" name="provide" ${o.can_provide ? 'checked' : ''}> <span>Исполнитель</span></label>
+        ${o.has_provider_data
+          ? `<div class="small muted" style="margin:0 0 8px">Исполнитель: сдача техники ${o.can_provide ? 'активна' : 'на паузе'}. Приостановить или возобновить — кнопкой в карточке организации.</div>`
+          : `<label class="check"><input type="checkbox" name="provide" ${o.can_provide ? 'checked' : ''}> <span>Исполнитель</span></label>`}
         <label class="check"><input type="checkbox" name="order" ${o.can_order ? 'checked' : ''}> <span>Заказчик</span></label>`}
       <label class="f"><span>Город</span><input class="inp" name="city" value="${esc(o.city || '')}"></label>
       <div class="grid2"><label class="f"><span>Телефон</span><input class="inp" name="phone" value="${esc(c.phone || '')}"></label>
@@ -298,24 +320,14 @@ function editOrg(o, c) {
       try {
         const args = {
           p_org: o.id, p_name: f.name.value, p_inn: person ? o.inn : f.inn.value.trim(), p_ogrn: person ? null : f.ogrn.value,
-          p_city: f.city.value, p_can_order: person ? true : f.order.checked, p_can_provide: person ? false : f.provide.checked,
+          // Исполнитель с техникой или сделками управляется паузой, здесь роль не меняется
+          p_city: f.city.value, p_can_order: person ? true : f.order.checked,
+          p_can_provide: person ? false : (f.provide ? f.provide.checked : o.can_provide),
           p_phone: f.phone.value, p_email: f.email.value, p_contact: f.contact.value };
-        // Снятие роли: заранее показываем, что произойдёт с техникой, предложениями и заказами
-        if (!person) {
-          if (!f.order.checked && !f.provide.checked) throw new Error('Оставьте хотя бы одну роль: заказчик или исполнитель');
-          const lose = [];
-          if (o.can_provide && !f.provide.checked) {
-            const [eq, of] = await Promise.all([
-              q(sb.from('equipment').select('id').eq('org_id', o.id).in('status', ['PUBLISHED', 'PENDING_MODERATION'])),
-              q(sb.from('offers').select('id').eq('provider_org_id', o.id).in('status', ['SUBMITTED', 'SELECTED']))]);
-            lose.push(`<li>техника скроется из каталога: <b>${eq.length}</b> (вернуть можно, снова включив роль и нажав «Показать»)</li>`);
-            if (of.length) lose.push(`<li>ваши неотвеченные предложения на заказы будут отозваны: <b>${of.length}</b></li>`);
-          }
-          if (o.can_order && !f.order.checked) {
-            const or = await q(sb.from('orders').select('id').eq('customer_org_id', o.id).in('status', ['DRAFT', 'PUBLISHED', 'OFFERS_RECEIVED', 'NEGOTIATION']));
-            if (or.length) lose.push(`<li>открытые заказы будут отменены: <b>${or.length}</b></li>`);
-          }
-          if (lose.length && !(await confirmBox('Снять роль?', `Что произойдёт:<ul style="margin:8px 0">${lose.join('')}</ul>Сделки, которые уже идут, продолжатся как обычно и останутся в меню.`, 'Снять роль', true))) return;
+        // Хотя бы одна роль (исполнитель на паузе тоже считается). Снятие роли заказчика при открытых
+        // заказах и сделках запрещает сервер — он вернёт понятное сообщение со списком.
+        if (!person && !f.order.checked && !(f.provide ? f.provide.checked : o.has_provider_data)) {
+          throw new Error('Оставьте хотя бы одну роль: заказчик или исполнитель');
         }
         // Смена названия, ИНН или ОГРН — важное действие: подтверждаем кодом из мессенджера
         const reqChanged = !person && (f.name.value.trim() !== (o.name || '') || f.inn.value.trim() !== (o.inn || '') || f.ogrn.value.trim() !== (o.ogrn || ''));
