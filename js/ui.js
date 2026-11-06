@@ -2,6 +2,8 @@
 
 export const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// Ссылка из данных пользователя: только http(s) и внутренние #/ — защита от javascript:-ссылок
+export const safeUrl = (u) => esc(/^(https?:\/\/|#\/)/i.test(String(u ?? '').trim()) ? String(u).trim() : '#');
 
 const nf = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
 export const money = (minor) => minor == null ? '—' : nf.format(Number(minor) / 100) + ' ₽';
