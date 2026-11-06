@@ -3,37 +3,39 @@ import { sb, state, q, rpc, loadCategories } from '../api.js';
 import { esc, photoOf, skeleton, plural } from '../ui.js';
 import { EQ_SELECT, productCard, loadFavs, bindFavs, loadRatings } from '../cards.js';
 import { icon } from '../app.js';
+import { t, catName } from '../i18n.js';
 
 const HERO = 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Caterpillar_320.jpg/960px-Caterpillar_320.jpg';
 
 export async function render(app) {
   const cats = await loadCategories();
+  const byCode = Object.fromEntries(cats.map((c) => [c.code, c]));
   app.innerHTML = `
   <section class="hero">
     <div class="hero-copy">
-      <div class="overline"><i></i> МАРКЕТПЛЕЙС СТРОИТЕЛЬНОЙ ТЕХНИКИ</div>
-      <h1>Работа начинается<br>с <em>правильной техники</em></h1>
-      <p>Сравнивайте предложения, выбирайте проверенных исполнителей и бронируйте технику без лишних звонков.</p>
-      <form class="hero-search" id="heroSearch"><input name="q" placeholder="Какая техника нужна вашему проекту?" aria-label="Поиск"><button class="btn">Подобрать</button></form>
-      <div class="chips"><span>Ищут сейчас:</span>
-        <a href="#/catalog?cat=excavators">Экскаваторы</a><a href="#/catalog?cat=truck_cranes">Автокраны</a><a href="#/catalog?cat=dump_trucks">Самосвалы</a></div>
+      <div class="overline"><i></i> ${t('МАРКЕТПЛЕЙС СТРОИТЕЛЬНОЙ ТЕХНИКИ', 'CONSTRUCTION MACHINERY MARKETPLACE')}</div>
+      <h1>${t('Работа начинается<br>с <em>правильной техники</em>', 'Great work starts<br>with <em>the right machinery</em>')}</h1>
+      <p>${t('Сравнивайте предложения, выбирайте проверенных исполнителей и бронируйте технику без лишних звонков.', 'Compare offers, choose verified providers and book machinery without endless calls.')}</p>
+      <form class="hero-search" id="heroSearch"><input name="q" placeholder="${t('Какая техника нужна вашему проекту?', 'What machinery does your project need?')}" aria-label="${t('Поиск', 'Search')}"><button class="btn">${t('Подобрать', 'Find')}</button></form>
+      <div class="chips"><span>${t('Ищут сейчас:', 'Popular now:')}</span>
+        ${['excavators', 'truck_cranes', 'dump_trucks'].map((c) => `<a href="#/catalog?cat=${c}">${esc(catName(byCode[c] || { code: c, name: c }))}</a>`).join('')}</div>
     </div>
-    <div class="hero-visual"><img src="${HERO}" alt="Гусеничный экскаватор на объекте" referrerpolicy="no-referrer">
-      <div class="hero-sticker"><b id="heroCount">…</b><span>единиц техники на RUIN</span></div></div>
+    <div class="hero-visual"><img src="${HERO}" alt="${t('Гусеничный экскаватор на объекте', 'Crawler excavator on site')}" referrerpolicy="no-referrer">
+      <div class="hero-sticker"><b id="heroCount">…</b><span>${t('единиц техники на RUIN', 'machines on RUIN')}</span></div></div>
   </section>
   <div class="benefits">
-    <div class="benefit"><div class="benefit-ic">${icon('shield')}</div><div><b>Проверенные исполнители</b><small>Реквизиты сверены модератором</small></div></div>
-    <div class="benefit"><div class="benefit-ic">${icon('list')}</div><div><b>Биржа заказов</b><small>Опишите задачу — исполнители пришлют цены</small></div></div>
-    <div class="benefit"><div class="benefit-ic">${icon('deal')}</div><div><b>Без двойных броней</b><small>Календарь занятости обновляется сразу</small></div></div>
+    <div class="benefit"><div class="benefit-ic">${icon('shield')}</div><div><b>${t('Проверенные исполнители', 'Verified providers')}</b><small>${t('Реквизиты сверены модератором', 'Company details checked by a moderator')}</small></div></div>
+    <div class="benefit"><div class="benefit-ic">${icon('list')}</div><div><b>${t('Биржа заказов', 'Order exchange')}</b><small>${t('Опишите задачу — исполнители пришлют цены', 'Describe the job — providers send their prices')}</small></div></div>
+    <div class="benefit"><div class="benefit-ic">${icon('deal')}</div><div><b>${t('Без двойных броней', 'No double bookings')}</b><small>${t('Календарь занятости обновляется сразу', 'Availability calendar updates instantly')}</small></div></div>
   </div>
-  <div class="section-head"><div><div class="eyebrow">БЫСТРЫЙ ДОСТУП</div><h2>Найдите свою категорию</h2></div><a class="see-all" href="#/catalog">Весь каталог <span>→</span></a></div>
+  <div class="section-head"><div><div class="eyebrow">${t('БЫСТРЫЙ ДОСТУП', 'QUICK ACCESS')}</div><h2>${t('Найдите свою категорию', 'Find your category')}</h2></div><a class="see-all" href="#/catalog">${t('Весь каталог', 'Full catalogue')} <span>→</span></a></div>
   <section class="cats" id="cats">${cats.slice(0, 12).map(() => '<div class="skeleton" style="height:140px"></div>').join('')}</section>
-  <div class="section-head"><div><div class="eyebrow">ПРЕДЛОЖЕНИЯ ИСПОЛНИТЕЛЕЙ</div><h2>Свежая техника в каталоге</h2></div><a class="see-all" href="#/catalog">Смотреть все <span>→</span></a></div>
+  <div class="section-head"><div><div class="eyebrow">${t('ПРЕДЛОЖЕНИЯ ИСПОЛНИТЕЛЕЙ', 'PROVIDER OFFERS')}</div><h2>${t('Свежая техника в каталоге', 'New in the catalogue')}</h2></div><a class="see-all" href="#/catalog">${t('Смотреть все', 'See all')} <span>→</span></a></div>
   <section id="fresh">${skeleton(5)}</section>
-  <div class="wide-banner"><div><b>Есть своя техника? Находите заказчиков на RUIN</b><p>Создайте организацию исполнителя, пройдите проверку и получайте заказы из вашего региона.</p></div>
-    <a class="btn dark" href="${state.user ? '#/account' : '#/register'}">Стать исполнителем →</a></div>
-  <div class="wide-banner accent"><div><b>Не нашли подходящую технику?</b><p id="ordersInfo">Разместите заказ — исполнители сами пришлют предложения.</p></div>
-    <a class="btn dark" href="#/orders/new">Разместить заказ →</a></div>`;
+  <div class="wide-banner"><div><b>${t('Есть своя техника? Находите заказчиков на RUIN', 'Own machinery? Find customers on RUIN')}</b><p>${t('Создайте организацию исполнителя, пройдите проверку и получайте заказы из вашего региона.', 'Create a provider organisation, get verified and receive orders from your region.')}</p></div>
+    <a class="btn dark" href="${state.user ? '#/account' : '#/register'}">${t('Стать исполнителем →', 'Become a provider →')}</a></div>
+  <div class="wide-banner accent"><div><b>${t('Не нашли подходящую технику?', 'Could not find the right machine?')}</b><p id="ordersInfo">${t('Разместите заказ — исполнители сами пришлют предложения.', 'Post an order — providers will send you offers.')}</p></div>
+    <a class="btn dark" href="#/orders/new">${t('Разместить заказ →', 'Post an order →')}</a></div>`;
 
   app.querySelector('#heroSearch').onsubmit = (e) => {
     e.preventDefault();
@@ -47,8 +49,9 @@ export async function render(app) {
     rpc('open_orders_count').catch(() => 0)
   ]);
   app.querySelector('#heroCount').textContent = all.length;
-  if (openOrders) app.querySelector('#ordersInfo').textContent =
-    `Сейчас на бирже ${openOrders} ${plural(openOrders, 'открытый заказ', 'открытых заказа', 'открытых заказов')}. Разместите свой — исполнители пришлют предложения.`;
+  if (openOrders) app.querySelector('#ordersInfo').textContent = t(
+    `Сейчас на бирже ${openOrders} ${plural(openOrders, 'открытый заказ', 'открытых заказа', 'открытых заказов')}. Разместите свой — исполнители пришлют предложения.`,
+    `There ${openOrders === 1 ? 'is 1 open order' : `are ${openOrders} open orders`} on the exchange now. Post yours — providers will send offers.`);
 
   const byCat = {};
   all.forEach((e) => { (byCat[e.category_id] ||= []).push(e); });
@@ -57,13 +60,13 @@ export async function render(app) {
     const list = byCat[c.id] || [];
     const p = list[0] && photoOf(list[0]);
     return `<a class="cat" href="#/catalog?cat=${c.code}"><div class="cat-img" style="${p ? `background-image:url('${esc(p.url)}')` : ''}"></div>
-      <b>${esc(c.name)}</b><small>${list.length ? `${list.length} ${plural(list.length, 'предложение', 'предложения', 'предложений')}` : 'Пока нет предложений'}</small></a>`;
+      <b>${esc(catName(c))}</b><small>${list.length ? `${list.length} ${t(plural(list.length, 'предложение', 'предложения', 'предложений'), list.length === 1 ? 'offer' : 'offers')}` : t('Пока нет предложений', 'No offers yet')}</small></a>`;
   }).join('');
 
   const freshEl = app.querySelector('#fresh');
   const ratings = await loadRatings(fresh);
   freshEl.innerHTML = fresh.length
     ? `<div class="products">${fresh.map((e) => productCard(e, favs, ratings)).join('')}</div>`
-    : '<div class="panel empty"><b>Каталог пока пуст</b>Станьте первым исполнителем на RUIN.</div>';
+    : `<div class="panel empty"><b>${t('Каталог пока пуст', 'The catalogue is empty for now')}</b>${t('Станьте первым исполнителем на RUIN.', 'Become the first provider on RUIN.')}</div>`;
   bindFavs(freshEl);
 }
