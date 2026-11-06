@@ -1,5 +1,5 @@
 // Исполнитель: лента заказов, карточка заказа, форма предложения, мои предложения (SCR-ORD-06..09)
-import { sb, state, q, rpc, loadCategories, seenOrders, markOrderSeen, refreshCounters, canManage } from '../api.js';
+import { sb, state, q, rpc, loadCategories, seenOrders, markOrderSeen, refreshCounters, canManage, actsAsProvider } from '../api.js';
 import { esc, money, status, toast, busy, emptyState, errorState, date, period, FORMAT, dateTime, timeLeft, toMinor, fromMinor,
   statusLabel, qs, photoOf } from '../ui.js';
 import { go, route, refreshShell } from '../app.js';
@@ -7,9 +7,13 @@ import { go, route, refreshShell } from '../app.js';
 export async function render(app, params, query, pattern) {
   await loadCategories();
   const o = state.org;
-  if (!o.can_provide) {
-    app.innerHTML = emptyState('Текущая организация не исполнитель', 'Лента заказов доступна организациям-исполнителям. Создайте организацию или переключитесь на неё слева.',
-      '<a class="btn" href="#/account">Создать организацию</a>');
+  // «Мои предложения» (история) видны и при выключенной роли; лента новых заказов — только исполнителю
+  if (pattern === 'offers' ? !actsAsProvider(o) : !o.can_provide) {
+    app.innerHTML = actsAsProvider(o)
+      ? emptyState('Роль исполнителя выключена', 'Лента новых заказов доступна, когда у организации включена роль «Исполнитель». Ваши сделки, техника и предложения по-прежнему доступны в меню слева.',
+        '<a class="btn" href="#/account">Включить роль в профиле организации</a>')
+      : emptyState('Текущая организация не исполнитель', 'Лента заказов доступна организациям-исполнителям. Создайте организацию или переключитесь на неё слева.',
+        '<a class="btn" href="#/account">Создать организацию</a>');
     return;
   }
   if (pattern === 'offers') return myOffers(app);
@@ -182,10 +186,10 @@ async function myOffers(app) {
   let rows;
   try { rows = await q(sb.from('offers').select('*, orders(id,title,city,start_date,end_date,status), equipment(title,photos)').eq('provider_org_id', state.org.id).order('created_at', { ascending: false }).limit(200)); }
   catch (err) { app.innerHTML = errorState(err); return; }
-  app.innerHTML = `<div class="page-head"><div><h1>Мои предложения</h1><p>История ответов на заказы и их результат.</p></div><a class="btn" href="#/feed">Лента заказов</a></div>
+  app.innerHTML = `<div class="page-head"><div><h1>Мои предложения</h1><p>История ответов на заказы и их результат.</p></div>${state.org.can_provide ? '<a class="btn" href="#/feed">Лента заказов</a>' : ''}</div>
     ${rows.length ? `<div class="panel">${rows.map((f) => { const p = photoOf(f.equipment || {}); return `<a class="row-item" href="#/feed/${f.order_id}">
       ${p ? `<img src="${esc(p.url)}" alt="" referrerpolicy="no-referrer">` : '<img alt="">'}
       <div class="grow"><b>${esc(f.orders?.title)}</b><div class="small muted">${esc(f.equipment?.title)} · ${esc(f.orders?.city)} · ${date(f.orders?.start_date)} — ${date(f.orders?.end_date)}</div>
       <div class="small num">${money(f.total_minor)} · редакция №${f.rev}</div></div>${status('offer', f.status)}</a>`; }).join('')}</div>`
-    : emptyState('Предложений пока нет', 'Откройте ленту заказов и ответьте на подходящий заказ.', '<a class="btn" href="#/feed">Лента заказов</a>')}`;
+    : emptyState('Предложений пока нет', 'Откройте ленту заказов и ответьте на подходящий заказ.', state.org.can_provide ? '<a class="btn" href="#/feed">Лента заказов</a>' : '')}`;
 }
