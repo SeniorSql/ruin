@@ -1,5 +1,5 @@
 // Точка входа: шапка, меню, маршрутизация по #/адресам
-import { sb, configured, state, loadMe, setOrg, refreshCounters, loadCategories, isAdmin, canManage, CONSENT_VERSION } from './api.js';
+import { sb, configured, state, loadMe, setOrg, refreshCounters, loadCategories, isAdmin, canManage, CONSENT_VERSION, actsAsProvider, actsAsCustomer } from './api.js';
 import { esc, status, initials, toast, modal, WORDMARK } from './ui.js';
 import { t, isEn, setLang } from './i18n.js';
 import { initDrafts } from './drafts.js';
@@ -140,11 +140,11 @@ function renderSide(active) {
     ${state.user && (!o || canManage(o)) ? link('#/orders/new', 'plus', t('Разместить заказ', 'Post an order')) : ''}
     ${link('#/support', 'chat', t('Поддержка', 'Support'))}</nav>`;
   if (state.user && o) {
-    if (o.can_order) {
+    if (actsAsCustomer(o)) {
       html += `<div class="nav-group customer"><div class="nav-role">${icon('list', 16)}<span>${t('Я заказчик', 'I am a customer')}</span><small>${t('арендую технику', 'I rent machinery')}</small></div><nav class="nav">
         ${link('#/orders', 'list', t('Мои заказы', 'My orders'), c.orders_offers)}${link('#/deals?tab=customer', 'deal', t('Сделки', 'Deals'), c.deals_customer, c.deals_customer_wait)}</nav></div>`;
     }
-    if (o.can_provide) {
+    if (actsAsProvider(o)) {
       html += `<div class="nav-group provider"><div class="nav-role">${icon('truck', 16)}<span>${t('Я исполнитель', 'I am a provider')}</span><small>${t('сдаю технику', 'I rent out machinery')}</small></div><nav class="nav">
         ${link('#/crm', 'desk', t('Рабочий стол', 'Desk'), c.crm_due)}${link('#/fleet', 'truck', t('Моя техника', 'My machinery'))}${link('#/park', 'gauge', t('Учёт парка', 'Fleet management'))}${link('#/feed', 'feed', t('Лента заказов', 'Order feed'), c.feed_new)}
         ${link('#/offers', 'send', t('Мои предложения', 'My offers'))}${link('#/deals?tab=provider', 'deal', t('Сделки', 'Deals'), c.deals_provider, c.deals_provider_wait)}</nav></div>`;
@@ -189,7 +189,7 @@ export function refreshShell() {
   // Для сделок подсвечиваем кнопку в блоке нужной роли (заказчик или исполнитель)
   let saved = null;
   try { saved = sessionStorage.getItem('ruin.dealTab'); } catch {}
-  const dealTab = query.tab || saved || (state.org?.can_order ? 'customer' : 'provider');
+  const dealTab = query.tab || saved || (actsAsCustomer() ? 'customer' : 'provider');
   const activeMap = { '': '#/', catalog: '#/catalog', item: '#/catalog', orders: path === 'orders/new' ? '#/orders/new' : '#/orders',
     deals: '#/deals?tab=' + dealTab, fleet: '#/fleet', feed: '#/feed', offers: '#/offers', messages: '#/messages',
     notifications: '#/notifications', account: '#/account', admin: '#/admin', team: '#/team', analytics: '#/analytics', company: '#/catalog', reviews: '#/reviews', crm: '#/crm', park: '#/park', support: '#/support', help: '#/support' };
