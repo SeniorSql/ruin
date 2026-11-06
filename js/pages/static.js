@@ -1,4 +1,7 @@
 // Справочные страницы. Тексты соглашений — черновики, до запуска их должен утвердить юрист (L-01, L-54)
+import { isEn } from '../i18n.js';
+import { contactsHtml, faqHtml } from '../support.js';
+
 const DRAFT = '<div class="banner warn"><b>Черновик.</b>&nbsp;Текст подготовлен как основа и должен быть проверен и утверждён юристом до открытия сервиса для всех.</div>';
 
 // Оператор персональных данных и платформы (данные ЕГРИП)
@@ -38,9 +41,60 @@ const PAGES = {
     <h2>Как получить предложения от нескольких исполнителей</h2><p>Разместите заказ: укажите категорию, даты и адрес. Проверенные исполнители пришлют предложения, их можно сравнить в таблице и выбрать лучшее.</p>
     <h2>Как сдавать свою технику</h2><ol><li>В разделе «Профиль и организации» создайте организацию (ИП, юрлицо или самозанятый) и отправьте её на проверку.</li><li>Добавьте технику: характеристики, минимум 3 фото, цены и условия.</li><li>После проверки организации отправьте карточку на модерацию — после публикации её увидят заказчики.</li><li>Отвечайте на брони и заказы из ленты, держите календарь актуальным.</li></ol>
     <h2>Почему скрыты телефоны</h2><p>Чтобы обе стороны были защищены правилами сделки, контакты открываются после её подтверждения.</p>
-    <h2>Связаться с поддержкой</h2><p>[Укажите email или Telegram поддержки]</p>`
+    <h2>Связаться с поддержкой</h2><p>Все контакты и ответы на частые вопросы — на странице <a href="#/support">«Поддержка»</a>.</p>`
 };
 
+// ---------- English version (for information; the Russian version prevails) ----------
+const OP_EN = 'Sole proprietor Etibar Khudaverdiyevich Ismailov (INN 771572170870, OGRNIP 326774600325074), address: Altufyevskoye Shosse 26A, apt. 72, Moscow, Russia';
+const DRAFT_EN = '<div class="banner warn"><b>Draft.</b>&nbsp;This text is a working basis and must be reviewed and approved by a lawyer before the service opens to everyone.</div>';
+const NOTE_EN = '<div class="banner info">English translation for information only. In case of any discrepancy, the Russian version prevails.</div>';
+const EDITION_EN = '<p class="small muted">Version of 6 November 2026</p>';
+
+const PAGES_EN = {
+  terms: `<h1>Terms of use</h1>${NOTE_EN}${DRAFT_EN}
+    <h2>1. About the service</h2><p>RUIN is an online marketplace where customers find construction machinery and owners (providers) publish their offers. The platform is not a party to the rental or service agreement: the agreement is made directly between the customer and the provider.</p>
+    <h2>2. Registration and organisations</h2><p>Users provide accurate details. Actions on the platform are performed on behalf of an organisation (including an individual's personal profile). Providers have their company details verified before publishing machinery.</p>
+    <h2>3. Bookings and deals</h2><p>Booking or selecting an offer means the customer agrees to the terms shown before confirmation. A deal is confirmed once the provider confirms it. A booking not confirmed within 12 hours is cancelled automatically.</p>
+    <h2>4. Payment</h2><p>At this stage payments are made directly between the parties. The platform does not accept or hold money or bank card details.</p>
+    <h2>5. Cancellation</h2><p>Cancellation terms are shown on the listing and recorded in the deal. Late cancellations and no-shows affect the parties' reputation.</p>
+    <h2>6. Contacts and bypassing the platform</h2><p>The parties' contacts open after the deal is confirmed. Phone numbers, emails and links in descriptions and messages are hidden automatically before that.</p>
+    <h2>7. Content</h2><p>The provider is responsible for accurate descriptions and the rights to published photos. The platform may hide listings that break the rules.</p>
+    <h2>8. Platform contacts</h2><p>${OP_EN}. Email: <a href="mailto:${MAIL}">${MAIL}</a>.</p>${EDITION_EN}`,
+  privacy: `<h1>Personal data processing policy</h1>${NOTE_EN}${DRAFT_EN}
+    <h2>1. Operator</h2><p>${OP_EN}. Email for requests: <a href="mailto:${MAIL}">${MAIL}</a>.</p>
+    <h2>2. What data we process</h2><p>Name, email, phone; details of organisations and sole proprietors (name, INN, OGRN/OGRNIP, city, contact person); information about machinery, orders and deals; messages in deal chats; site addresses; technical login data (date and time, browser information).</p>
+    <h2>3. Why</h2><p>Registration and login; running the catalogue, order exchange and deals; communication between deal parties; notifications (including Telegram and MAX — at the user's choice); verification of organisations; handling claims and complaints; compliance with the law.</p>
+    <h2>4. Legal grounds</h2><p>The user's consent (<a href="#/consent">Personal data consent</a>), the agreement with the user (<a href="#/terms">Terms of use</a>), and legal obligations.</p>
+    <h2>5. Who sees your data</h2><p>Contacts and the exact site address are visible only to the counterparty of a confirmed deal. The operator accesses data only to verify organisations, moderate and handle requests. Telegram and MAX notifications are sent without names or contacts.</p>
+    <h2>6. Where data is stored</h2><p>[To be specified. To open the service to Russian citizens, data must be stored on servers in Russia — Federal Law 152-FZ, Art. 18 Part 5.]</p>
+    <h2>7. Retention</h2><p>Data is kept while the account exists and deleted within 30 days after consent is withdrawn or the account is deleted. Deal records and documents are kept for the periods required by law (including 5 years for primary documents).</p>
+    <h2>8. Protection</h2><p>Access to data is role-based; connections are encrypted (HTTPS); passwords are stored only as hashes; important actions are confirmed with a code.</p>
+    <h2>9. Your rights</h2><p>You can find out what data we process, correct it, withdraw your consent or delete your account by writing to <a href="mailto:${MAIL}">${MAIL}</a>. We reply within 10 business days.</p>${EDITION_EN}`,
+  consent: `<h1>Consent to personal data processing</h1>${NOTE_EN}${DRAFT_EN}
+    <p>By registering on ru-in.ru (RUIN), I freely, of my own will and in my own interest, give my consent to the operator — ${OP_EN} — to process my personal data on the following terms.</p>
+    <h2>1. Purpose</h2><p>Registration and use of the RUIN service: machinery catalogue, orders, deals, communication with deal parties, notifications, verification of organisations, handling requests.</p>
+    <h2>2. What data</h2><p>Surname, first name, patronymic; email; phone; details of the organisation or sole proprietor I act for; information about machinery, orders and deals; messages in deal chats; site addresses.</p>
+    <h2>3. What actions</h2><p>Collection, recording, systematisation, accumulation, storage, clarification (updating, changing), retrieval, use, transfer (provision, access) to the counterparty of a confirmed deal, blocking, deletion and destruction — with or without automation.</p>
+    <h2>4. Term and withdrawal</h2><p>The consent is valid until withdrawn. You can withdraw it by writing to <a href="mailto:${MAIL}">${MAIL}</a>. After withdrawal the operator stops processing and deletes the data within 30 days, except data that must be kept by law.</p>
+    <p>More details in the <a href="#/privacy">Personal data processing policy</a>.</p>${EDITION_EN}`,
+  help: `<h1>Help</h1>
+    <h2>How to rent machinery</h2><ol><li>Find a machine in the catalogue and choose dates — the calculator shows the price.</li><li>Click “Book”, enter the site address and confirm the terms.</li><li>The provider confirms the booking within 12 hours. Then contacts and chat open.</li><li>After the work is done, confirm completion of the deal.</li></ol>
+    <h2>How to get offers from several providers</h2><p>Post an order: category, dates and address. Verified providers will send offers — compare them in a table and choose the best one.</p>
+    <h2>How to rent out your machinery</h2><ol><li>In “Profile and organisations” create an organisation (sole proprietor, company or self-employed) and submit it for review.</li><li>Add machinery: specs, at least 3 photos, prices and terms.</li><li>After verification send the listing to moderation — once published, customers will see it.</li><li>Respond to bookings and orders from the feed and keep your calendar up to date.</li></ol>
+    <h2>Why phone numbers are hidden</h2><p>Contacts open after the deal is confirmed so both parties are protected by its terms.</p>
+    <h2>Contact support</h2><p>See the <a href="#/support">Support</a> page.</p>`
+};
+
+function supportPage() {
+  const en = isEn();
+  return `<h1>${en ? 'Support' : 'Поддержка'}</h1>
+    <p class="muted">${en ? 'Answers to common questions are below. You can also ask the assistant — the round button in the bottom-right corner.' : 'Ниже — ответы на частые вопросы. Можно спросить помощника — круглая кнопка в правом нижнем углу.'}</p>
+    <h2>${en ? 'Contacts' : 'Контакты'}</h2>${contactsHtml()}
+    <h2>${en ? 'Frequently asked questions' : 'Частые вопросы'}</h2>${faqHtml()}`;
+}
+
 export function render(app, _p, _q, pattern) {
-  app.innerHTML = `<div class="panel prose">${PAGES[pattern]}</div>`;
+  if (pattern === 'support') { app.innerHTML = `<div class="panel prose">${supportPage()}</div>`; return; }
+  const html = (isEn() && PAGES_EN[pattern]) || PAGES[pattern];
+  app.innerHTML = `<div class="panel prose">${html}</div>`;
 }
