@@ -55,6 +55,9 @@ export async function loadCategories() {
 }
 export const categoryById = (id) => state.categories.find((c) => c.id === Number(id));
 
+// Редакция согласия на обработку ПДн и пользовательского соглашения. Поменяли текст — повысьте версию, и пользователи подтвердят заново.
+export const CONSENT_VERSION = '2026-11-06';
+
 export async function loadMe() {
   const { data: { session } } = await sb.auth.getSession();
   state.user = session?.user || null;
@@ -65,6 +68,11 @@ export async function loadMe() {
     q(sb.from('organization_members').select('role,status,organizations(*)').eq('user_id', state.user.id).eq('status', 'ACTIVE'))
   ]);
   state.profile = profile;
+  // Принял ли пользователь текущую редакцию согласия на обработку ПДн (если таблицы ещё нет — не спрашиваем)
+  try {
+    const { data: c, error: ce } = await sb.from('user_consents').select('id').eq('user_id', state.user.id).eq('doc', 'pd_consent').eq('version', CONSENT_VERSION).limit(1);
+    state.needConsent = !ce && !c?.length;
+  } catch { state.needConsent = false; }
   state.orgs = (members || []).map((m) => ({ ...m.organizations, role: m.role }))
     .sort((a, b) => (a.type === 'PERSON') - (b.type === 'PERSON') || a.created_at.localeCompare(b.created_at));
   let saved = null;
