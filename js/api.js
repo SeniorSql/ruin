@@ -1,5 +1,6 @@
 // Подключение к Supabase и состояние пользователя (кто вошёл, от имени какой организации действует)
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
+import { t } from './i18n.js';
 
 const cfg = window.RUIN_CONFIG || {};
 export const configured = cfg.SUPABASE_URL && !cfg.SUPABASE_URL.includes('YOUR-PROJECT');
@@ -22,14 +23,14 @@ const CTX_KEY = 'ruin.ctx';
 // Понятные сообщения вместо технических ошибок
 export function humanError(err) {
   const m = err?.message || String(err);
-  if (/Invalid login credentials/i.test(m)) return 'Неверный email или пароль';
-  if (/Email not confirmed/i.test(m)) return 'Подтвердите email по ссылке из письма';
-  if (/User already registered/i.test(m)) return 'Пользователь с таким email уже есть. Попробуйте войти';
-  if (/Password should be/i.test(m)) return 'Пароль слишком простой: минимум 10 символов';
-  if (/rate limit/i.test(m)) return 'Слишком много попыток. Подождите немного';
-  if (/Failed to fetch|NetworkError/i.test(m)) return 'Нет связи с сервером. Проверьте интернет';
-  if (/JWT expired/i.test(m)) return 'Сессия истекла — войдите снова';
-  if (/violates row-level security|permission denied/i.test(m)) return 'Недостаточно прав для этого действия';
+  if (/Invalid login credentials/i.test(m)) return t('Неверный email или пароль', 'Wrong email or password');
+  if (/Email not confirmed/i.test(m)) return t('Подтвердите email по ссылке из письма', 'Confirm your email using the link we sent');
+  if (/User already registered/i.test(m)) return t('Пользователь с таким email уже есть. Попробуйте войти', 'This email is already registered. Try logging in');
+  if (/Password should be/i.test(m)) return t('Пароль слишком простой: минимум 10 символов', 'Password too weak: at least 10 characters');
+  if (/rate limit/i.test(m)) return t('Слишком много попыток. Подождите немного', 'Too many attempts. Please wait a little');
+  if (/Failed to fetch|NetworkError/i.test(m)) return t('Нет связи с сервером. Проверьте интернет', 'No connection to the server. Check your internet');
+  if (/JWT expired/i.test(m)) return t('Сессия истекла — войдите снова', 'Session expired — please log in again');
+  if (/violates row-level security|permission denied/i.test(m)) return t('Недостаточно прав для этого действия', 'You do not have permission for this action');
   if (/orders_title_check/.test(m)) return 'Коротко опишите задачу: от 3 до 150 символов';
   if (/check constraint|violates|null value in column/i.test(m)) return 'Некоторые поля заполнены неверно — проверьте форму и попробуйте снова';
   return m;
