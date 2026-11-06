@@ -255,11 +255,48 @@ export async function route() {
     cleanup = await page.render(app, m.params, query, m.pattern);
     if (!app.querySelector('.foot')) app.insertAdjacentHTML('beforeend', FOOTER);
     if (m.mod !== 'static') askConsent();
+    if (!['static', 'auth'].includes(m.mod)) tgPrompt(app);
   } catch (err) {
     console.error(err);
     app.innerHTML = `<div class="panel empty"><b>${t('Что-то пошло не так', 'Something went wrong')}</b>${esc(err.message)}<div><button class="btn ghost" data-reload>${t('Обновить', 'Reload')}</button></div></div>`;
   }
   window.scrollTo(0, 0);
+}
+
+// Приглашение подключить Telegram в один клик: плашка для тех, у кого нет мессенджера; сразу после регистрации — окно.
+// «Не сейчас» скрывает на 14 дней.
+let tgModalShown = false;
+function tgPrompt(app) {
+  if (!state.user || state.msgrLinked || state.needConsent) return;
+  let off = 0, fresh = false;
+  try { off = Number(localStorage.getItem('ruin.tgPromptOff')) || 0; fresh = sessionStorage.getItem('ruin.justRegistered') === '1'; } catch {}
+  if (!fresh && Date.now() < off) return;
+  const text = t('<b>Получайте уведомления в Telegram</b> — о новых бронях, сообщениях и сроках документов. Один клик: откроется окно Telegram, нажмите «Разрешить». Искать бота не нужно.',
+    '<b>Get notifications in Telegram</b> — new bookings, messages and document deadlines. One click: a Telegram window opens, press “Allow”. No need to find a bot.');
+  const later = () => { try { localStorage.setItem('ruin.tgPromptOff', String(Date.now() + 14 * 864e5)); sessionStorage.removeItem('ruin.justRegistered'); } catch {} };
+  const connect = async (btn, done) => {
+    try {
+      const mod = await import('./tglogin.js');
+      if (await mod.connectTelegram()) { toast(t('Telegram подключён — уведомления будут приходить туда', 'Telegram connected')); try { sessionStorage.removeItem('ruin.justRegistered'); } catch {} done(); }
+    } catch (err) { toast(err.message, true); }
+  };
+  import('./tglogin.js').then((mod) => mod.prepareTelegram()).catch(() => {});
+  if (fresh) {
+    if (tgModalShown) return;
+    tgModalShown = true;
+    const m = modal(`<h2>${t('Аккаунт создан', 'Account created')} 🎉</h2><p>${text}</p>
+      <div class="actions"><button class="btn" data-tgp type="button">${t('Подключить Telegram', 'Connect Telegram')}</button><button class="btn ghost" data-tgp-off type="button">${t('Позже', 'Later')}</button></div>
+      <p class="small muted" style="margin:10px 0 0">${t('Без Telegram уведомления придут на почту.', 'Without Telegram, notifications go to your email.')}</p>`, { onClose: later });
+    m.el.querySelector('[data-tgp]').onclick = (e) => connect(e.currentTarget, () => m.close());
+    m.el.querySelector('[data-tgp-off]').onclick = () => m.close();
+    return;
+  }
+  const bar = document.createElement('div');
+  bar.className = 'banner info tg-prompt';
+  bar.innerHTML = `<div style="flex:1">${text}</div><div class="actions"><button class="btn sm" data-tgp type="button">${t('Подключить', 'Connect')}</button><button class="btn ghost sm" data-tgp-off type="button">${t('Не сейчас', 'Not now')}</button></div>`;
+  app.prepend(bar);
+  bar.querySelector('[data-tgp]').onclick = (e) => connect(e.currentTarget, () => bar.remove());
+  bar.querySelector('[data-tgp-off]').onclick = () => { later(); bar.remove(); };
 }
 
 // Пользователи, зарегистрированные до появления отдельного согласия (или до новой редакции), подтверждают его один раз
