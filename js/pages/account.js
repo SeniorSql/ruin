@@ -78,6 +78,10 @@ export async function render(app) {
   }));
   app.querySelectorAll('[data-edit]').forEach((b) => b.onclick = () =>
     editOrg(state.orgs.find((o) => o.id === b.dataset.edit), cById[b.dataset.edit] || {}));
+  app.querySelectorAll('[data-delorg]').forEach((b) => b.onclick = () => busy(b, async () => {
+    if (!(await deleteOrgFlow(b.dataset.delorg))) return;
+    await loadMe(); if (state.org) setOrg(state.org.id); await refreshCounters(); refreshShell(); route();
+  }));
 
   const addBtn = app.querySelector('#addOrg'), newOrg = app.querySelector('#newOrg');
   if (addBtn) {
@@ -213,7 +217,47 @@ function orgCard(o, c = {}) {
       ${!current ? `<button class="btn ghost sm" data-use="${o.id}">Сделать текущей</button>` : ''}
       ${isOwnerAdmin(o) ? `<button class="btn ghost sm" data-edit="${o.id}">Изменить</button>` : ''}
       ${canVerify ? `<button class="btn sm" data-verify="${o.id}">Отправить на проверку</button>` : ''}
+      ${o.type !== 'PERSON' && o.role === 'OWNER' ? `<button class="btn danger sm" data-delorg="${o.id}">Удалить</button>` : ''}
     </div></div>`;
+}
+
+// Удаление организации: владелец или админ площадки. Сначала показываем, что произойдёт,
+// просим ввести название, затем код из Telegram / MAX. Возвращает true, если удалили или закрыли.
+export async function deleteOrgFlow(orgId) {
+  let p;
+  try { p = await rpc('org_delete_preview', { p_org: orgId }); } catch (err) { toast(err.message, true); return false; }
+  if (p.active_deals > 0) {
+    await confirmBox('Пока удалить нельзя', `У организации «${esc(p.name)}» есть незавершённые сделки: ${p.active_deals}. Завершите или отмените их, затем удалите организацию.`, 'Понятно');
+    return false;
+  }
+  const del = p.mode === 'DELETE';
+  const typed = await new Promise((resolve) => {
+    let done = false;
+    const m = modal(`<h2>${del ? 'Удалить организацию?' : 'Закрыть организацию?'}</h2>
+      ${del
+        ? `<p>Организация <b>${esc(p.name)}</b> будет удалена навсегда вместе со всеми данными: техника (${p.equipment}), заказы (${p.orders}), учёт парка, заметки, сотрудники (${p.members}). Вернуть будет нельзя.</p>`
+        : `<p>У организации <b>${esc(p.name)}</b> есть сделки (${p.deals}). Их документы нужны контрагентам, поэтому организация будет <b>закрыта</b>, а не стёрта:</p>
+          <ul class="small"><li>исчезнет из списка у вас и у всех сотрудников;</li><li>техника снимется с публикации, открытые заказы и предложения отменятся;</li>
+          <li>сделки и документы останутся у контрагентов.</li></ul><p>Вернуть будет нельзя.</p>`}
+      <form id="dof"><div class="form-error hidden"></div>
+        <label class="f"><span>Чтобы подтвердить, введите название: <b>${esc(p.name)}</b></span><input class="inp" name="name" autocomplete="off" required></label>
+        <div class="actions"><button class="btn danger" type="submit">${del ? 'Удалить навсегда' : 'Закрыть организацию'}</button><button class="btn ghost" type="button" data-c>Отмена</button></div>
+      </form>`, { onClose: () => { if (!done) resolve(false); } });
+    const f = m.el.querySelector('#dof');
+    const norm = (s) => s.trim().replace(/\s+/g, ' ').toLowerCase();
+    m.el.querySelector('[data-c]').onclick = () => m.close();
+    f.onsubmit = (e) => {
+      e.preventDefault();
+      if (norm(f.name.value) !== norm(p.name)) { const el = f.querySelector('.form-error'); el.textContent = 'Название не совпадает'; el.classList.remove('hidden'); return; }
+      done = true; m.close(); resolve(true);
+    };
+  });
+  if (!typed) return false;
+  try {
+    const r = await withActionCode('org_delete', (code) => rpc('delete_organization', { p_org: orgId, p_code: code }));
+    toast(r === 'DELETED' ? 'Организация удалена' : 'Организация закрыта');
+    return true;
+  } catch (err) { if (err.message !== 'Действие отменено') toast(err.message, true); return false; }
 }
 
 function editOrg(o, c) {
