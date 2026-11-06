@@ -300,6 +300,23 @@ function editOrg(o, c) {
           p_org: o.id, p_name: f.name.value, p_inn: person ? o.inn : f.inn.value.trim(), p_ogrn: person ? null : f.ogrn.value,
           p_city: f.city.value, p_can_order: person ? true : f.order.checked, p_can_provide: person ? false : f.provide.checked,
           p_phone: f.phone.value, p_email: f.email.value, p_contact: f.contact.value };
+        // Снятие роли: заранее показываем, что произойдёт с техникой, предложениями и заказами
+        if (!person) {
+          if (!f.order.checked && !f.provide.checked) throw new Error('Оставьте хотя бы одну роль: заказчик или исполнитель');
+          const lose = [];
+          if (o.can_provide && !f.provide.checked) {
+            const [eq, of] = await Promise.all([
+              q(sb.from('equipment').select('id').eq('org_id', o.id).in('status', ['PUBLISHED', 'PENDING_MODERATION'])),
+              q(sb.from('offers').select('id').eq('provider_org_id', o.id).in('status', ['SUBMITTED', 'SELECTED']))]);
+            lose.push(`<li>техника скроется из каталога: <b>${eq.length}</b> (вернуть можно, снова включив роль и нажав «Показать»)</li>`);
+            if (of.length) lose.push(`<li>ваши неотвеченные предложения на заказы будут отозваны: <b>${of.length}</b></li>`);
+          }
+          if (o.can_order && !f.order.checked) {
+            const or = await q(sb.from('orders').select('id').eq('customer_org_id', o.id).in('status', ['DRAFT', 'PUBLISHED', 'OFFERS_RECEIVED', 'NEGOTIATION']));
+            if (or.length) lose.push(`<li>открытые заказы будут отменены: <b>${or.length}</b></li>`);
+          }
+          if (lose.length && !(await confirmBox('Снять роль?', `Что произойдёт:<ul style="margin:8px 0">${lose.join('')}</ul>Сделки, которые уже идут, продолжатся как обычно и останутся в меню.`, 'Снять роль', true))) return;
+        }
         // Смена названия, ИНН или ОГРН — важное действие: подтверждаем кодом из мессенджера
         const reqChanged = !person && (f.name.value.trim() !== (o.name || '') || f.inn.value.trim() !== (o.inn || '') || f.ogrn.value.trim() !== (o.ogrn || ''));
         if (reqChanged) await withActionCode('org_requisites', (code) => rpc('update_organization', { ...args, p_code: code }));
