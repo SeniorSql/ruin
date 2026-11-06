@@ -68,7 +68,7 @@ export async function render(app) {
     try { await rpc('remove_member', { p_org: o.id, p_user: b.dataset.rm }); toast('Сотрудник отключён'); route(); } catch (e) { toast(e.message, true); }
   });
   app.querySelectorAll('[data-own]').forEach((b) => b.onclick = async () => {
-    if (!await confirmBox('Передать права владельца?', `Владельцем станет ${b.dataset.name}. Вы останетесь в организации с ролью «Администратор». Вернуть права сможет только новый владелец.`, 'Передать', true)) return;
+    if (!await confirmBox('Передать права владельца?', `Владельцем станет ${esc(b.dataset.name)}. Вы останетесь в организации с ролью «Администратор». Вернуть права сможет только новый владелец.`, 'Передать', true)) return;
     try { await withActionCode('transfer_ownership', (code) => rpc('transfer_ownership', { p_org: o.id, p_user: b.dataset.own, p_code: code })); await loadMe(); refreshShell(); toast('Права владельца переданы'); route(); } catch (e) { toast(e.message, true); }
   });
   app.querySelector('[data-leave]')?.addEventListener('click', async () => {
