@@ -1,5 +1,5 @@
 // Заказчик: мои заказы, мастер заказа, предложения и сравнение (SCR-ORD-01..05)
-import { sb, state, q, rpc, loadCategories, categoryById, canManage } from '../api.js';
+import { sb, state, q, rpc, loadCategories, categoryById, canManage, actsAsCustomer } from '../api.js';
 import { isTeam, loadTeam, assignees, memberLabel, assignFilterHtml, mountAssign, ROLE_NAME } from '../assign.js';
 import { esc, money, status, toast, busy, modal, askReason, emptyState, errorState, mskToday, date, period, FORMAT, idemKey,
   dateTime, timeLeft, photoOf, initials, plural, POLICY, toMinor } from '../ui.js';
@@ -7,7 +7,8 @@ import { go, route } from '../app.js';
 
 export async function render(app, params, query, pattern) {
   await loadCategories();
-  if (!state.org.can_order) {
+  // Свои заказы видны, если они есть, даже когда галочку «Заказчик» сняли; новый заказ — только заказчику
+  if (!(pattern === 'orders/new' ? state.org.can_order : actsAsCustomer(state.org))) {
     app.innerHTML = emptyState('Текущая организация не заказчик', 'Переключитесь на личный профиль или организацию-заказчика в меню слева, либо включите роль заказчика в настройках организации.',
       '<a class="btn" href="#/account">Настройки</a>');
     return;
