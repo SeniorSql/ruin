@@ -1,5 +1,5 @@
 // «Учёт парка»: моточасы и ТО, документы со сроками, журнал ремонтов, расходы, машинисты, доходность по машинам
-import { sb, state, q, canManage, mskDate } from '../api.js';
+import { sb, state, q, canManage, mskDate, actsAsProvider } from '../api.js';
 import { esc, money, toMinor, fromMinor, date, emptyState, errorState, modal, confirmBox, toast, busy, plural } from '../ui.js';
 import { route } from '../app.js';
 
@@ -27,7 +27,7 @@ const nextTo = (c) => (c && c.hours_meter != null ? Number(c.last_service_hours 
 
 export async function render(app, _p, query) {
   const o = state.org;
-  if (!o?.can_provide) {
+  if (!actsAsProvider(o)) {
     app.innerHTML = emptyState('Учёт парка — для исполнителей', 'Переключитесь на организацию, которая сдаёт технику, или включите роль исполнителя в профиле организации.', '<a class="btn" href="#/account">Профиль и организации</a>');
     return;
   }
