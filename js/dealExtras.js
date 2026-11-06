@@ -1,6 +1,6 @@
 // Дополнительные блоки страницы сделки: документы, акты передачи/возврата, смены, претензия, отзыв
 import { sb, state, q, rpc, canManage, uploadPhoto } from './api.js';
-import { esc, money, toast, busy, modal, askReason, date, dateTime, mskToday } from './ui.js';
+import { esc, money, toast, busy, modal, askReason, date, dateTime, mskToday, safeUrl } from './ui.js';
 import { route } from './app.js';
 
 const REASONS = ['Техника не прибыла', 'Опоздание', 'Другая техника', 'Характеристики не соответствуют', 'Техника неисправна',
@@ -154,7 +154,7 @@ function handoverBlock(type, h, d, amProv, amCust, act) {
   return `<div><div class="actions" style="justify-content:space-between"><b>${name}</b>${stl}</div>
     <div class="small" style="margin:6px 0">Моточасы: <b>${h.hours_meter ?? '—'}</b> · топливо: <b>${h.fuel_level != null ? h.fuel_level + '%' : '—'}</b> · ${dateTime(h.created_at)}</div>
     ${h.condition ? `<p class="small" style="margin:0 0 6px">${esc(h.condition)}</p>` : ''}
-    <div class="photo-grid">${(h.photos || []).map((p) => `<a class="ph" href="${esc(p.url)}" target="_blank"><img src="${esc(p.url)}" alt="Фото к акту"></a>`).join('')}</div>
+    <div class="photo-grid">${(h.photos || []).map((p) => `<a class="ph" href="${safeUrl(p.url)}" target="_blank" rel="noopener"><img src="${esc(p.url)}" alt="Фото к акту"></a>`).join('')}</div>
     ${h.remarks ? `<div class="banner warn" style="margin:8px 0 0">Замечания заказчика: ${esc(h.remarks)}</div>` : ''}
     <div class="actions" style="margin-top:8px">
       ${amCust && act && h.status === 'SUBMITTED' ? `<button class="btn sm" data-hconf="${type}">Подтвердить</button><button class="btn ghost sm" data-hrem="${type}">С замечаниями</button>` : ''}
