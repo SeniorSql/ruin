@@ -1,5 +1,5 @@
 // Мой парк: список техники, мастер карточки, фото, календарь и блокировки (SCR-CAT-06/07/08)
-import { sb, state, q, rpc, loadCategories, categoryById, uploadPhoto, canManage } from '../api.js';
+import { sb, state, q, rpc, loadCategories, categoryById, uploadPhoto, canManage, actsAsProvider } from '../api.js';
 import { esc, money, priceText, photoOf, status, toast, busy, confirmBox, emptyState, errorState, SPEC_LABELS, CATEGORY_SPECS,
   toMinor, fromMinor, mskToday, date, statusLabel, POLICY } from '../ui.js';
 import { go, route } from '../app.js';
@@ -14,7 +14,8 @@ const TEXT_SPECS = new Set(['undercarriage', 'roller_type', 'chassis', 'axle_for
 
 export async function render(app, params, _q, pattern) {
   const o = state.org;
-  if (!o.can_provide) {
+  // Смотреть свою технику можно, если она есть, даже когда галочку «Исполнитель» сняли; добавлять новую — только исполнителю
+  if (!(pattern === 'fleet/new' ? o.can_provide : actsAsProvider(o))) {
     app.innerHTML = emptyState('Текущая организация не исполнитель',
       'Чтобы сдавать технику, создайте организацию исполнителя (ИП, юрлицо или самозанятый) или переключитесь на неё в меню слева.',
       '<a class="btn" href="#/account">Создать организацию</a>');
