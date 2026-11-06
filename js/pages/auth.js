@@ -71,6 +71,7 @@ function register(app, next) {
       });
       if (error) return showErr(f, humanError(error));
       if (data.session) {
+        try { sessionStorage.setItem('ruin.justRegistered', '1'); } catch {}   // покажем окно «Подключить Telegram»
         await loadMe(); await refreshCounters(); refreshShell();
         toast(t('Аккаунт создан', 'Account created')); go(next);
       } else {
