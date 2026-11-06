@@ -251,7 +251,7 @@ export async function route() {
     if (m.mod !== 'static') askConsent();
   } catch (err) {
     console.error(err);
-    app.innerHTML = `<div class="panel empty"><b>Что-то пошло не так</b>${esc(err.message)}<div><button class="btn ghost" onclick="location.reload()">Обновить</button></div></div>`;
+    app.innerHTML = `<div class="panel empty"><b>Что-то пошло не так</b>${esc(err.message)}<div><button class="btn ghost" data-reload>Обновить</button></div></div>`;
   }
   window.scrollTo(0, 0);
 }
@@ -307,6 +307,14 @@ async function boot() {
     }, 30000);
   }
   window.addEventListener('hashchange', route);
+  // Вместо onclick в разметке (их запрещает защита CSP): data-reload, data-print, data-hash
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-reload],[data-print],[data-hash]');
+    if (!t) return;
+    if (t.hasAttribute('data-reload')) location.reload();
+    else if (t.hasAttribute('data-print')) window.print();
+    else if (t.dataset.hash?.startsWith('#/') && !e.target.closest('a,button,input,select,label')) location.hash = t.dataset.hash;
+  });
   // Прокрутка тачпадом/колёсиком над числовым полем не должна менять число — уводим фокус, страница прокручивается
   document.addEventListener('wheel', (e) => {
     const el = e.target;
