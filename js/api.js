@@ -5,6 +5,11 @@ import { t } from './i18n.js';
 const cfg = window.RUIN_CONFIG || {};
 export const configured = cfg.SUPABASE_URL && !cfg.SUPABASE_URL.includes('YOUR-PROJECT');
 
+// Ссылка «Забыли пароль?» из письма открывает сайт с #access_token=…&type=recovery.
+// Библиотека Supabase сразу стирает адрес и шлёт сигнал PASSWORD_RECOVERY раньше, чем сайт успевает
+// на него подписаться, — поэтому замечаем восстановление сами, до создания клиента, и потом открываем #/reset.
+export const passwordRecovery = /[#&]type=recovery(&|$)/.test(location.hash) || /[?&]type=recovery(&|$)/.test(location.search);
+
 export const sb = configured ? createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
 }) : null;
