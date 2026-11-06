@@ -33,7 +33,7 @@ async function list(app, o) {
   app.innerHTML = `
     <div class="page-head"><div><h1>Моя техника</h1><p>${esc(o.name)}</p></div>
       ${canManage() && o.can_provide ? '<a class="btn" href="#/fleet/new">+ Добавить технику</a>' : ''}</div>
-    ${!o.can_provide ? '<div class="banner warn">У организации выключена роль исполнителя — техника скрыта из каталога, её нельзя забронировать. Чтобы снова сдавать технику, включите роль «Исполнитель» в <a href="#/account">Профиле и организациях</a>.</div>' : ''}
+    ${!o.can_provide ? '<div class="banner warn">Сдача техники на паузе — техника скрыта из каталога, её нельзя забронировать. Чтобы вернуть её в каталог, нажмите «Возобновить сдачу техники» в <a href="#/account">Профиле и организациях</a>.</div>' : ''}
     ${o.verification_status !== 'VERIFIED' ? `<div class="banner warn">Организация ${statusLabel('org', o.verification_status).toLowerCase()}. Карточки можно заполнять, а публиковать — после проверки. <a href="#/account">Подробнее</a></div>` : ''}
     ${rows.length ? `<div class="panel">${rows.map((e) => {
       const p = photoOf(e);
