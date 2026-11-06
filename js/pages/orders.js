@@ -41,7 +41,7 @@ async function list(app, query = {}) {
       ${canManage() ? '<a class="btn" href="#/orders/new">+ Разместить заказ</a>' : ''}</div>
     ${team ? assignFilterHtml(who, '#/orders', cnt) : ''}
     ${rows.length ? `<div class="panel"><table class="table resp"><thead><tr><th>Заказ</th><th>Даты</th><th>Предложений</th>${team ? '<th>Ответственный</th>' : ''}<th>Статус</th></tr></thead><tbody>
-      ${rows.map((o, i) => `<tr class="click" onclick="location.hash='#/orders/${o.id}'"><td><b>${esc(o.title)}</b><div class="small muted">${esc(o.categories?.name)} · ${esc(o.city)}${o.visibility === 'DIRECT' ? ' · личный запрос' : ''}</div></td>
+      ${rows.map((o, i) => `<tr class="click" data-hash="#/orders/${o.id}"><td><b>${esc(o.title)}</b><div class="small muted">${esc(o.categories?.name)} · ${esc(o.city)}${o.visibility === 'DIRECT' ? ' · личный запрос' : ''}</div></td>
         <td class="small">${date(o.start_date)} — ${date(o.end_date)}</td><td><b>${counts[i]}</b></td>
         ${team ? `<td class="small">${asg[o.id] ? esc(memberLabel(team, asg[o.id])) : live(o) ? '<span class="chip warn">не назначен</span>' : '—'}</td>` : ''}<td>${status('order', o.status)}</td></tr>`).join('')}
       </tbody></table></div>`
