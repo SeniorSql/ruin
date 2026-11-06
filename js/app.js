@@ -1,5 +1,5 @@
 // Точка входа: шапка, меню, маршрутизация по #/адресам
-import { sb, configured, state, loadMe, setOrg, refreshCounters, loadCategories, isAdmin, canManage, CONSENT_VERSION, actsAsProvider, actsAsCustomer } from './api.js';
+import { sb, configured, state, loadMe, setOrg, refreshCounters, loadCategories, isAdmin, canManage, CONSENT_VERSION, actsAsProvider, actsAsCustomer, passwordRecovery } from './api.js';
 import { esc, status, initials, toast, modal, WORDMARK } from './ui.js';
 import { t, isEn, setLang } from './i18n.js';
 import { initDrafts } from './drafts.js';
@@ -329,6 +329,8 @@ async function boot() {
       await Promise.all([loadMe(), loadCategories()]);
       await refreshCounters();
     } catch (err) { console.error(err); toast(t('Нет связи с сервером', 'No connection to the server'), true); }
+    // Пришли по ссылке «Забыли пароль?» — сразу открываем форму нового пароля (сигнал библиотеки к этому моменту уже прошёл)
+    if (passwordRecovery) history.replaceState(null, '', location.pathname + location.search.replace(/[?&](code|type)=[^&]*/g, '') + '#/reset');
     // Внутри этого обработчика нельзя ждать другие запросы к Supabase: библиотека держит блокировку сессии,
     // и запросы зависают (формы перестают работать после продления токена). Поэтому работа выносится в setTimeout.
     sb.auth.onAuthStateChange((event, session) => {
