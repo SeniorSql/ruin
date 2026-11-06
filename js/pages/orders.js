@@ -39,7 +39,8 @@ async function list(app, query = {}) {
   const counts = await Promise.all(rows.map((o) => rpc('order_offer_count', { p_order: o.id }).catch(() => 0)));
   app.innerHTML = `
     <div class="page-head"><div><h1>Мои заказы</h1><p>Опишите задачу — проверенные исполнители пришлют предложения.</p></div>
-      ${canManage() ? '<a class="btn" href="#/orders/new">+ Разместить заказ</a>' : ''}</div>
+      ${canManage() && state.org.can_order ? '<a class="btn" href="#/orders/new">+ Разместить заказ</a>' : ''}</div>
+    ${!state.org.can_order ? '<div class="banner warn">У организации выключена роль заказчика — новые заказы размещать нельзя. Включить роль можно в <a href="#/account">Профиле и организациях</a>.</div>' : ''}
     ${team ? assignFilterHtml(who, '#/orders', cnt) : ''}
     ${rows.length ? `<div class="panel"><table class="table resp"><thead><tr><th>Заказ</th><th>Даты</th><th>Предложений</th>${team ? '<th>Ответственный</th>' : ''}<th>Статус</th></tr></thead><tbody>
       ${rows.map((o, i) => `<tr class="click" data-hash="#/orders/${o.id}"><td><b>${esc(o.title)}</b><div class="small muted">${esc(o.categories?.name)} · ${esc(o.city)}${o.visibility === 'DIRECT' ? ' · личный запрос' : ''}</div></td>
@@ -47,7 +48,7 @@ async function list(app, query = {}) {
         ${team ? `<td class="small">${asg[o.id] ? esc(memberLabel(team, asg[o.id])) : live(o) ? '<span class="chip warn">не назначен</span>' : '—'}</td>` : ''}<td>${status('order', o.status)}</td></tr>`).join('')}
       </tbody></table></div>`
     : who !== 'all' ? emptyState(who === 'mine' ? 'У вас нет своих заказов' : 'Все заказы распределены', 'Откройте вкладку «Все», чтобы увидеть заказы коллег.', '<a class="btn ghost" href="#/orders">Все заказы</a>')
-    : emptyState('Заказов пока нет', 'Разместите первый заказ: укажите технику, даты и адрес. Исполнители пришлют цены, вы выберете лучшее.', '<a class="btn" href="#/orders/new">Разместить заказ</a>')}`;
+    : emptyState('Заказов пока нет', 'Разместите первый заказ: укажите технику, даты и адрес. Исполнители пришлют цены, вы выберете лучшее.', state.org.can_order ? '<a class="btn" href="#/orders/new">Разместить заказ</a>' : '')}`;
 }
 
 function create(app, query) {
