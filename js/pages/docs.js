@@ -72,7 +72,7 @@ export async function render(app, { id, type }) {
   }
 
   document.body.classList.add('doc-mode');
-  app.innerHTML = `<div class="doc-bar"><button class="btn" onclick="window.print()">Скачать PDF / печать</button>
+  app.innerHTML = `<div class="doc-bar"><button class="btn" data-print>Скачать PDF / печать</button>
       <a class="btn ghost" href="#/deals/${d.id}">← К сделке</a><span class="small muted">В окне печати выберите «Сохранить как PDF»</span></div>
     <article class="doc"><header><div class="doc-logo">RUIN<span>.</span></div><div class="small">Сформировано на платформе RUIN · ${today}</div></header>
       <h1>${TITLES[type] || 'Документ'} № ${esc(d.number)}</h1>${body}</article>`;
