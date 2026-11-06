@@ -1,5 +1,5 @@
 // Вход, регистрация, восстановление и смена пароля (SCR-IDN-01..03)
-import { sb, state, loadMe, refreshCounters, humanError } from '../api.js';
+import { sb, state, loadMe, refreshCounters, humanError, CONSENT_VERSION } from '../api.js';
 import { esc, toast, busy } from '../ui.js';
 import { go, refreshShell } from '../app.js';
 
@@ -55,7 +55,7 @@ function register(app, next) {
       <label class="f"><span>Пароль <i>*</i></span><input class="inp" type="password" name="password" required minlength="10" autocomplete="new-password">
         <div class="hint">Минимум 10 символов. Лучше фраза из нескольких слов.</div></label>
       <label class="check"><input type="checkbox" name="terms" required><span>Принимаю <a href="#/terms" target="_blank">пользовательское соглашение</a></span></label>
-      <label class="check"><input type="checkbox" name="pd" required><span>Даю согласие на <a href="#/privacy" target="_blank">обработку персональных данных</a></span></label>
+      <label class="check"><input type="checkbox" name="pd" required><span>Даю <a href="#/consent" target="_blank">согласие на обработку персональных данных</a> и ознакомлен(а) с <a href="#/privacy" target="_blank">политикой</a></span></label>
       <button class="btn wide">Создать аккаунт</button>
     </form>
     <p class="small muted" style="margin-top:14px">Уже есть аккаунт? <a href="#/login">Войти</a></p>`);
@@ -66,7 +66,7 @@ function register(app, next) {
     busy(f.querySelector('button'), async () => {
       const { data, error } = await sb.auth.signUp({
         email: f.email.value.trim(), password: f.password.value,
-        options: { emailRedirectTo: base(), data: { full_name: f.name.value.trim(), phone: f.phone.value.trim() } }
+        options: { emailRedirectTo: base(), data: { full_name: f.name.value.trim(), phone: f.phone.value.trim(), consent_version: CONSENT_VERSION } }
       });
       if (error) return showErr(f, humanError(error));
       if (data.session) {
