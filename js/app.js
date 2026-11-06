@@ -1,6 +1,7 @@
 // Точка входа: шапка, меню, маршрутизация по #/адресам
 import { sb, configured, state, loadMe, setOrg, refreshCounters, loadCategories, isAdmin, canManage, CONSENT_VERSION } from './api.js';
-import { esc, status, initials, toast, modal } from './ui.js';
+import { esc, status, initials, toast, modal, WORDMARK } from './ui.js';
+import { t, isEn, setLang } from './i18n.js';
 import { initDrafts } from './drafts.js';
 import { maybeShowOnboarding, showOnboarding } from './onboarding.js';
 const ICON = {
@@ -27,10 +28,9 @@ const ICON = {
 export const icon = (name, size = 18) =>
   `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[name]}</svg>`;
 
-const LOGO = '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 3h20c9 0 15 5 15 13 0 6-3 10-9 12l9 15H30l-8-14h-4v14H8V3Zm10 9v9h9c4 0 6-1 6-5s-2-4-6-4h-9Z" fill="currentColor"/><path d="M8 3h10v9H8z" style="fill:var(--accent)"/><path d="M8 39h10v4H8z" style="fill:var(--accent)"/></svg>';
 
 // ---------- тема: как в системе / светлая / тёмная (сама тема ставится скриптом в index.html) ----------
-const THEMES = { auto: ['auto', 'Авто', 'как в системе'], light: ['sun', 'Светлая', 'светлая'], dark: ['moon', 'Тёмная', 'тёмная'] };
+const THEMES = { auto: ['auto', t('Авто', 'Auto'), t('как в системе', 'system')], light: ['sun', t('Светлая', 'Light'), t('светлая', 'light')], dark: ['moon', t('Тёмная', 'Dark'), t('тёмная', 'dark')] };
 const themeMode = () => (window.ruinTheme ? window.ruinTheme.mode() : 'auto');
 function setTheme(m) {
   document.body.classList.add('theme-anim');
@@ -40,9 +40,9 @@ function setTheme(m) {
 }
 const themeBtn = () => {
   const [ic, , text] = THEMES[themeMode()] || THEMES.auto;
-  return `<button class="icon-btn" id="themeBtn" type="button" title="Тема: ${text}. Нажмите, чтобы сменить" aria-label="Тема: ${text}">${icon(ic)}</button>`;
+  return `<button class="icon-btn" id="themeBtn" type="button" title="${t('Тема', 'Theme')}: ${text}" aria-label="${t('Тема', 'Theme')}: ${text}">${icon(ic)}</button>`;
 };
-const themeSeg = () => `<div class="nav-caption">ТЕМА</div><div class="theme-seg" role="group" aria-label="Тема оформления">${Object.entries(THEMES).map(([k, [ic, label]]) =>
+const themeSeg = () => `<div class="nav-caption">${t('ТЕМА', 'THEME')}</div><div class="theme-seg" role="group" aria-label="${t('Тема оформления', 'Colour theme')}">${Object.entries(THEMES).map(([k, [ic, label]]) =>
   `<button type="button" data-theme-set="${k}" class="${themeMode() === k ? 'on' : ''}" aria-pressed="${themeMode() === k}">${icon(ic, 14)}${label}</button>`).join('')}</div>`;
 
 // Маршруты: шаблон → модуль страницы
@@ -57,7 +57,7 @@ const ROUTES = [
   ['company/:id', 'company'], ['team', 'team'], ['crm', 'crm'], ['park', 'park'], ['analytics', 'analytics'], ['reviews', 'reviews'],
   ['messages', 'messages'], ['messages/:id', 'messages'],
   ['notifications', 'notifications'], ['favorites', 'favorites'],
-  ['admin', 'admin'], ['terms', 'static'], ['privacy', 'static'], ['consent', 'static'], ['help', 'static']
+  ['admin', 'admin'], ['terms', 'static'], ['privacy', 'static'], ['consent', 'static'], ['help', 'static'], ['support', 'static']
 ];
 
 function match(path) {
@@ -85,20 +85,22 @@ function renderTop() {
   const c = state.counters || {};
   const u = state.user;
   document.getElementById('top').innerHTML = `
-    <a class="brand" href="#/" aria-label="RUIN — главная">${LOGO}<div><div class="brand-name">RUIN<span>.</span></div><div class="brand-tag">ТЕХНИКА ДЛЯ БОЛЬШИХ ПЛАНОВ</div></div></a>
+    <a class="brand" href="#/" aria-label="${t('RUIN — главная', 'RUIN — home')}">${WORDMARK}<div class="brand-tag">${t('ТЕХНИКА ДЛЯ БОЛЬШИХ ПЛАНОВ', 'MACHINERY FOR BIG PLANS')}</div></a>
     <form class="search" id="topSearch" role="search">${icon('search')}
-      <input name="q" placeholder="Найти технику: экскаватор, автокран, самосвал…" aria-label="Поиск техники">
-      <button class="btn sm dark">Найти</button></form>
+      <input name="q" placeholder="${t('Найти технику: экскаватор, автокран, самосвал…', 'Find machinery: excavator, truck crane, dump truck…')}" aria-label="${t('Поиск техники', 'Search machinery')}">
+      <button class="btn sm dark">${t('Найти', 'Search')}</button></form>
     <div class="top-actions">
+      <button class="lang-btn" id="langBtn" type="button" title="${t('Switch to English', 'Переключить на русский')}">${t('EN', 'RU')}</button>
       ${themeBtn()}
       ${u ? `
-        <a class="icon-btn" href="#/favorites" title="Избранное">${icon('heart')}</a>
-        <a class="icon-btn" href="#/messages" title="Сообщения">${icon('chat')}${c.unread_messages ? `<span class="badge-count">${c.unread_messages}</span>` : ''}</a>
-        <a class="icon-btn" href="#/notifications" title="Уведомления">${icon('bell')}${c.notifications ? `<span class="badge-count">${c.notifications}</span>` : ''}</a>
+        <a class="icon-btn" href="#/favorites" title="${t('Избранное', 'Favourites')}">${icon('heart')}</a>
+        <a class="icon-btn" href="#/messages" title="${t('Сообщения', 'Messages')}">${icon('chat')}${c.unread_messages ? `<span class="badge-count">${c.unread_messages}</span>` : ''}</a>
+        <a class="icon-btn" href="#/notifications" title="${t('Уведомления', 'Notifications')}">${icon('bell')}${c.notifications ? `<span class="badge-count">${c.notifications}</span>` : ''}</a>
         <a class="me" href="#/account"><span class="avatar">${esc(initials(state.profile?.full_name || u.email))}</span>
-          <div><b>${esc(state.profile?.full_name || u.email)}</b><small>Мой кабинет</small></div></a>`
-      : `<a class="btn ghost sm" href="#/login">Войти</a><a class="btn sm" href="#/register">Регистрация</a>`}
+          <div><b>${esc(state.profile?.full_name || u.email)}</b><small>${t('Мой кабинет', 'My account')}</small></div></a>`
+      : `<a class="btn ghost sm" href="#/login">${t('Войти', 'Log in')}</a><a class="btn sm" href="#/register">${t('Регистрация', 'Sign up')}</a>`}
     </div>`;
+  document.getElementById('langBtn').onclick = () => setLang(isEn() ? 'ru' : 'en');
   document.getElementById('topSearch').onsubmit = (e) => {
     e.preventDefault();
     go('#/catalog?q=' + encodeURIComponent(e.target.q.value.trim()));
@@ -107,7 +109,7 @@ function renderTop() {
     const order = ['auto', 'light', 'dark'];
     const next = order[(order.indexOf(themeMode()) + 1) % order.length];
     setTheme(next);
-    toast('Тема: ' + THEMES[next][2]);
+    toast(t('Тема: ', 'Theme: ') + THEMES[next][2]);
   };
 }
 
@@ -117,45 +119,48 @@ function renderSide(active) {
   const o = state.org;
   // cnt — нужно ваше действие (жёлтый), wait — ждёт другую сторону (серый)
   const link = (href, ic, text, cnt, wait) =>
-    `<a href="${href}" class="${active === href ? 'active' : ''}">${icon(ic)}<span>${text}</span>${cnt ? `<span class="cnt" title="Нужно ваше действие">${cnt}</span>` : ''}${wait ? `<span class="cnt wait" title="Ждёт другую сторону">${wait}</span>` : ''}</a>`;
+    `<a href="${href}" class="${active === href ? 'active' : ''}">${icon(ic)}<span>${text}</span>${cnt ? `<span class="cnt" title="${t('Нужно ваше действие', 'Needs your action')}">${cnt}</span>` : ''}${wait ? `<span class="cnt wait" title="${t('Ждёт другую сторону', 'Waiting for the other party')}">${wait}</span>` : ''}</a>`;
   const others = c.other_orgs || {};
-  const orgName = (x) => (x.type === 'PERSON' ? 'Я (частное лицо)' : x.name);
+  const orgName = (x) => (x.type === 'PERSON' ? t('Я (частное лицо)', 'Me (individual)') : x.name);
+  const ROLE = isEn() ? { OWNER: 'owner', ADMIN: 'administrator', MANAGER: 'manager', APPROVER: 'approver', FINANCE: 'accountant', VIEWER: 'viewer' }
+    : { OWNER: 'владелец', ADMIN: 'администратор', MANAGER: 'менеджер', APPROVER: 'согласующий', FINANCE: 'бухгалтер', VIEWER: 'наблюдатель' };
   let html = '';
   if (state.user && o) {
-    html += `<div class="context"><small>ДЕЙСТВУЮ ОТ ИМЕНИ</small>
-      <select id="ctxSel" aria-label="Рабочий контекст">${state.orgs.map((x) =>
-        `<option value="${x.id}" ${x.id === o.id ? 'selected' : ''}>${esc(orgName(x))}${others[x.id] ? ` — ждёт действий: ${others[x.id]}` : ''}</option>`).join('')}</select>
+    html += `<div class="context"><small>${t('ДЕЙСТВУЮ ОТ ИМЕНИ', 'ACTING ON BEHALF OF')}</small>
+      <select id="ctxSel" aria-label="${t('Рабочий контекст', 'Working context')}">${state.orgs.map((x) =>
+        `<option value="${x.id}" ${x.id === o.id ? 'selected' : ''}>${esc(orgName(x))}${others[x.id] ? ` — ${t('ждёт действий', 'actions waiting')}: ${others[x.id]}` : ''}</option>`).join('')}</select>
       ${o.type !== 'PERSON' ? `<div class="ctx-status">${status('org', o.verification_status)}</div>` : ''}
-      ${o.type !== 'PERSON' ? `<div class="ctx-role">Ваша роль: <b>${{ OWNER: 'владелец', ADMIN: 'администратор', MANAGER: 'менеджер', APPROVER: 'согласующий', FINANCE: 'бухгалтер', VIEWER: 'наблюдатель' }[o.role] || o.role}</b>${canManage(o) ? '' : ' · только просмотр'}</div>` : ''}</div>`;
+      ${o.type !== 'PERSON' ? `<div class="ctx-role">${t('Ваша роль', 'Your role')}: <b>${ROLE[o.role] || o.role}</b>${canManage(o) ? '' : t(' · только просмотр', ' · view only')}</div>` : ''}</div>`;
     // Действия, которые ждут вас в других ваших организациях
     html += state.orgs.filter((x) => others[x.id]).map((x) =>
-      `<button class="ctx-alert" data-switch="${x.id}"><b>${esc(orgName(x))}</b>: ${others[x.id]} ${others[x.id] === 1 ? 'сделка ждёт' : 'сделки ждут'} вашего действия <span>Перейти →</span></button>`).join('');
+      `<button class="ctx-alert" data-switch="${x.id}"><b>${esc(orgName(x))}</b>: ${others[x.id]} ${t(others[x.id] === 1 ? 'сделка ждёт' : 'сделки ждут', others[x.id] === 1 ? 'deal awaits' : 'deals await')} ${t('вашего действия', 'your action')} <span>${t('Перейти →', 'Open →')}</span></button>`).join('');
   }
-  html += `<div class="navs"><div class="nav-caption">МАРКЕТПЛЕЙС</div><nav class="nav">
-    ${link('#/', 'home', 'Главная')}${link('#/catalog', 'grid', 'Каталог техники')}
-    ${state.user && (!o || canManage(o)) ? link('#/orders/new', 'plus', 'Разместить заказ') : ''}</nav>`;
+  html += `<div class="navs"><div class="nav-caption">${t('МАРКЕТПЛЕЙС', 'MARKETPLACE')}</div><nav class="nav">
+    ${link('#/', 'home', t('Главная', 'Home'))}${link('#/catalog', 'grid', t('Каталог техники', 'Machinery catalogue'))}
+    ${state.user && (!o || canManage(o)) ? link('#/orders/new', 'plus', t('Разместить заказ', 'Post an order')) : ''}
+    ${link('#/support', 'chat', t('Поддержка', 'Support'))}</nav>`;
   if (state.user && o) {
     if (o.can_order) {
-      html += `<div class="nav-group customer"><div class="nav-role">${icon('list', 16)}<span>Я заказчик</span><small>арендую технику</small></div><nav class="nav">
-        ${link('#/orders', 'list', 'Мои заказы', c.orders_offers)}${link('#/deals?tab=customer', 'deal', 'Сделки', c.deals_customer, c.deals_customer_wait)}</nav></div>`;
+      html += `<div class="nav-group customer"><div class="nav-role">${icon('list', 16)}<span>${t('Я заказчик', 'I am a customer')}</span><small>${t('арендую технику', 'I rent machinery')}</small></div><nav class="nav">
+        ${link('#/orders', 'list', t('Мои заказы', 'My orders'), c.orders_offers)}${link('#/deals?tab=customer', 'deal', t('Сделки', 'Deals'), c.deals_customer, c.deals_customer_wait)}</nav></div>`;
     }
     if (o.can_provide) {
-      html += `<div class="nav-group provider"><div class="nav-role">${icon('truck', 16)}<span>Я исполнитель</span><small>сдаю технику</small></div><nav class="nav">
-        ${link('#/crm', 'desk', 'Рабочий стол', c.crm_due)}${link('#/fleet', 'truck', 'Моя техника')}${link('#/park', 'gauge', 'Учёт парка')}${link('#/feed', 'feed', 'Лента заказов', c.feed_new)}
-        ${link('#/offers', 'send', 'Мои предложения')}${link('#/deals?tab=provider', 'deal', 'Сделки', c.deals_provider, c.deals_provider_wait)}</nav></div>`;
+      html += `<div class="nav-group provider"><div class="nav-role">${icon('truck', 16)}<span>${t('Я исполнитель', 'I am a provider')}</span><small>${t('сдаю технику', 'I rent out machinery')}</small></div><nav class="nav">
+        ${link('#/crm', 'desk', t('Рабочий стол', 'Desk'), c.crm_due)}${link('#/fleet', 'truck', t('Моя техника', 'My machinery'))}${link('#/park', 'gauge', t('Учёт парка', 'Fleet management'))}${link('#/feed', 'feed', t('Лента заказов', 'Order feed'), c.feed_new)}
+        ${link('#/offers', 'send', t('Мои предложения', 'My offers'))}${link('#/deals?tab=provider', 'deal', t('Сделки', 'Deals'), c.deals_provider, c.deals_provider_wait)}</nav></div>`;
     }
-    html += `<div class="nav-caption">АККАУНТ</div><nav class="nav">
-      ${link('#/messages', 'chat', 'Сообщения', c.unread_messages)}${link('#/notifications', 'bell', 'Уведомления', c.notifications)}
-      ${link('#/reviews', 'heart', 'Отзывы')}${link('#/analytics', 'grid', 'Аналитика')}${o.type !== 'PERSON' ? link('#/team', 'org', 'Сотрудники') : ''}
-      ${link('#/account', 'org', 'Профиль и организации')}${isAdmin() ? link('#/admin', 'shield', 'Админка', c.admin?.total) : ''}
-      <a href="#" data-onb>${icon('send')}<span>Как пользоваться</span></a></nav>`;
+    html += `<div class="nav-caption">${t('АККАУНТ', 'ACCOUNT')}</div><nav class="nav">
+      ${link('#/messages', 'chat', t('Сообщения', 'Messages'), c.unread_messages)}${link('#/notifications', 'bell', t('Уведомления', 'Notifications'), c.notifications)}
+      ${link('#/reviews', 'heart', t('Отзывы', 'Reviews'))}${link('#/analytics', 'grid', t('Аналитика', 'Analytics'))}${o.type !== 'PERSON' ? link('#/team', 'org', t('Сотрудники', 'Team')) : ''}
+      ${link('#/account', 'org', t('Профиль и организации', 'Profile and organisations'))}${isAdmin() ? link('#/admin', 'shield', t('Админка', 'Admin'), c.admin?.total) : ''}
+      <a href="#" data-onb>${icon('send')}<span>${t('Как пользоваться', 'How it works')}</span></a></nav>`;
   }
   html += `</div>`;
   html += themeSeg();
   if (state.user && o && !o.can_provide) {
-    html += `<div class="side-note"><b>Есть своя техника?</b>Создайте организацию исполнителя и получайте заказы. <a href="#/account">Начать →</a></div>`;
+    html += `<div class="side-note"><b>${t('Есть своя техника?', 'Own machinery?')}</b>${t('Создайте организацию исполнителя и получайте заказы.', 'Create a provider organisation and get orders.')} <a href="#/account">${t('Начать →', 'Start →')}</a></div>`;
   } else if (!state.user) {
-    html += `<div class="side-note"><b>Техника рядом — проще, чем кажется</b>Сравнивайте предложения проверенных исполнителей и бронируйте онлайн.</div>`;
+    html += `<div class="side-note"><b>${t('Техника рядом — проще, чем кажется', 'Machinery nearby — easier than you think')}</b>${t('Сравнивайте предложения проверенных исполнителей и бронируйте онлайн.', 'Compare offers from verified providers and book online.')}</div>`;
   }
   const side = document.getElementById('sidebar');
   side.innerHTML = html;
@@ -164,14 +169,14 @@ function renderSide(active) {
   if (sel) sel.onchange = async () => {
     setOrg(sel.value);
     await refreshCounters();
-    toast('Теперь вы действуете от имени: ' + sel.options[sel.selectedIndex].text.split(' — ')[0]);
+    toast(t('Теперь вы действуете от имени: ', 'Now acting on behalf of: ') + sel.options[sel.selectedIndex].text.split(' — ')[0]);
     route();
   };
   side.querySelectorAll('[data-switch]').forEach((b) => b.onclick = async () => {
     setOrg(b.dataset.switch);
     await refreshCounters();
     const x = state.counters;
-    toast('Теперь вы действуете от имени: ' + orgName(state.org));
+    toast(t('Теперь вы действуете от имени: ', 'Now acting on behalf of: ') + orgName(state.org));
     go(x.deals_provider ? '#/deals?tab=provider' : '#/deals?tab=customer');
     if (location.hash.startsWith('#/deals')) route();
   });
@@ -187,7 +192,7 @@ export function refreshShell() {
   const dealTab = query.tab || saved || (state.org?.can_order ? 'customer' : 'provider');
   const activeMap = { '': '#/', catalog: '#/catalog', item: '#/catalog', orders: path === 'orders/new' ? '#/orders/new' : '#/orders',
     deals: '#/deals?tab=' + dealTab, fleet: '#/fleet', feed: '#/feed', offers: '#/offers', messages: '#/messages',
-    notifications: '#/notifications', account: '#/account', admin: '#/admin', team: '#/team', analytics: '#/analytics', company: '#/catalog', reviews: '#/reviews', crm: '#/crm', park: '#/park' };
+    notifications: '#/notifications', account: '#/account', admin: '#/admin', team: '#/team', analytics: '#/analytics', company: '#/catalog', reviews: '#/reviews', crm: '#/crm', park: '#/park', support: '#/support', help: '#/support' };
   renderTop();
   renderSide(activeMap[top] ?? (m ? '#/' + m.name : ''));
 }
@@ -196,9 +201,9 @@ export function refreshShell() {
 let cleanup = null;
 const PUBLIC = new Set(['home', 'catalog', 'item', 'auth', 'static', 'company']);
 
-const FOOTER = `<footer class="foot"><span>© RUIN, ${new Date().getFullYear()}</span><a href="#" data-onb>Как пользоваться</a><a href="#/help">Помощь</a>
-  <a href="#/terms">Пользовательское соглашение</a><a href="#/privacy">Политика обработки ПДн</a><a href="#/consent">Согласие на обработку ПДн</a>
-  <span>Фото техники — Wikimedia Commons, свободные лицензии, авторы указаны на фото</span></footer>`;
+const FOOTER = `<footer class="foot"><span>© RUIN, ${new Date().getFullYear()}</span><a href="#" data-onb>${t('Как пользоваться', 'How it works')}</a><a href="#/help">${t('Помощь', 'Help')}</a><a href="#/support">${t('Поддержка', 'Support')}</a>
+  <a href="#/terms">${t('Пользовательское соглашение', 'Terms of use')}</a><a href="#/privacy">${t('Политика обработки ПДн', 'Privacy policy')}</a><a href="#/consent">${t('Согласие на обработку ПДн', 'Personal data consent')}</a>
+  <span>${t('Фото техники — Wikimedia Commons, свободные лицензии, авторы указаны на фото', 'Machinery photos — Wikimedia Commons, free licences, authors credited on photos')}</span></footer>`;
 
 export async function route() {
   // Ссылки из писем Supabase приходят с токеном в адресе — ждём, пока библиотека его обработает
@@ -208,14 +213,14 @@ export async function route() {
     const d = p.get('error_description') || '';
     const expired = p.get('error_code') === 'otp_expired' || /expired|invalid/i.test(d);
     history.replaceState(null, '', location.pathname + location.search);
-    document.getElementById('app').innerHTML = `<div class="panel"><h2>Ссылка из письма не сработала</h2>
-      <p>${expired ? 'Ссылка устарела или уже была использована. Так бывает, если письмо открыли повторно или почтовый сервис сам проверил ссылку.' : 'Ошибка: ' + esc(d)}</p>
-      <p class="muted">Запросите новое письмо и откройте ссылку из него сразу, один раз.</p>
-      <div class="actions"><a class="btn" href="#/forgot">Отправить письмо для смены пароля</a><a class="btn ghost" href="#/login">Войти</a></div></div>`;
+    document.getElementById('app').innerHTML = `<div class="panel"><h2>${t('Ссылка из письма не сработала', 'The email link did not work')}</h2>
+      <p>${expired ? t('Ссылка устарела или уже была использована. Так бывает, если письмо открыли повторно или почтовый сервис сам проверил ссылку.', 'The link has expired or was already used. This happens if the email was opened twice or your mail service checked the link.') : t('Ошибка: ', 'Error: ') + esc(d)}</p>
+      <p class="muted">${t('Запросите новое письмо и откройте ссылку из него сразу, один раз.', 'Request a new email and open its link right away, once.')}</p>
+      <div class="actions"><a class="btn" href="#/forgot">${t('Отправить письмо для смены пароля', 'Send a password reset email')}</a><a class="btn ghost" href="#/login">${t('Войти', 'Log in')}</a></div></div>`;
     return;
   }
   if (/access_token=/.test(location.hash)) {
-    document.getElementById('app').innerHTML = '<div class="panel">Входим…</div>';
+    document.getElementById('app').innerHTML = `<div class="panel">${t('Входим…', 'Signing in…')}</div>`;
     // Библиотека сама заберёт ключ из адреса; если это смена пароля — откроется #/reset, иначе идём на главную
     setTimeout(() => {
       if (location.hash.startsWith('#/reset')) return;
@@ -235,7 +240,7 @@ export async function route() {
     return;
   }
   if (!m) {
-    app.innerHTML = `<div class="panel empty"><b>Страница не найдена</b>Возможно, ссылка устарела.<div><a class="btn" href="#/">На главную</a></div></div>`;
+    app.innerHTML = `<div class="panel empty"><b>${t('Страница не найдена', 'Page not found')}</b>${t('Возможно, ссылка устарела.', 'The link may be outdated.')}<div><a class="btn" href="#/">${t('На главную', 'Go home')}</a></div></div>`;
     return;
   }
   if (!PUBLIC.has(m.mod) && !state.user) {
@@ -243,7 +248,7 @@ export async function route() {
     return;
   }
   app.innerHTML = '<div class="skeleton" style="height:320px"></div>';
-  document.title = 'RUIN — аренда спецтехники';
+  document.title = t('RUIN — аренда спецтехники', 'RUIN — construction machinery rental');
   try {
     const page = await import(`./pages/${m.mod}.js`);
     cleanup = await page.render(app, m.params, query, m.pattern);
@@ -251,7 +256,7 @@ export async function route() {
     if (m.mod !== 'static') askConsent();
   } catch (err) {
     console.error(err);
-    app.innerHTML = `<div class="panel empty"><b>Что-то пошло не так</b>${esc(err.message)}<div><button class="btn ghost" data-reload>Обновить</button></div></div>`;
+    app.innerHTML = `<div class="panel empty"><b>${t('Что-то пошло не так', 'Something went wrong')}</b>${esc(err.message)}<div><button class="btn ghost" data-reload>${t('Обновить', 'Reload')}</button></div></div>`;
   }
   window.scrollTo(0, 0);
 }
@@ -261,17 +266,21 @@ let consentOpen = false;
 function askConsent() {
   if (!state.user || !state.needConsent || consentOpen) return;
   consentOpen = true;
-  const m = modal(`<h2>Обновили документы</h2>
+  const m = modal(t(`<h2>Обновили документы</h2>
     <p>Мы оформили отдельное <a href="#/consent" target="_blank">согласие на обработку персональных данных</a>, обновили <a href="#/privacy" target="_blank">политику</a> и <a href="#/terms" target="_blank">пользовательское соглашение</a>. Чтобы продолжить работу, подтвердите согласие.</p>
     <form id="cf"><label class="check"><input type="checkbox" name="pd" required><span>Даю согласие на обработку персональных данных и принимаю пользовательское соглашение</span></label>
       <div class="actions"><button class="btn">Подтвердить</button><button class="btn ghost" type="button" data-out>Выйти из аккаунта</button></div></form>`,
+    `<h2>Our documents have been updated</h2>
+    <p>We have issued a separate <a href="#/consent" target="_blank">personal data processing consent</a> and updated the <a href="#/privacy" target="_blank">privacy policy</a> and <a href="#/terms" target="_blank">terms of use</a>. Please confirm your consent to continue.</p>
+    <form id="cf"><label class="check"><input type="checkbox" name="pd" required><span>I consent to the processing of my personal data and accept the terms of use</span></label>
+      <div class="actions"><button class="btn">Confirm</button><button class="btn ghost" type="button" data-out>Log out</button></div></form>`),
     { onClose: () => { consentOpen = false; } });
   m.el.querySelector('[data-out]').onclick = async () => { await sb.auth.signOut(); m.close(); await loadMe(); refreshShell(); go('#/'); };
   m.el.querySelector('#cf').onsubmit = async (e) => {
     e.preventDefault();
     const { error } = await sb.rpc('accept_consents', { p_version: CONSENT_VERSION });
     if (error) return toast(error.message, true);
-    state.needConsent = false; m.close(); toast('Спасибо, согласие сохранено');
+    state.needConsent = false; m.close(); toast(t('Спасибо, согласие сохранено', 'Thank you, consent saved'));
   };
 }
 
@@ -281,7 +290,7 @@ async function boot() {
     try {
       await Promise.all([loadMe(), loadCategories()]);
       await refreshCounters();
-    } catch (err) { console.error(err); toast('Нет связи с сервером', true); }
+    } catch (err) { console.error(err); toast(t('Нет связи с сервером', 'No connection to the server'), true); }
     // Внутри этого обработчика нельзя ждать другие запросы к Supabase: библиотека держит блокировку сессии,
     // и запросы зависают (формы перестают работать после продления токена). Поэтому работа выносится в setTimeout.
     sb.auth.onAuthStateChange((event, session) => {
@@ -309,11 +318,11 @@ async function boot() {
   window.addEventListener('hashchange', route);
   // Вместо onclick в разметке (их запрещает защита CSP): data-reload, data-print, data-hash
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-reload],[data-print],[data-hash]');
-    if (!t) return;
-    if (t.hasAttribute('data-reload')) location.reload();
-    else if (t.hasAttribute('data-print')) window.print();
-    else if (t.dataset.hash?.startsWith('#/') && !e.target.closest('a,button,input,select,label')) location.hash = t.dataset.hash;
+    const el = e.target.closest('[data-reload],[data-print],[data-hash]');
+    if (!el) return;
+    if (el.hasAttribute('data-reload')) location.reload();
+    else if (el.hasAttribute('data-print')) window.print();
+    else if (el.dataset.hash?.startsWith('#/') && !e.target.closest('a,button,input,select,label')) location.hash = el.dataset.hash;
   });
   // Прокрутка тачпадом/колёсиком над числовым полем не должна менять число — уводим фокус, страница прокручивается
   document.addEventListener('wheel', (e) => {
@@ -348,22 +357,24 @@ async function boot() {
     return false;
   };
   document.addEventListener('change', (ev) => {
-    const t = ev.target;
-    if (!isDate(t)) return;
-    const e = endOf(t);
-    if (e && limitEnd(t, e)) {
-      toast('Окончание не может быть раньше начала — поставили дату начала');
+    const tg = ev.target;
+    if (!isDate(tg)) return;
+    const e = endOf(tg);
+    if (e && limitEnd(tg, e)) {
+      toast(t('Окончание не может быть раньше начала — поставили дату начала', 'End cannot be before start — set to the start date'));
       e.dispatchEvent(new Event('change', { bubbles: true }));
       return;
     }
-    const s = startOf(t);
-    if (s && isDate(s) && s.value && t.value && t.value < s.value) {
-      t.value = s.value;
-      toast('Окончание не может быть раньше начала — поставили дату начала');
+    const s = startOf(tg);
+    if (s && isDate(s) && s.value && tg.value && tg.value < s.value) {
+      tg.value = s.value;
+      toast(t('Окончание не может быть раньше начала — поставили дату начала', 'End cannot be before start — set to the start date'));
     }
   }, true);
-  document.addEventListener('focusin', (ev) => { const t = ev.target; if (isDate(t)) { const s = startOf(t); if (s) limitEnd(s, t); } });
+  document.addEventListener('focusin', (ev) => { const tg = ev.target; if (isDate(tg)) { const s = startOf(tg); if (s) limitEnd(s, tg); } });
   initDrafts();
+  // Бот-подсказчик поддержки — круглая кнопка в правом нижнем углу на всех страницах
+  import('./support.js').then((m) => m.mountHelpBot()).catch((err) => console.error(err));
   // «Глазик» у всех полей пароля: показать / скрыть введённое
   const EYE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
   const EYE_OFF = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A10.9 10.9 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a10 10 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
@@ -375,13 +386,13 @@ async function boot() {
     wrap.appendChild(inp);
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'pw-eye'; b.innerHTML = EYE;
-    b.setAttribute('aria-label', 'Показать пароль'); b.title = 'Показать пароль';
+    b.setAttribute('aria-label', t('Показать пароль', 'Show password')); b.title = t('Показать пароль', 'Show password');
     b.onclick = () => {
       const show = inp.type === 'password';
       inp.type = show ? 'text' : 'password';
       b.innerHTML = show ? EYE_OFF : EYE;
-      const t = show ? 'Скрыть пароль' : 'Показать пароль';
-      b.setAttribute('aria-label', t); b.title = t;
+      const lbl = show ? t('Скрыть пароль', 'Hide password') : t('Показать пароль', 'Show password');
+      b.setAttribute('aria-label', lbl); b.title = lbl;
       inp.focus();
     };
     wrap.appendChild(b);
