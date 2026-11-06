@@ -675,3 +675,4 @@ details.faq p{margin:10px 0 0}
 .hb-form input{flex:1;min-width:0;height:38px;border:1px solid var(--line2);border-radius:10px;padding:0 10px;background:var(--fill);color:var(--ink)}
 @media (max-width:760px){#helpBot{right:14px;bottom:14px}.hb-fab{width:50px;height:50px}.lang-btn{height:38px;min-width:38px}}
 @media print{#helpBot{display:none}}
+.nav a.role-off{display:block;margin:2px 0 6px;padding:8px 10px;border-radius:12px;background:var(--hot-soft);color:var(--wait-ink);font-size:12px;line-height:1.35;font-weight:600;white-space:normal}
