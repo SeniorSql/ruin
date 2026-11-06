@@ -1,7 +1,11 @@
 // Общие помощники интерфейса: экранирование, форматы (A5), статусы (A3), модальные окна, тосты
+import { t, isEn } from './i18n.js';
 
 export const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// Логотип-надпись «RUIN.»: жёлтый квадрат в углу R и жёлтая точка (буквы рисуются фигурами — не зависят от шрифта)
+export const WORDMARK = `<svg class="wordmark" viewBox="0 0 186 50" role="img" aria-label="RUIN."><rect x="0" y="0" width="12" height="12" fill="#f5c400"/><g fill="currentColor"><rect x="0" y="13" width="12" height="37"/><path fill-rule="evenodd" d="M13 0H31C41 0 47 6.5 47 16C47 23.5 42.5 28.8 35.5 30.6L48 50H34.5L23 32H12V13H13ZM13 11V21H30C34 21 36 19 36 16C36 13 34 11 30 11Z"/><path d="M54 0H66V30C66 36 70 39 76 39C82 39 86 36 86 30V0H98V30C98 43 89 50 76 50C63 50 54 43 54 30Z"/><rect x="106" y="0" width="12" height="50"/><path d="M126 0H137L155 29V0H167V50H156L138 21V50H126Z"/></g><rect x="174" y="38" width="12" height="12" fill="#f5c400"/></svg>`;
+
 // Ссылка из данных пользователя: только http(s) и внутренние #/ — защита от javascript:-ссылок
 export const safeUrl = (u) => esc(/^(https?:\/\/|#\/)/i.test(String(u ?? '').trim()) ? String(u).trim() : '#');
 
@@ -10,13 +14,13 @@ export const money = (minor) => minor == null ? '—' : nf.format(Number(minor) 
 export const toMinor = (rub) => Math.round(Number(String(rub).replace(/\s/g, '').replace(',', '.')) * 100);
 export const fromMinor = (minor) => minor == null ? '' : String(Number(minor) / 100);
 
-const dFmt = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/Moscow' });
-const dtFmt = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' });
+const dFmt = new Intl.DateTimeFormat(isEn() ? 'en-GB' : 'ru-RU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/Moscow' });
+const dtFmt = new Intl.DateTimeFormat(isEn() ? 'en-GB' : 'ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' });
 export const date = (d) => d ? dFmt.format(typeof d === 'string' && d.length === 10 ? new Date(d + 'T12:00:00+03:00') : new Date(d)) : '—';
-export const dateTime = (d) => d ? dtFmt.format(new Date(d)) + ' МСК' : '—';
+export const dateTime = (d) => d ? dtFmt.format(new Date(d)) + t(' МСК', ' MSK') : '—';
 export const period = (a, b) => {
   const days = Math.round((new Date(b) - new Date(a)) / 864e5) + 1;
-  return `${date(a)} — ${date(b)} (${days} ${plural(days, 'день', 'дня', 'дней')})`;
+  return `${date(a)} — ${date(b)} (${days} ${t(plural(days, 'день', 'дня', 'дней'), days === 1 ? 'day' : 'days')})`;
 };
 export function plural(n, one, few, many) {
   const m10 = n % 10, m100 = n % 100;
@@ -31,22 +35,26 @@ export function mskToday(addDays = 0) {
 }
 export const timeLeft = (iso) => {
   const ms = new Date(iso) - Date.now();
-  if (ms <= 0) return 'время вышло';
+  if (ms <= 0) return t('время вышло', 'time is up');
   const h = Math.floor(ms / 3600e3), m = Math.floor((ms % 3600e3) / 60e3);
-  return h ? `${h} ч ${m} мин` : `${m} мин`;
+  return h ? `${h} ${t('ч', 'h')} ${m} ${t('мин', 'min')}` : `${m} ${t('мин', 'min')}`;
 };
 
-export const UNIT = { HOUR: 'час', SHIFT: 'смена', DAY: 'сутки', NEGOTIABLE: '' };
+export const UNIT = isEn() ? { HOUR: 'hour', SHIFT: 'shift', DAY: 'day', NEGOTIABLE: '' } : { HOUR: 'час', SHIFT: 'смена', DAY: 'сутки', NEGOTIABLE: '' };
 export const priceText = (e) => e.price_unit === 'NEGOTIABLE' || e.price_minor == null
-  ? 'Договорная' : `${money(e.price_minor)}<small> / ${UNIT[e.price_unit]}</small>`;
+  ? t('Договорная', 'Negotiable') : `${money(e.price_minor)}<small> / ${UNIT[e.price_unit]}</small>`;
 
-export const ORG_TYPE = { PERSON: 'Физлицо', LEGAL: 'Юрлицо', SOLE_PROP: 'ИП', SELF_EMPLOYED: 'Самозанятый' };
-export const POLICY = {
+export const ORG_TYPE = isEn() ? { PERSON: 'Individual', LEGAL: 'Company', SOLE_PROP: 'Sole proprietor', SELF_EMPLOYED: 'Self-employed' } : { PERSON: 'Физлицо', LEGAL: 'Юрлицо', SOLE_PROP: 'ИП', SELF_EMPLOYED: 'Самозанятый' };
+export const POLICY = isEn() ? {
+  FLEXIBLE: 'Flexible: free cancellation up to 24 h before start',
+  MODERATE: 'Moderate: free cancellation up to 72 h before start',
+  STRICT: 'Strict: free cancellation up to 7 days before start'
+} : {
   FLEXIBLE: 'Гибкие: бесплатная отмена за 24 ч до начала',
   MODERATE: 'Умеренные: бесплатная отмена за 72 ч до начала',
   STRICT: 'Строгие: бесплатная отмена за 7 суток до начала'
 };
-export const FORMAT = { WITH_OPERATOR: 'С оператором', WITHOUT_OPERATOR: 'Без оператора', ANY: 'Не важно' };
+export const FORMAT = isEn() ? { WITH_OPERATOR: 'With operator', WITHOUT_OPERATOR: 'Without operator', ANY: 'Any' } : { WITH_OPERATOR: 'С оператором', WITHOUT_OPERATOR: 'Без оператора', ANY: 'Не важно' };
 
 // Единый справочник подписей статусов (D99): [класс, подпись]
 const S = {
@@ -78,6 +86,17 @@ const S = {
     COMPLETED: ['closed', 'Завершено'], RELEASED: ['closed', 'Снято'], EXPIRED: ['closed', 'Истекло']
   }
 };
+// Английские подписи статусов
+const S_EN = {
+  org: { DRAFT: 'Not verified', PENDING_REVIEW: 'Under review', VERIFIED: 'Verified', REQUIRES_UPDATE: 'Needs changes', REJECTED: 'Rejected', SUSPENDED: 'Suspended' },
+  equipment: { DRAFT: 'Draft', PENDING_MODERATION: 'In moderation', PUBLISHED: 'Published', REJECTED: 'Rejected', HIDDEN: 'Hidden', ARCHIVED: 'Archived' },
+  order: { DRAFT: 'Draft', PUBLISHED: 'Awaiting offers', OFFERS_RECEIVED: 'Offers received', NEGOTIATION: 'Awaiting confirmation', CONVERTED_TO_DEAL: 'Deal made', EXPIRED: 'Expired', CANCELLED: 'Cancelled' },
+  offer: { SUBMITTED: 'Sent', SELECTED: 'Selected, awaiting confirmation', ACCEPTED: 'Accepted', DECLINED: 'Declined', WITHDRAWN: 'Withdrawn', EXPIRED: 'Expired', UNAVAILABLE: 'Machine busy', LOST: 'Another offer chosen' },
+  deal: { AWAITING_CONFIRMATION: 'Awaiting confirmation', CONFIRMED: 'Confirmed', IN_PROGRESS: 'In progress', COMPLETION_PENDING: 'Awaiting completion', COMPLETED: 'Completed', CANCELLED: 'Cancelled' },
+  booking: { HOLD: 'Hold (pending)', CONFIRMED: 'Booked', ACTIVE: 'In progress', COMPLETED: 'Completed', RELEASED: 'Released', EXPIRED: 'Expired' }
+};
+if (isEn()) for (const k in S) for (const c in S[k]) if (S_EN[k]?.[c]) S[k][c] = [S[k][c][0], S_EN[k][c]];
+
 export const status = (kind, code) => {
   const [cls, label] = (S[kind] && S[kind][code]) || ['gray', code];
   return `<span class="st ${cls}">${esc(label)}</span>`;
@@ -99,6 +118,17 @@ export const SPEC_LABELS = {
   drilling_diameter_mm: ['Диаметр бурения', 'мм'], drill_type: ['Тип бурения', ''], drum_volume_m3: ['Объём барабана', 'м³'],
   weight_kg: ['Масса', 'кг'], description_specs: ['Характеристики', '']
 };
+if (isEn()) Object.assign(SPEC_LABELS, {
+  operating_weight_kg: ['Operating weight', 'kg'], bucket_volume_m3: ['Bucket capacity', 'm³'], max_dig_depth_m: ['Digging depth', 'm'],
+  engine_power_kw: ['Engine power', 'kW'], undercarriage: ['Undercarriage', ''], load_capacity_kg: ['Load capacity', 'kg'],
+  blade_width_m: ['Blade width', 'm'], blade_length_m: ['Blade length', 'm'], drum_width_mm: ['Drum width', 'mm'], roller_type: ['Roller type', ''],
+  paving_width_m: ['Paving width', 'm'], milling_width_mm: ['Milling width', 'mm'], milling_depth_mm: ['Milling depth', 'mm'],
+  load_capacity_t: ['Lifting capacity', 't'], boom_length_m: ['Boom length', 'm'], max_lift_height_m: ['Lift height', 'm'], axles: ['Axles', ''],
+  jib_length_m: ['Jib reach', 'm'], hook_height_m: ['Hook height', 'm'], working_height_m: ['Working height', 'm'],
+  platform_load_kg: ['Platform capacity', 'kg'], chassis: ['Chassis', ''], payload_t: ['Payload', 't'], body_volume_m3: ['Body volume', 'm³'],
+  axle_formula: ['Wheel arrangement', ''], drilling_depth_m: ['Drilling depth', 'm'], drilling_diameter_mm: ['Drilling diameter', 'mm'],
+  drill_type: ['Drilling type', ''], drum_volume_m3: ['Drum volume', 'm³'], weight_kg: ['Weight', 'kg'], description_specs: ['Specifications', '']
+});
 // Обязательные характеристики по категориям (B3)
 export const CATEGORY_SPECS = {
   excavators: ['operating_weight_kg', 'bucket_volume_m3', 'max_dig_depth_m', 'engine_power_kw', 'undercarriage'],
@@ -140,7 +170,7 @@ export function toast(text, isErr = false) {
 export function modal(html, { onClose } = {}) {
   const bg = document.createElement('div');
   bg.className = 'modal-bg';
-  bg.innerHTML = `<div class="modal" role="dialog" aria-modal="true"><button class="x" aria-label="Закрыть">×</button>${html}</div>`;
+  bg.innerHTML = `<div class="modal" role="dialog" aria-modal="true"><button class="x" aria-label="${t('Закрыть', 'Close')}">×</button>${html}</div>`;
   const close = () => { bg.remove(); document.removeEventListener('keydown', onKey); onClose && onClose(); };
   const onKey = (e) => { if (e.key === 'Escape') close(); };
   bg.addEventListener('click', (e) => { if (e.target === bg) close(); });
@@ -153,12 +183,12 @@ export function modal(html, { onClose } = {}) {
 }
 
 // Окно с полем «причина» — для отмен, отклонений и т.п.
-export function askReason(title, text, label = 'Причина', btn = 'Подтвердить') {
+export function askReason(title, text, label = t('Причина', 'Reason'), btn = t('Подтвердить', 'Confirm')) {
   return new Promise((resolve) => {
     let done = false;
     const m = modal(`<h2>${esc(title)}</h2><p class="muted">${esc(text)}</p>
       <form><label class="f"><span>${esc(label)} <i>*</i></span><textarea class="inp" name="r" required maxlength="500"></textarea></label>
-      <div class="actions"><button class="btn dark">${esc(btn)}</button><button type="button" class="btn ghost" data-c>Назад</button></div></form>`,
+      <div class="actions"><button class="btn dark">${esc(btn)}</button><button type="button" class="btn ghost" data-c>${t('Назад', 'Back')}</button></div></form>`,
       { onClose: () => { if (!done) resolve(null); } });
     m.el.querySelector('[data-c]').onclick = () => m.close();
     m.el.querySelector('form').onsubmit = (e) => {
@@ -168,12 +198,12 @@ export function askReason(title, text, label = 'Причина', btn = 'Подт
   });
 }
 
-export function confirmBox(title, text, btn = 'Подтвердить', danger = false) {
+export function confirmBox(title, text, btn = t('Подтвердить', 'Confirm'), danger = false) {
   return new Promise((resolve) => {
     let done = false;
     const m = modal(`<h2>${esc(title)}</h2><p>${text}</p>
       <div class="actions"><button class="btn ${danger ? 'danger' : 'dark'}" data-ok>${esc(btn)}</button>
-      <button class="btn ghost" data-c>Отмена</button></div>`, { onClose: () => { if (!done) resolve(false); } });
+      <button class="btn ghost" data-c>${t('Отмена', 'Cancel')}</button></div>`, { onClose: () => { if (!done) resolve(false); } });
     m.el.querySelector('[data-ok]').onclick = () => { done = true; m.close(); resolve(true); };
     m.el.querySelector('[data-c]').onclick = () => m.close();
   });
@@ -196,7 +226,7 @@ export const emptyState = (title, text, actionHtml = '') =>
   `<div class="panel empty"><b>${esc(title)}</b>${esc(text)}${actionHtml ? `<div>${actionHtml}</div>` : ''}</div>`;
 
 export const errorState = (err) =>
-  `<div class="panel empty"><b>Не удалось загрузить данные</b>${esc(err?.message || err)}<div><button class="btn ghost" data-reload>Обновить страницу</button></div></div>`;
+  `<div class="panel empty"><b>${t('Не удалось загрузить данные', 'Could not load data')}</b>${esc(err?.message || err)}<div><button class="btn ghost" data-reload>${t('Обновить страницу', 'Reload page')}</button></div></div>`;
 
 export const initials = (name) => (name || '?').replace(/[«»"()]/g, '').replace(/^(ООО|ИП|АО|ПАО|ЗАО)\s+/i, '')
   .split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
