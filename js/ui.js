@@ -196,7 +196,7 @@ export const emptyState = (title, text, actionHtml = '') =>
   `<div class="panel empty"><b>${esc(title)}</b>${esc(text)}${actionHtml ? `<div>${actionHtml}</div>` : ''}</div>`;
 
 export const errorState = (err) =>
-  `<div class="panel empty"><b>Не удалось загрузить данные</b>${esc(err?.message || err)}<div><button class="btn ghost" onclick="location.reload()">Обновить страницу</button></div></div>`;
+  `<div class="panel empty"><b>Не удалось загрузить данные</b>${esc(err?.message || err)}<div><button class="btn ghost" data-reload>Обновить страницу</button></div></div>`;
 
 export const initials = (name) => (name || '?').replace(/[«»"()]/g, '').replace(/^(ООО|ИП|АО|ПАО|ЗАО)\s+/i, '')
   .split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
