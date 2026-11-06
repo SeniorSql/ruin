@@ -4,6 +4,8 @@ import { modal, toast, busy } from './ui.js';
 
 const LABEL = { transfer_ownership: 'передачи прав владельца', org_requisites: 'смены реквизитов организации', org_delete: 'удаления организации' };
 
+const VERIFY_MSG = { BAD: 'Неверный код', EXPIRED: 'Код устарел — нажмите «Отправить ещё раз»', LOCKED: 'Слишком много попыток — нажмите «Отправить ещё раз»' };
+
 async function sendCode(purpose) {
   const { data, error } = await sb.functions.invoke('tg-bot', { body: { action: 'code', purpose } });
   let msg = data?.error;
@@ -30,7 +32,13 @@ export async function withActionCode(purpose, fn) {
     f.onsubmit = (e) => {
       e.preventDefault();
       busy(f.querySelector('button[type=submit]'), async () => {
-        try { const r = await fn(f.code.value.trim()); done = true; m.close(); resolve(r); }
+        try {
+          const code = f.code.value.trim();
+          // Сначала отдельная проверка кода — так неверные попытки засчитываются (защита от перебора)
+          const st = await rpc('verify_action_code', { p_purpose: purpose, p_code: code });
+          if (st !== 'OK') throw new Error(VERIFY_MSG[st] || 'Неверный код');
+          const r = await fn(code); done = true; m.close(); resolve(r);
+        }
         catch (err) { const el = f.querySelector('.form-error'); el.textContent = err.message; el.classList.remove('hidden'); }
       });
     };
