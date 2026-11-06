@@ -18,7 +18,7 @@ export async function render(app, params, _q, pattern) {
   if (!(pattern === 'fleet/new' ? o.can_provide : actsAsProvider(o))) {
     app.innerHTML = emptyState('Текущая организация не исполнитель',
       'Чтобы сдавать технику, создайте организацию исполнителя (ИП, юрлицо или самозанятый) или переключитесь на неё в меню слева.',
-      '<a class="btn" href="#/account">Создать организацию</a>');
+      '<a class="btn" href="#/account?become=provider">Стать исполнителем</a>');
     return;
   }
   await loadCategories();
@@ -33,7 +33,7 @@ async function list(app, o) {
   app.innerHTML = `
     <div class="page-head"><div><h1>Моя техника</h1><p>${esc(o.name)}</p></div>
       ${canManage() && o.can_provide ? '<a class="btn" href="#/fleet/new">+ Добавить технику</a>' : ''}</div>
-    ${!o.can_provide ? '<div class="banner warn">Сдача техники на паузе — техника скрыта из каталога, её нельзя забронировать. Чтобы вернуть её в каталог, нажмите «Возобновить сдачу техники» в <a href="#/account">Профиле и организациях</a>.</div>' : ''}
+    ${!o.can_provide ? '<div class="banner warn">Роль исполнителя выключена — техника скрыта из каталога, её нельзя забронировать. Чтобы вернуть её в каталог, в <a href="#/account">Профиле и организациях</a> нажмите «Изменить» и поставьте галочку «Исполнитель».</div>' : ''}
     ${o.verification_status !== 'VERIFIED' ? `<div class="banner warn">Организация ${statusLabel('org', o.verification_status).toLowerCase()}. Карточки можно заполнять, а публиковать — после проверки. <a href="#/account">Подробнее</a></div>` : ''}
     ${rows.length ? `<div class="panel">${rows.map((e) => {
       const p = photoOf(e);
