@@ -76,8 +76,12 @@ h1,h2,h3{font-family:Manrope,'DM Sans',sans-serif;letter-spacing:-.4px;margin:0}
 .brand-tag{font-size:7.6px;letter-spacing:2.1px;font-weight:700;color:var(--muted);white-space:nowrap;line-height:1}
 /* Поиск в шапке — точно по центру страницы: три колонки, логотип слева, кнопки справа */
 @media (min-width:761px){
-  .top{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,600px) minmax(0,1fr)}
-  .top .brand{justify-self:start}
+  /* Края шапки совпадают с краями страницы (макс. 1600px), логотип — по центру над левой колонкой меню */
+  /* Колонки шапки повторяют страницу: под логотип — ширина меню, поиск — по центру над содержимым */
+  .top{display:grid;grid-template-columns:236px minmax(0,1fr) auto;column-gap:28px;
+    padding-left:max(32px,calc((100% - 1600px) / 2 + 32px));padding-right:max(32px,calc((100% - 1600px) / 2 + 32px))}
+  .top .brand{justify-self:stretch;align-items:center}
+  .top .search{justify-self:center;max-width:600px}
   .top .top-actions{justify-self:end;margin-left:0}
 }
 .search{height:44px;display:flex;align-items:center;gap:10px;border:1px solid transparent;border-radius:14px;background:var(--fill);padding:0 5px 0 14px;flex:1;width:100%;color:var(--muted);transition:background .2s,box-shadow .2s}
@@ -508,6 +512,7 @@ textarea.inp{height:auto;min-height:96px;padding:10px 12px;resize:vertical}
 /* ---------- адаптив ---------- */
 @media (max-width:1200px){
   .top{padding:0 20px;gap:16px}
+  @media (min-width:761px){.top{grid-template-columns:200px minmax(0,1fr) auto;column-gap:20px}}
   .layout{padding:20px;grid-template-columns:200px minmax(0,1fr);gap:20px}
   .cats{grid-template-columns:repeat(4,1fr)}
   .cols{grid-template-columns:minmax(0,1fr) 340px}
