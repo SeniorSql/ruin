@@ -76,10 +76,28 @@ export async function loadMe() {
   } catch { state.needConsent = false; }
   state.orgs = (members || []).map((m) => ({ ...m.organizations, role: m.role }))
     .sort((a, b) => (a.type === 'PERSON') - (b.type === 'PERSON') || a.created_at.localeCompare(b.created_at));
+  // Есть ли у организации сделки/техника в роли исполнителя или заказчика — даже если галочку роли потом сняли.
+  // Иначе старые сделки и техника пропадают из меню (их не видно и не завершить).
+  try {
+    const ids = state.orgs.map((o) => o.id);
+    if (ids.length) {
+      const [pd, cd, eq] = await Promise.all([
+        sb.from('deals').select('provider_org_id').in('provider_org_id', ids).limit(1000),
+        sb.from('deals').select('customer_org_id').in('customer_org_id', ids).limit(1000),
+        sb.from('equipment').select('org_id').in('org_id', ids).neq('status', 'ARCHIVED').limit(2000)]);
+      const prov = new Set([...(pd.data || []).map((r) => r.provider_org_id), ...(eq.data || []).map((r) => r.org_id)]);
+      const cust = new Set((cd.data || []).map((r) => r.customer_org_id));
+      state.orgs.forEach((o) => { o.has_provider_data = prov.has(o.id); o.has_customer_data = cust.has(o.id); });
+    }
+  } catch {}
   let saved = null;
   try { saved = localStorage.getItem(CTX_KEY); } catch {}
   state.org = state.orgs.find((o) => o.id === saved) || state.orgs[0] || null;
 }
+
+// Показывать ли разделы роли: галочка роли включена ИЛИ по этой роли уже есть сделки/техника
+export const actsAsProvider = (o = state.org) => !!(o && (o.can_provide || o.has_provider_data));
+export const actsAsCustomer = (o = state.org) => !!(o && (o.can_order || o.has_customer_data));
 
 export function setOrg(id) {
   state.org = state.orgs.find((o) => o.id === id) || state.org;
