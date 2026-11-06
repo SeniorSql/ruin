@@ -1,7 +1,7 @@
 // Карточка техники: галерея, характеристики, календарь, калькулятор, бронь (SCR-CAT-03, раздел H)
 import { sb, state, q, rpc, canManage } from '../api.js';
 import { esc, money, priceText, photoOf, initials, specValue, SPEC_LABELS, POLICY, UNIT, status, modal, toast, busy,
-  mskToday, date, idemKey, plural, errorState } from '../ui.js';
+  mskToday, date, idemKey, plural, errorState, safeUrl } from '../ui.js';
 import { EQ_SELECT, productCard, loadFavs, bindFavs } from '../cards.js';
 import { go } from '../app.js';
 
@@ -107,7 +107,7 @@ export async function render(app, { id }) {
   const setCredit = (i) => {
     const p = photos[i]; const c = app.querySelector('#credit');
     if (!c) return;
-    c.innerHTML = p?.author ? `Фото: <a href="${esc(p.page)}" target="_blank" rel="noopener">${esc(p.author)}</a> · ${esc(p.license || '')}` : '';
+    c.innerHTML = p?.author ? `Фото: <a href="${safeUrl(p.page)}" target="_blank" rel="noopener">${esc(p.author)}</a> · ${esc(p.license || '')}` : '';
     c.style.display = p?.author ? '' : 'none';
   };
   setCredit(0);
