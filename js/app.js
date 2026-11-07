@@ -3,6 +3,7 @@ import { sb, configured, state, loadMe, setOrg, refreshCounters, loadCategories,
 import { esc, status, initials, toast, modal, WORDMARK } from './ui.js';
 import { t, isEn, setLang } from './i18n.js';
 import { initDrafts } from './drafts.js';
+import { initCityList } from './cities.js';
 import { maybeShowOnboarding, showOnboarding } from './onboarding.js';
 const ICON = {
   home: '<path d="m3 10 9-7 9 7v10H3zM9 20v-6h6v6"/>',
@@ -413,6 +414,7 @@ async function boot() {
   }, true);
   document.addEventListener('focusin', (ev) => { const tg = ev.target; if (isDate(tg)) { const s = startOf(tg); if (s) limitEnd(s, tg); } });
   initDrafts();
+  initCityList(); // выпадающий список городов у всех полей «Город»
   // Бот-подсказчик поддержки — круглая кнопка в правом нижнем углу на всех страницах
   import('./support.js').then((m) => m.mountHelpBot()).catch((err) => console.error(err));
   // «Глазик» у всех полей пароля: показать / скрыть введённое
