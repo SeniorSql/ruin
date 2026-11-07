@@ -1,7 +1,7 @@
 // Исполнитель: лента заказов, карточка заказа, форма предложения, мои предложения (SCR-ORD-06..09)
 import { sb, state, q, rpc, loadCategories, seenOrders, markOrderSeen, refreshCounters, canManage, actsAsProvider } from '../api.js';
 import { esc, money, status, toast, busy, emptyState, errorState, date, period, FORMAT, dateTime, timeLeft, toMinor, fromMinor,
-  statusLabel, qs, photoOf } from '../ui.js';
+  statusLabel, qs, photoOf, offerParts, DELIVERY_MODE } from '../ui.js';
 import { go, route, refreshShell } from '../app.js';
 
 export async function render(app, params, query, pattern) {
@@ -110,6 +110,7 @@ async function orderPage(app, id) {
         </div>
         ${myOffers.length ? `<div class="panel"><h2>Мои предложения по заказу</h2>${myOffers.map((f) => `<div class="row-item"><div class="grow">
           <b class="num">${money(f.total_minor)}</b> <span class="small muted">редакция №${f.rev} · ${dateTime(f.created_at)}</span>
+          <div class="small muted">Доставка: ${esc(offerParts(f).text)}</div>
           ${f.comment ? `<div class="small">${esc(f.comment)}</div>` : ''}</div>${status('offer', f.status)}
           ${f.status === 'SUBMITTED' && canManage() ? `<button class="btn ghost sm" data-wd="${f.id}">Отозвать</button>` : ''}</div>`).join('')}</div>` : ''}
       </div>
@@ -117,6 +118,7 @@ async function orderPage(app, id) {
         ${active?.status === 'SUBMITTED' ? `<div class="banner ok" style="display:block">
             <div class="price-big num" style="font-size:22px">${money(active.total_minor)}</div>
             <div class="small">${esc(myEq.find((e) => e.id === active.equipment_id)?.title || '')} · ${active.with_operator ? 'с оператором' : 'без оператора'} · редакция №${active.rev}</div>
+            ${offerParts(active).mode ? `<div class="small">Аренда ${money(offerParts(active).rent)} · доставка: ${esc(offerParts(active).text)}</div>` : `<div class="small">Доставка: ${esc(offerParts(active).text)}</div>`}
             ${active.comment ? `<p class="small" style="margin:6px 0 0;white-space:pre-wrap">${esc(active.comment)}</p>` : ''}
             <div class="small muted" style="margin-top:6px">Заказчик получил уведомление. Ждём его решения.</div></div>
           ${open && canManage() ? '<button class="btn ghost wide" id="editOffer">Изменить предложение</button>' : ''}` : ''}
@@ -128,8 +130,12 @@ async function orderPage(app, id) {
           <label class="f"><span>Техника <i>*</i></span><select class="inp" name="eq" required>
             ${myEq.map((e) => `<option value="${e.id}" ${busyMap[e.id] ? 'disabled' : ''}>${esc(e.title)}${busyMap[e.id] ? ' — занята' : ''}</option>`).join('')}</select></label>
           <label class="f"><span>Формат</span><select class="inp" name="op"></select></label>
-          <label class="f"><span>Стоимость за весь период, ₽ <i>*</i></span><input class="inp" name="total" type="number" min="1" step="1" max="1000000000" required>
+          <label class="f"><span>Аренда за весь период, ₽ <i>*</i></span><input class="inp" name="total" type="number" min="1" step="1" max="1000000000" required>
             <div class="hint" id="sugg"></div></label>
+          <label class="f"><span>Доставка — привоз и вывоз техники <i>*</i></span><select class="inp" name="dmode" required>
+            <option value="">Выберите…</option>${Object.entries(DELIVERY_MODE).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
+          <label class="f hidden" id="dsumWrap"><span>Стоимость доставки, ₽ <i>*</i></span><input class="inp" name="dsum" type="number" min="1" step="1" max="100000000"></label>
+          <div id="osum"></div>
           <label class="f"><span>Комментарий</span><textarea class="inp" name="comment" maxlength="2000" placeholder="Что входит, когда сможете приехать, особые условия"></textarea></label>
           <div class="form-error hidden" id="err"></div>
           <button class="btn wide">${active ? 'Отправить новую редакцию' : 'Отправить предложение'}</button>
@@ -152,20 +158,45 @@ async function orderPage(app, id) {
     f.op.innerHTML = opts.length ? opts.map(([v, t]) => `<option value="${v}">${t}</option>`).join('') : '<option value="">Формат не подходит заказу</option>';
     await suggest();
   };
+  // Доставка: способ и сумма; итог для заказчика = аренда + платная доставка
+  const showSum = () => {
+    const paid = f.dmode.value === 'PAID';
+    app.querySelector('#dsumWrap').classList.toggle('hidden', !paid);
+    f.dsum.required = paid;
+    const rent = toMinor(f.total.value || 0), dl = paid ? toMinor(f.dsum.value || 0) : 0;
+    app.querySelector('#osum').innerHTML = rent > 0 && f.dmode.value
+      ? `<div class="banner info small" style="display:block"><b>Итого для заказчика: ${money(rent + dl)}</b><br>
+          ${paid ? `аренда ${money(rent)} + доставка ${money(dl)} (оплачивает заказчик)` : f.dmode.value === 'INCLUDED' ? 'доставка включена в аренду' : 'без доставки — заказчик забирает технику сам'}</div>` : '';
+  };
   const suggest = async () => {
     const sg = app.querySelector('#sugg');
-    if (f.op.value === '') { sg.textContent = ''; return; }
+    const e = myEq.find((x) => x.id === f.eq.value);
+    // Доставка из тарифа техники подставляется, пока исполнитель сам её не менял
+    if (e && e.delivery_minor > 0 && (!f.dsum.value || f.dsum.dataset.auto === '1')) {
+      f.dsum.value = fromMinor(e.delivery_minor); f.dsum.dataset.auto = '1';
+      if (!f.dmode.value) f.dmode.value = 'PAID';
+    }
+    if (f.op.value === '') { sg.textContent = ''; showSum(); return; }
     try {
       const qt = await rpc('calc_quote', { p_eq: f.eq.value, p_start: o.start_date, p_end: o.end_date, p_with_operator: f.op.value === '1' });
       if (qt.ok) {
-        sg.textContent = `По вашим тарифам: ${money(qt.total).replace(' ', ' ')}`;
-        if (!f.total.value || f.total.dataset.auto === '1') { f.total.value = fromMinor(qt.total); f.total.dataset.auto = '1'; }
+        const dl = (qt.lines || []).find((l) => l.code === 'delivery')?.amount || 0;
+        sg.textContent = `По вашим тарифам: аренда ${money(qt.total - dl)}${dl ? `, доставка ${money(dl)}` : ''}`;
+        if (!f.total.value || f.total.dataset.auto === '1') { f.total.value = fromMinor(qt.total - dl); f.total.dataset.auto = '1'; }
       } else sg.textContent = qt.error;
     } catch { sg.textContent = ''; }
+    showSum();
   };
-  f.total.addEventListener('input', () => { f.total.dataset.auto = '0'; });
+  f.total.addEventListener('input', () => { f.total.dataset.auto = '0'; showSum(); });
+  f.dsum.addEventListener('input', () => { f.dsum.dataset.auto = '0'; showSum(); });
+  f.dmode.addEventListener('change', showSum);
   // Изменение отправленного предложения: форма открывается по кнопке и заполняется текущей редакцией
-  if (active) { f.eq.value = active.equipment_id; f.total.value = fromMinor(active.total_minor); f.comment.value = active.comment || ''; f.total.dataset.auto = '0'; }
+  if (active) {
+    const pr = offerParts(active);
+    f.eq.value = active.equipment_id; f.comment.value = active.comment || '';
+    f.total.value = fromMinor(pr.mode ? pr.rent : active.total_minor); f.total.dataset.auto = '0';
+    if (pr.mode) { f.dmode.value = pr.mode; if (pr.mode === 'PAID') { f.dsum.value = fromMinor(pr.delivery); f.dsum.dataset.auto = '0'; } }
+  }
   app.querySelector('#editOffer')?.addEventListener('click', (ev) => { f.classList.remove('hidden'); ev.currentTarget.remove(); f.total.focus(); });
   f.eq.addEventListener('change', fillFormats);
   f.op.addEventListener('change', suggest);
@@ -175,7 +206,8 @@ async function orderPage(app, id) {
     busy(f.querySelector('button'), async () => {
       try {
         await rpc('submit_offer', { p_org: state.org.id, p_order: id, p_eq: f.eq.value, p_with_operator: f.op.value === '1',
-          p_total: toMinor(f.total.value), p_comment: f.comment.value });
+          p_total: toMinor(f.total.value), p_comment: f.comment.value,
+          p_delivery_mode: f.dmode.value, p_delivery: f.dmode.value === 'PAID' ? toMinor(f.dsum.value) : null });
         toast('Предложение отправлено заказчику'); route();
       } catch (err) { const el = app.querySelector('#err'); el.textContent = err.message; el.classList.remove('hidden'); }
     });
