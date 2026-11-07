@@ -30,13 +30,13 @@ export async function render(app, { id }) {
     <div class="crumbs"><a href="#/">RUIN</a> › <a href="#/catalog">${t('Каталог', 'Catalogue')}</a> › <a href="#/catalog?cat=${e.categories?.code}">${esc(catName(e.categories))}</a> › <b>${esc(e.title)}</b></div>
     ${e.is_demo ? `<div class="banner warn">${t('<b>Пример карточки.</b>&nbsp;Так будет выглядеть реальное предложение. Забронировать или написать по ней нельзя.', '<b>Sample listing.</b>&nbsp;This is how a real offer will look. It cannot be booked or messaged.')}</div>` : ''}
     ${mine && e.status !== 'PUBLISHED' ? `<div class="banner info">${t('Это ваша техника, статус:', 'This is your machine, status:')} ${status('equipment', e.status)}. ${t('Покупатели её пока не видят.', 'Customers cannot see it yet.')} <a href="#/fleet/${e.id}">${t('Редактировать', 'Edit')}</a></div>` : ''}
-    <div class="cols">
-      <div>
+    <div class="cols item-cols">
+      <div class="item-main">
         <div class="gallery">${photos[0] ? `<img class="main-img" id="mainImg" src="${esc(photos[0].url)}" alt="${esc(e.title)}" referrerpolicy="no-referrer">` : '<div class="main-img" style="aspect-ratio:16/10"></div>'}
           <span class="credit" id="credit"></span></div>
         ${photos.length > 1 ? `<div class="thumbs">${photos.map((p, i) => `<button data-i="${i}" class="${i ? '' : 'on'}" aria-label="${t('Фото', 'Photo')} ${i + 1}"><img src="${esc(p.url)}" alt="" loading="lazy" referrerpolicy="no-referrer"></button>`).join('')}</div>` : ''}
 
-        <div class="panel" style="margin-top:14px">
+        <div class="panel item-title" style="margin-top:14px">
           <span class="muted small">${esc(catName(e.categories))} · ${esc(e.brand)} ${esc(e.model)}${e.year ? ' · ' + e.year + t(' г.', '') : ''}</span>
           <h1 style="font-size:28px;margin:4px 0 6px">${esc(e.title)}</h1>
           <div class="muted">${esc(e.city)}${e.district ? ', ' + esc(e.district) : ''} · ${t('выезд до', 'travels up to')} ${e.service_radius_km} ${t('км', 'km')}</div>
