@@ -676,3 +676,59 @@ details.faq p{margin:10px 0 0}
 @media (max-width:760px){#helpBot{right:14px;bottom:14px}.hb-fab{width:50px;height:50px}.lang-btn{height:38px;min-width:38px}}
 @media print{#helpBot{display:none}}
 .nav a.role-off{display:block;margin:2px 0 6px;padding:8px 10px;border-radius:12px;background:var(--hot-soft);color:var(--wait-ink);font-size:12px;line-height:1.35;font-weight:600;white-space:normal}
+
+/* ---- Мобильная версия (обновление 45) ---- */
+/* Кнопка помощника не закрывает открытое окно */
+body:has(.modal-bg) #helpBot{display:none}
+/* Карточка техники в одну колонку: цена и «Забронировать» сразу под названием, а не в самом низу */
+@media (max-width:900px){
+  .item-cols{gap:14px}
+  .item-cols>.item-main{display:contents}
+  .item-cols>.item-main>*{order:3}
+  .item-cols>.item-main>.gallery,.item-cols>.item-main>.thumbs,.item-cols>.item-main>.item-title{order:1}
+  .item-cols>aside{order:2}
+  .item-cols .panel+.panel,.item-cols .item-title{margin-top:0!important}
+  .item-cols>.item-main>.thumbs{margin-top:-6px}
+}
+@media (max-width:760px){
+  /* Поля ввода 16px — иначе iPhone сам увеличивает страницу при нажатии на поле */
+  .inp,select.inp,textarea.inp,.hero-search input,.hb-form input,#ctxSel{font-size:16px}
+  /* Шапка: круглые кнопки не сжимаются, «EN» в одну строку */
+  .top-actions{gap:4px}
+  .top-actions>*{flex:none}
+  .lang-btn{white-space:nowrap;padding:0 6px;min-width:36px;height:36px}
+  .icon-btn{width:36px;height:36px}
+  /* Плашки-подсказки: обычный текст, кнопки — строкой ниже (раньше текст разбивался на узкие столбики) */
+  .banner{display:block}
+  .banner>.actions,.banner>.btn{margin-top:10px}
+  /* Место под кнопкой помощника внизу страницы; при вводе текста она прячется */
+  .layout{padding-bottom:84px}
+  body:has(input:focus,textarea:focus) #helpBot{display:none}
+  .hb-panel{height:min(520px,calc(100dvh - 110px))}
+  /* Окна выезжают снизу, высота учитывает адресную строку телефона */
+  .modal-bg{padding:8px;place-items:end center}
+  .modal{padding:18px 16px;border-radius:20px;max-height:calc(100dvh - 16px)}
+  .modal h2{padding-right:30px}
+  .chat{height:70dvh}
+  /* Фильтры каталога — ровная сетка в 2 колонки */
+  .filters{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .filters>*{min-width:0}
+  .filters .inp,.filters input.inp{width:100%!important;min-width:0!important;height:42px}
+  .filters input[name=q],.filters>.check{grid-column:1/-1}
+  .filters>.btn{height:42px}
+  .filters>label.small{display:flex;flex-direction:column;gap:4px}
+  .filters>.pill{grid-column:1/-1;justify-self:center}
+  .item-title h1{font-size:22px!important}
+  /* Вкладки и быстрые фильтры — удобнее попадать пальцем */
+  .tabs a,.tabs button{padding:9px 14px}
+  .tl-quick button{padding:7px 12px}
+  /* Печатные документы (акт, договор) — без огромных полей */
+  .doc{padding:18px 14px;font-size:13px}
+  .doc header{flex-wrap:wrap;gap:8px}
+  .doc-t td{padding:5px 6px;overflow-wrap:anywhere}
+}
+@media (max-width:359px){
+  .top{padding:0 10px}
+  .wordmark{height:19px}
+  #themeBtn{display:none}
+}
