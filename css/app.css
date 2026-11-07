@@ -703,7 +703,7 @@ body:has(.modal-bg) #helpBot{display:none}
   .banner>.actions,.banner>.btn{margin-top:10px}
   /* Место под кнопкой помощника внизу страницы; при вводе текста она прячется */
   .layout{padding-bottom:84px}
-  body:has(input:focus,textarea:focus) #helpBot{display:none}
+  body:has(#app input:focus,#app textarea:focus) #helpBot{display:none}
   .hb-panel{height:min(520px,calc(100dvh - 110px))}
   /* Окна выезжают снизу, высота учитывает адресную строку телефона */
   .modal-bg{padding:8px;place-items:end center}
