@@ -1,7 +1,7 @@
 // Отзывы организации: обо мне, ждут моего отзыва, мои отзывы (Модуль 8, «Моя репутация» упрощённо)
 import { sb, state, q, rpc, canManage } from '../api.js';
 import { esc, date, emptyState, errorState, toast, askReason, plural } from '../ui.js';
-import { stars } from '../dealExtras.js';
+import { stars, reviewBadge } from '../dealExtras.js';
 import { route } from '../app.js';
 
 export async function render(app, _p, query) {
@@ -34,10 +34,10 @@ export async function render(app, _p, query) {
         <div class="small muted">${esc(who(r.author))} · ${date(r.published_at)} · ${r.subject_role === 'PROVIDER' ? 'вы как исполнитель' : 'вы как заказчик'}</div>
         ${r.reply_text ? `<div class="banner info small" style="margin:8px 0 0"><b>Ваш ответ:</b>&nbsp;${esc(r.reply_text)}</div>`
           : canManage() ? `<button class="btn ghost sm" data-reply="${r.id}" style="margin-top:8px">Ответить</button>` : ''}</div>`).join('')
-      : `<div class="empty"><b>Опубликованных отзывов о вас пока нет</b>Отзыв второй стороны открывается, когда вы оставите свой по той же сделке, или через 14 дней после её завершения.
+      : `<div class="empty"><b>Опубликованных отзывов о вас пока нет</b>Отзыв о вас появится здесь после проверки модератором площадки.
          ${waiting.length ? '<div><a class="btn" href="#/reviews?tab=waiting">Оставить отзыв</a></div>' : ''}</div>`;
   } else if (tab === 'waiting') {
-    body = waiting.length ? `<div class="banner info">Отзывы открываются вслепую: отзыв второй стороны о вас станет виден, как только вы оставите свой (или через 14 дней).</div>`
+    body = waiting.length ? `<div class="banner info">Оставить отзыв можно в течение 14 дней после завершения сделки. Его проверит модератор площадки, после этого отзыв увидят все.</div>`
       + waiting.map((d) => `<a class="row-item" href="#/deals/${d.id}"><div class="grow"><b>${esc(d.number)} · ${esc(d.equipment?.title || '')}</b>
           <div class="small muted">Завершена ${date(d.completed_at)} · ${d.customer_org_id === o.id ? 'вы заказчик' : 'вы исполнитель'} · осталось ${daysLeft(d)} ${plural(daysLeft(d), 'день', 'дня', 'дней')}</div></div>
           <span class="btn sm">Оставить отзыв</span></a>`).join('')
@@ -45,8 +45,9 @@ export async function render(app, _p, query) {
   } else {
     body = mine.length ? mine.map((r) => `<div class="row-item" style="display:block">
         <div class="actions" style="justify-content:space-between"><span class="rating">${stars(r.overall)}</span>
-          ${r.status === 'SUBMITTED' ? '<span class="st wait">Опубликуется, когда отзыв оставит вторая сторона или через 14 дней</span>' : '<span class="st ok">Опубликован</span>'}</div>
+          ${reviewBadge(r)}</div>
         ${r.text ? `<p style="margin:6px 0">${esc(r.text)}</p>` : ''}
+        ${r.moderation_comment && r.status !== 'PUBLISHED' ? `<div class="small warn-text">Модератор: ${esc(r.moderation_comment)}</div>` : ''}
         <div class="small muted">О ком: ${esc(who(r.subject))} · <a href="#/deals/${r.deal_id}">сделка ${esc(r.deals?.number || '')}</a> · ${date(r.created_at)}</div>
         ${r.reply_text ? `<div class="banner info small" style="margin:8px 0 0"><b>Ответ:</b>&nbsp;${esc(r.reply_text)}</div>` : ''}</div>`).join('')
       : '<div class="empty"><b>Вы ещё не оставляли отзывов</b>Оставить отзыв можно на странице завершённой сделки.</div>';
