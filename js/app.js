@@ -1,5 +1,5 @@
 // Точка входа: шапка, меню, маршрутизация по #/адресам
-import { sb, configured, state, loadMe, setOrg, refreshCounters, loadCategories, isAdmin, canManage, CONSENT_VERSION, actsAsProvider, actsAsCustomer, passwordRecovery } from './api.js';
+import { sb, configured, state, loadMe, setOrg, refreshCounters, loadCategories, isAdmin, canManage, CONSENT_VERSION, actsAsProvider, actsAsCustomer, passwordRecovery, signOutSafe } from './api.js';
 import { esc, status, initials, toast, modal, WORDMARK } from './ui.js';
 import { t, isEn, setLang } from './i18n.js';
 import { initDrafts } from './drafts.js';
@@ -313,7 +313,7 @@ function askConsent() {
     <form id="cf"><label class="check"><input type="checkbox" name="pd" required><span>I consent to the processing of my personal data and accept the terms of use</span></label>
       <div class="actions"><button class="btn">Confirm</button><button class="btn ghost" type="button" data-out>Log out</button></div></form>`),
     { onClose: () => { consentOpen = false; } });
-  m.el.querySelector('[data-out]').onclick = async () => { await sb.auth.signOut(); m.close(); await loadMe(); refreshShell(); go('#/'); };
+  m.el.querySelector('[data-out]').onclick = async () => { if (!await signOutSafe()) return; m.close(); await loadMe(); refreshShell(); go('#/'); };
   m.el.querySelector('#cf').onsubmit = async (e) => {
     e.preventDefault();
     const { error } = await sb.rpc('accept_consents', { p_version: CONSENT_VERSION });
