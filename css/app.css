@@ -218,6 +218,7 @@ textarea.inp{height:auto;min-height:96px;padding:10px 12px;resize:vertical}
 .st.gray{background:var(--gray-soft);color:var(--gray-ink)}.st.gray:before{content:'✎'}
 .st.wait{background:var(--orange-soft);color:var(--wait-ink)}.st.wait:before{content:'◷'}
 .st.work{background:var(--blue-soft);color:var(--info-ink)}.st.work:before{content:'➜'}
+.st.offers{background:var(--violet-soft);color:var(--violet)}.st.offers:before{content:'★'} /* «Есть предложения» — отличается от «Ждёт предложений» */
 .st.ok{background:var(--green-soft);color:var(--ok-ink)}.st.ok:before{content:'✓'}
 .st.warn{background:var(--hot-soft);color:var(--warn-ink)}.st.warn:before{content:'⚠'}
 .st.err{background:var(--red-soft);color:var(--err-ink)}.st.err:before{content:'✕'}
@@ -687,6 +688,7 @@ details.faq p{margin:10px 0 0}
 body:has(.modal-bg) #helpBot{display:none}
 /* Карточка техники в одну колонку: цена и «Забронировать» сразу под названием, а не в самом низу */
 @media (max-width:900px){
+  .cols>*{min-width:0} /* широкие таблицы (сравнение предложений) прокручиваются внутри, а не раздвигают страницу */
   .item-cols{gap:14px}
   .item-cols>.item-main{display:contents}
   .item-cols>.item-main>*{order:3}
