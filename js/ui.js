@@ -75,7 +75,7 @@ const S = {
     REJECTED: ['err', 'Отклонена'], HIDDEN: ['closed', 'Скрыта'], ARCHIVED: ['closed', 'В архиве']
   },
   order: {
-    DRAFT: ['gray', 'Черновик'], PUBLISHED: ['work', 'Ждёт предложений'], OFFERS_RECEIVED: ['work', 'Есть предложения'],
+    DRAFT: ['gray', 'Черновик'], PUBLISHED: ['work', 'Ждёт предложений'], OFFERS_RECEIVED: ['offers', 'Есть предложения'],
     NEGOTIATION: ['wait', 'Ждёт подтверждения'], CONVERTED_TO_DEAL: ['ok', 'Сделка заключена'],
     EXPIRED: ['closed', 'Истёк'], CANCELLED: ['closed', 'Отменён']
   },
