@@ -6,14 +6,18 @@ import { route, refreshShell } from '../app.js';
 export async function render(app, _p, query) {
   if (!isAdmin()) { app.innerHTML = emptyState('Нет доступа', 'Раздел доступен только администраторам платформы.'); return; }
   await refreshCounters(); refreshShell();
-  const n = state.counters.admin || {};
+  const n = { ...(state.counters.admin || {}) };
+  // Отзывы на проверке (SQL 24) — считаем здесь, счётчики базы их не включают
+  const { count: pendingReviews } = await sb.from('reviews').select('id', { count: 'exact', head: true }).in('status', ['PENDING', 'SUBMITTED']);
+  n.reviews = pendingReviews || 0;
+  n.total = (n.total || 0) + n.reviews;
   // Если ничего не выбрано — открываем первую очередь, где есть работа
-  const firstQueue = ['equipment', 'orgs', 'disputes', 'reports'].find((k) => n[k]);
+  const firstQueue = ['equipment', 'orgs', 'disputes', 'reviews', 'reports'].find((k) => n[k]);
   const tab = query.tab || firstQueue || 'stats';
   const tabs = [['stats', 'Статистика'], ['orgs', 'Проверка организаций', n.orgs], ['equipment', 'Модерация техники', n.equipment], ['disputes', 'Претензии', n.disputes],
-    ['reviews', 'Отзывы'], ['reports', 'Жалобы', n.reports], ['all', 'Все организации']];
+    ['reviews', 'Отзывы', n.reviews], ['reports', 'Жалобы', n.reports], ['all', 'Все организации']];
   app.innerHTML = `<div class="page-head"><div><h1>Админка</h1><p>Каждое решение записывается в журнал с автором, временем и причиной.</p></div></div>
-    ${n.total ? `<div class="banner warn">Ждут вашего решения: ${[['orgs', 'организаций на проверке'], ['equipment', 'техники на модерации'], ['disputes', 'претензий'], ['reports', 'жалоб']]
+    ${n.total ? `<div class="banner warn">Ждут вашего решения: ${[['orgs', 'организаций на проверке'], ['equipment', 'техники на модерации'], ['disputes', 'претензий'], ['reviews', 'отзывов на проверке'], ['reports', 'жалоб']]
       .filter(([k]) => n[k]).map(([k, t]) => `<a href="#/admin?tab=${k}"><b>${n[k]}</b> ${t}</a>`).join(' · ')}</div>` : ''}
     <div class="tabs">${tabs.map(([k, t, c]) => `<a href="#/admin?tab=${k}" class="${k === tab ? 'on' : ''} ${c ? 'need' : ''}">${t}${c ? `<span class="tab-cnt">${c}</span>` : ''}</a>`).join('')}</div><div id="box"></div>`;
   const box = app.querySelector('#box');
@@ -77,22 +81,48 @@ async function disputes(box) {
 }
 
 async function reviews(box) {
-  const rows = await q(sb.from('reviews').select('*, au:organizations!reviews_author_org_id_fkey(name), su:organizations!reviews_subject_org_id_fkey(name)')
-    .order('created_at', { ascending: false }).limit(100));
-  box.innerHTML = rows.length ? `<div class="panel">${rows.map((r) => `<div class="row-item" style="align-items:flex-start"><div class="grow">
-      <span class="rating">${'★'.repeat(r.overall)}</span> <b>${esc(r.au?.name)}</b> → ${esc(r.su?.name)} <span class="small muted">· ${dateTime(r.created_at)} · ${r.status}</span>
-      ${r.text ? `<p class="small" style="margin:4px 0">${esc(r.text)}</p>` : ''}${r.moderation_comment ? `<div class="small warn-text">Модерация: ${esc(r.moderation_comment)}</div>` : ''}</div>
-      <div class="actions" style="justify-content:flex-end">
-        ${r.status !== 'TEXT_HIDDEN' ? `<button class="btn ghost sm" data-rv="${r.id}" data-s="TEXT_HIDDEN">Скрыть текст</button>` : ''}
-        ${r.status !== 'EXCLUDED' ? `<button class="btn danger sm" data-rv="${r.id}" data-s="EXCLUDED">Исключить</button>` : ''}
-        ${r.status !== 'PUBLISHED' && r.status !== 'SUBMITTED' ? `<button class="btn ghost sm" data-rv="${r.id}" data-s="PUBLISHED">Вернуть</button>` : ''}
-        <button class="btn danger sm" data-rvdel="${r.id}">Удалить</button></div></div>`).join('')}
-      <p class="small muted">Негативный отзыв без нарушений скрывать нельзя. Скрытие — только за оскорбления, контакты, персональные данные; исключение — за накрутку или отзыв не по сделке.</p></div>`
-    : emptyState('Отзывов пока нет', 'Отзывы появятся после завершённых сделок.');
+  const rows = await q(sb.from('reviews').select('*, deals(number), au:organizations!reviews_author_org_id_fkey(name,type), su:organizations!reviews_subject_org_id_fkey(name,type)')
+    .order('created_at', { ascending: false }).limit(200));
+  const isPending = (r) => ['PENDING', 'SUBMITTED'].includes(r.status);
+  const pending = rows.filter(isPending).reverse(); // старые сверху — проверять по очереди
+  const rest = rows.filter((r) => !isPending(r));
+  const ST = { PUBLISHED: ['ok', 'Опубликован'], TEXT_HIDDEN: ['warn', 'Без текста'], EXCLUDED: ['err', 'Исключён'], REJECTED: ['err', 'Отклонён'] };
+  const who = (o) => esc(o?.type === 'PERSON' ? `${o?.name || ''} (частное лицо)` : o?.name || '');
+  const head = (r) => `<span class="rating">${'★'.repeat(r.overall)}<span class="star-off">${'★'.repeat(5 - r.overall)}</span></span>
+      <div><strong>${who(r.au)}</strong> → <strong>${who(r.su)}</strong></div><span class="small muted">${r.subject_role === 'PROVIDER' ? 'об исполнителе' : 'о заказчике'}
+      · <a href="#/deals/${r.deal_id}">сделка ${esc(r.deals?.number || '')}</a> · ${dateTime(r.created_at)}</span>`;
+  const CL = { ON_TIME: 'Сроки', AS_DESCRIBED: 'Соответствие описанию', EQUIPMENT_CONDITION: 'Состояние техники', COMMUNICATION: 'Общение',
+    TERMS_COMPLIANCE: 'Договорённости', PAYMENT_DISCIPLINE: 'Оплата', SITE_READINESS: 'Готовность объекта' };
+  const crit = (r) => Object.keys(r.criteria || {}).length ? `<div class="small muted">${Object.entries(r.criteria).map(([k, v]) => `${esc(CL[k] || k)}: ${Number(v)}★`).join(' · ')}</div>` : '';
+  box.innerHTML = `
+    <div class="panel"><h2>На проверке${pending.length ? ` (${pending.length})` : ''}</h2>
+      ${pending.length ? pending.map((r) => `<div class="row-item" style="align-items:flex-start"><div class="grow">${head(r)}
+          ${r.text ? `<p style="margin:6px 0;white-space:pre-wrap">${esc(r.text)}</p>` : '<p class="small muted" style="margin:6px 0">Без текста — только оценка</p>'}${crit(r)}</div>
+        <div class="actions"><button class="btn sm" data-rv="${r.id}" data-s="PUBLISHED">Опубликовать</button>
+          ${r.text ? `<button class="btn ghost sm" data-rv="${r.id}" data-s="TEXT_HIDDEN">Без текста</button>` : ''}
+          <button class="btn danger sm" data-rv="${r.id}" data-s="REJECTED">Отклонить</button></div></div>`).join('')
+        : '<p class="muted">Новых отзывов на проверке нет.</p>'}
+      <p class="small muted">Публикуйте и негативные отзывы, если в них нет нарушений. «Без текста» — опубликовать только звёзды (оскорбления, контакты, персональные данные в тексте). «Отклонить» — отзыв не по сделке, накрутка, бессмыслица; автор увидит причину и сможет исправить.</p></div>
+    ${rest.length ? `<div class="panel"><h2>Опубликованные и отклонённые</h2>${rest.map((r) => `<div class="row-item" style="align-items:flex-start"><div class="grow">${head(r)}
+        <span class="st ${(ST[r.status] || ['', r.status])[0]}">${(ST[r.status] || ['', r.status])[1]}</span>
+        ${r.text ? `<p class="small" style="margin:4px 0">${esc(r.text)}</p>` : ''}${r.moderation_comment ? `<div class="small warn-text">Модерация: ${esc(r.moderation_comment)}</div>` : ''}</div>
+      <div class="actions">
+        ${r.status === 'PUBLISHED' ? `<button class="btn ghost sm" data-rv="${r.id}" data-s="TEXT_HIDDEN">Скрыть текст</button>` : ''}
+        ${['PUBLISHED', 'TEXT_HIDDEN'].includes(r.status) ? `<button class="btn danger sm" data-rv="${r.id}" data-s="EXCLUDED">Исключить</button>` : ''}
+        ${['TEXT_HIDDEN', 'EXCLUDED'].includes(r.status) ? `<button class="btn ghost sm" data-rv="${r.id}" data-s="PUBLISHED">Вернуть</button>` : ''}
+        <button class="btn danger sm" data-rvdel="${r.id}">Удалить</button></div></div>`).join('')}</div>` : ''}`;
+  const ASK = {
+    TEXT_HIDDEN: ['Опубликовать без текста', 'Отзыв будет виден только звёздами. Укажите, что не так с текстом — автор увидит причину.', 'Причина', 'Опубликовать без текста'],
+    EXCLUDED: ['Исключить отзыв', 'Отзыв перестанет учитываться в рейтинге. Какое правило нарушено — это записывается в журнал.', 'Нарушение', 'Исключить'],
+    REJECTED: ['Отклонить отзыв', 'Отзыв не будет опубликован. Автор увидит причину и сможет исправить отзыв.', 'Причина отклонения', 'Отклонить']
+  };
   box.querySelectorAll('[data-rv]').forEach((b) => b.onclick = async () => {
     let c = null;
-    if (b.dataset.s !== 'PUBLISHED') { c = await askReason('Нарушение', 'Какое правило нарушено. Это записывается в журнал.', 'Нарушение', 'Применить'); if (!c) return; }
-    try { await rpc('admin_moderate_review', { p_review: b.dataset.rv, p_status: b.dataset.s, p_comment: c }); toast('Готово'); route(); } catch (e) { toast(e.message, true); }
+    if (ASK[b.dataset.s]) { c = await askReason(...ASK[b.dataset.s]); if (!c) return; }
+    try {
+      await rpc('admin_moderate_review', { p_review: b.dataset.rv, p_status: b.dataset.s, p_comment: c });
+      toast({ PUBLISHED: 'Отзыв опубликован', TEXT_HIDDEN: 'Опубликован без текста', EXCLUDED: 'Отзыв исключён', REJECTED: 'Отзыв отклонён' }[b.dataset.s] || 'Готово'); route();
+    } catch (e) { toast(e.message, true); }
   });
   // Полное удаление отзыва (например, тестового). Копия и причина остаются в журнале.
   box.querySelectorAll('[data-rvdel]').forEach((b) => b.onclick = async () => {
