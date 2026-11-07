@@ -14,7 +14,7 @@ export async function render(app) {
   <section class="hero">
     <div class="hero-copy">
       <div class="overline"><i></i> ${t('МАРКЕТПЛЕЙС СТРОИТЕЛЬНОЙ ТЕХНИКИ', 'CONSTRUCTION MACHINERY MARKETPLACE')}</div>
-      <h1>${t('Работа начинается<br>с <em>правильной техники</em>', 'Great work starts<br>with <em>the right machinery</em>')}</h1>
+      <h1>${t('Работа начинается <br>с <em>правильной техники</em>', 'Great work starts <br>with <em>the right machinery</em>')}</h1>
       <p>${t('Сравнивайте предложения, выбирайте проверенных исполнителей и бронируйте технику без лишних звонков.', 'Compare offers, choose verified providers and book machinery without endless calls.')}</p>
       <form class="hero-search" id="heroSearch"><input name="q" placeholder="${t('Какая техника нужна вашему проекту?', 'What machinery does your project need?')}" aria-label="${t('Поиск', 'Search')}"><button class="btn">${t('Подобрать', 'Find')}</button></form>
       <div class="chips"><span>${t('Ищут сейчас:', 'Popular now:')}</span>
