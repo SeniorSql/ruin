@@ -13,6 +13,14 @@ const nf = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
 export const money = (minor) => minor == null ? '—' : nf.format(Number(minor) / 100) + ' ₽';
 export const toMinor = (rub) => Math.round(Number(String(rub).replace(/\s/g, '').replace(',', '.')) * 100);
 export const fromMinor = (minor) => minor == null ? '' : String(Number(minor) / 100);
+// Доставка в предложении исполнителя (SQL 25): аренда и доставка отдельно. У старых предложений — только итог.
+export const DELIVERY_MODE = { PAID: 'Платная — оплачивает заказчик', INCLUDED: 'Включена в стоимость аренды', PICKUP: 'Не нужна — заказчик забирает сам' };
+export function offerParts(f) {
+  const b = f?.breakdown || {};
+  if (!b.delivery_mode) return { mode: null, rent: null, delivery: null, text: 'не указана отдельно — уточните у исполнителя (см. комментарий)' };
+  return { mode: b.delivery_mode, rent: b.rent, delivery: b.delivery || 0,
+    text: b.delivery_mode === 'PAID' ? `${money(b.delivery)} — оплачивает заказчик` : DELIVERY_MODE[b.delivery_mode] };
+}
 
 const dFmt = new Intl.DateTimeFormat(isEn() ? 'en-GB' : 'ru-RU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/Moscow' });
 const dtFmt = new Intl.DateTimeFormat(isEn() ? 'en-GB' : 'ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' });
