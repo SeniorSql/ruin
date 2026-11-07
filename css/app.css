@@ -739,6 +739,10 @@ body:has(.modal-bg) #helpBot{display:none}
   .kanban{grid-template-columns:1fr;overflow:visible}
   .kcol{min-height:0}
   .tl td.tl-name{min-width:112px;max-width:140px;font-size:12px}
+  /* обновление 48: строки списков — кнопки уходят вниз, текст не сжимается в столбик */
+  .row-item{flex-wrap:wrap}
+  .row-item>.grow{flex:1 1 180px}
+  .row-item>.actions{justify-content:flex-start!important}
 }
 @media (max-width:359px){
   .top{padding:0 10px}
