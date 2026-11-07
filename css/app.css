@@ -725,7 +725,20 @@ body:has(.modal-bg) #helpBot{display:none}
   /* Печатные документы (акт, договор) — без огромных полей */
   .doc{padding:18px 14px;font-size:13px}
   .doc header{flex-wrap:wrap;gap:8px}
-  .doc-t td{padding:5px 6px;overflow-wrap:anywhere}
+  .doc-t td{padding:5px 6px;overflow-wrap:break-word}
+  /* обновление 46: карточка техники, рабочий стол */
+  .steps{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:6px 0}
+  .steps::-webkit-scrollbar{display:none}
+  .steps>*{flex:none}
+  fieldset{min-width:0}
+  .panel.actions{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:8px;gap:8px}
+  .panel.actions::-webkit-scrollbar{display:none}
+  .panel.actions>*{flex:none}
+  body:has(.panel.actions[style*=sticky]) #helpBot{display:none}
+  .photo-grid .ph button{min-width:32px;height:32px}
+  .kanban{grid-template-columns:1fr;overflow:visible}
+  .kcol{min-height:0}
+  .tl td.tl-name{min-width:112px;max-width:140px;font-size:12px}
 }
 @media (max-width:359px){
   .top{padding:0 10px}
