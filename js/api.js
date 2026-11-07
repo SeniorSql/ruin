@@ -64,6 +64,25 @@ export const categoryById = (id) => state.categories.find((c) => c.id === Number
 // Редакция согласия на обработку ПДн и пользовательского соглашения. Поменяли текст — повысьте версию, и пользователи подтвердят заново.
 export const CONSENT_VERSION = '2026-11-06';
 
+// Выход. Если сервер не ответил (VPN, блокировщик, обрыв связи), библиотека оставляет сессию —
+// тогда сами убираем её из этого браузера и перезагружаем страницу.
+export async function signOutSafe(scope = 'local') {
+  let error = null;
+  try {
+    const res = await Promise.race([sb.auth.signOut({ scope }), new Promise((r) => setTimeout(() => r({ error: new Error('timeout') }), 8000))]);
+    error = res?.error || null;
+  } catch (e) { error = e; }
+  if (error) console.warn('signOut:', error);
+  const { data: { session } } = await sb.auth.getSession().catch(() => ({ data: {} }));
+  if (error || session) {
+    Object.keys(localStorage).filter((k) => /^sb-.+-auth-token/.test(k)).forEach((k) => localStorage.removeItem(k));
+    location.replace(location.pathname + '#/');
+    location.reload();
+    return false;
+  }
+  return true;
+}
+
 export async function loadMe() {
   const { data: { session } } = await sb.auth.getSession();
   state.user = session?.user || null;
