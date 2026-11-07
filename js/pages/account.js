@@ -1,5 +1,5 @@
 // Профиль, организации и проверка (SCR-IDN-04, 06, 07)
-import { sb, state, q, rpc, loadMe, setOrg, refreshCounters, isOwnerAdmin, isAdmin } from '../api.js';
+import { sb, state, q, rpc, loadMe, setOrg, refreshCounters, isOwnerAdmin, isAdmin, signOutSafe } from '../api.js';
 import { esc, status, ORG_TYPE, toast, busy, modal, confirmBox, date } from '../ui.js';
 import { go, refreshShell, route } from '../app.js';
 import { withActionCode } from '../actionCode.js';
@@ -146,8 +146,8 @@ export async function render(app, _p, query = {}) {
       e.target.reset(); toast('Пароль изменён, другие сеансы завершены');
     });
   };
-  app.querySelector('#outAll').onclick = async () => { await sb.auth.signOut({ scope: 'global' }); await loadMe(); refreshShell(); go('#/'); };
-  app.querySelector('#out').onclick = async () => { await sb.auth.signOut(); await loadMe(); refreshShell(); go('#/'); };
+  app.querySelector('#outAll').onclick = async () => { if (!await signOutSafe('global')) return; await loadMe(); refreshShell(); go('#/'); };
+  app.querySelector('#out').onclick = async () => { if (!await signOutSafe('local')) return; await loadMe(); refreshShell(); go('#/'); };
 }
 
 // Уведомления в Telegram / MAX: привязка через одноразовый код и бота
