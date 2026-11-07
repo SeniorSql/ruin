@@ -2,7 +2,7 @@
 import { sb, state, q, rpc, loadCategories, categoryById, canManage, actsAsCustomer } from '../api.js';
 import { isTeam, loadTeam, assignees, memberLabel, assignFilterHtml, mountAssign, ROLE_NAME } from '../assign.js';
 import { esc, money, status, toast, busy, modal, askReason, emptyState, errorState, mskToday, date, period, FORMAT, idemKey,
-  dateTime, timeLeft, photoOf, initials, plural, POLICY, toMinor } from '../ui.js';
+  dateTime, timeLeft, photoOf, initials, plural, POLICY, toMinor, offerParts } from '../ui.js';
 import { go, route } from '../app.js';
 
 export async function render(app, params, query, pattern) {
@@ -139,6 +139,8 @@ async function detail(app, id) {
     <div id="assign"></div>
     ${!canManage() ? `<div class="banner info">У вас роль «${ROLE_NAME[state.org.role] || state.org.role}» — только просмотр. Выбирать предложения и отменять заказ могут владелец, администратор и менеджер.</div>` : ''}
     ${['PUBLISHED', 'OFFERS_RECEIVED'].includes(o.status) ? `<div class="banner info">Приём предложений: ${new Date(o.deadline_at) > Date.now() ? 'ещё ' + timeLeft(o.deadline_at) : 'завершён — выберите предложение'}.</div>` : ''}
+    ${['PUBLISHED', 'OFFERS_RECEIVED'].includes(o.status) && o.start_date <= mskToday(0) ? `<div class="banner warn" style="display:block"><b>Дата начала заказа уже прошла.</b>
+      Выберите предложение — при выборе укажете новую дату начала, срок аренды и цена останутся прежними. Если не выбрать, заказ закроется ${date(addDays(o.start_date, 4))}.</div>` : ''}
     <div class="cols">
       <div>
         <div class="panel"><h2>Предложения ${active.length ? `<span class="muted">(${active.length})</span>` : ''}</h2>
@@ -186,7 +188,9 @@ function compareTable(list, stats, cheapest) {
         <a href="#/item/${f.equipment_id}" target="_blank" style="color:var(--ink);font-size:14px">${esc(f.equipment?.title)}</a></th>`;
     }).join('')}</tr></thead>
     <tbody>
-      ${row('Итого', (f) => `<b class="num" style="font-size:17px">${money(f.total_minor)}</b>${f.total_minor === cheapest && list.length > 1 ? '<div><span class="st ok">Лучшая цена</span></div>' : ''}`)}
+      ${row('Итого к оплате', (f) => `<b class="num" style="font-size:17px">${money(f.total_minor)}</b>${f.total_minor === cheapest && list.length > 1 ? '<div><span class="st ok">Лучшая цена</span></div>' : ''}`)}
+      ${row('Аренда', (f) => offerParts(f).mode ? `<span class="num">${money(offerParts(f).rent)}</span>` : '<span class="small muted">в итоге</span>')}
+      ${row('Доставка', (f) => `<span class="small${offerParts(f).mode === 'PAID' ? '' : ' muted'}">${offerParts(f).mode === 'PAID' ? `<b class="num">${money(offerParts(f).delivery)}</b><br>оплачивает заказчик` : esc(offerParts(f).text)}</span>`)}
       ${row('Исполнитель', (f) => `<b>${esc(f.organizations?.name)}</b><div>${status('org', f.organizations?.verification_status)}</div>`)}
       ${row('Завершённых сделок', (f) => String(stats[f.provider_org_id]?.completed ?? 0))}
       ${row('Формат', (f) => f.with_operator ? 'С оператором' : 'Без оператора')}
@@ -201,22 +205,39 @@ function compareTable(list, stats, cheapest) {
     </tbody></table></div>`;
 }
 
+// Дата YYYY-MM-DD плюс n дней
+const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+
 function selectDialog(o, f) {
   const key = idemKey();
+  const p = offerParts(f);
+  // Дата начала прошла — заказчик выбирает новую, срок аренды (дней) сохраняется
+  const moved = o.start_date <= mskToday(0);
+  const len = Math.round((new Date(o.end_date) - new Date(o.start_date)) / 864e5);
   const m = modal(`<h2>Выбрать предложение</h2>
     <p class="muted" style="margin-top:-6px">${esc(f.organizations?.name)} · ${esc(f.equipment?.title)}</p>
-    <dl class="kv"><dt>Даты</dt><dd>${period(o.start_date, o.end_date)}</dd><dt>Формат</dt><dd>${f.with_operator ? 'с оператором' : 'без оператора'}</dd>
-      <dt>Итого</dt><dd class="num" style="font-size:18px">${money(f.total_minor)}</dd><dt>Отмена</dt><dd>${esc(POLICY[f.equipment?.cancel_policy] || '')}</dd>
+    ${moved ? `<div class="banner warn" style="display:block">Дата начала заказа (${date(o.start_date)}) уже прошла. Выберите новую дату начала — срок аренды останется ${len + 1} ${plural(len + 1, 'день', 'дня', 'дней')}, цена не изменится. Исполнитель подтвердит новые даты.</div>
+      <label class="f"><span>Новая дата начала <i>*</i></span><input class="inp" type="date" id="nstart" required min="${mskToday(1)}" value="${mskToday(1)}"></label>` : ''}
+    <dl class="kv"><dt>Даты</dt><dd id="sdates">${period(o.start_date, o.end_date)}</dd><dt>Формат</dt><dd>${f.with_operator ? 'с оператором' : 'без оператора'}</dd>
+      ${p.mode ? `<dt>Аренда</dt><dd class="num">${money(p.rent)}</dd>` : ''}
+      <dt>Доставка</dt><dd>${esc(p.text)}</dd>
+      <dt>Итого к оплате</dt><dd class="num" style="font-size:18px">${money(f.total_minor)}</dd><dt>Отмена</dt><dd>${esc(POLICY[f.equipment?.cancel_policy] || '')}</dd>
       <dt>Оплата</dt><dd>напрямую исполнителю</dd></dl>
+    ${f.comment ? `<p class="small" style="white-space:pre-wrap"><b>Комментарий исполнителя:</b> ${esc(f.comment)}</p>` : ''}
     <div class="banner info" style="margin-top:14px">Техника забронируется на ваши даты. Исполнитель подтвердит сделку в течение 12 часов — после этого откроются контакты и адрес.</div>
     <label class="check"><input type="checkbox" id="agree"> <span>Подтверждаю условия предложения и <a href="#/terms" target="_blank">правила сервиса</a></span></label>
     <div class="form-error hidden" id="err"></div>
     <button class="btn wide" id="go">Выбрать и забронировать</button>`);
+  const ns = m.el.querySelector('#nstart');
+  const showDates = () => { if (ns?.value) m.el.querySelector('#sdates').textContent = period(ns.value, addDays(ns.value, len)); };
+  ns?.addEventListener('input', showDates); showDates();
   m.el.querySelector('#go').onclick = (ev) => {
-    if (!m.el.querySelector('#agree').checked) { const el = m.el.querySelector('#err'); el.textContent = 'Подтвердите условия'; el.classList.remove('hidden'); return; }
+    const err = m.el.querySelector('#err');
+    if (moved && (!ns.value || ns.value < mskToday(1))) { err.textContent = 'Выберите новую дату начала — не раньше завтрашнего дня'; err.classList.remove('hidden'); return; }
+    if (!m.el.querySelector('#agree').checked) { err.textContent = 'Подтвердите условия'; err.classList.remove('hidden'); return; }
     busy(ev.currentTarget, async () => {
       try {
-        const r = await rpc('select_offer', { p_offer: f.id, p_key: key });
+        const r = await rpc('select_offer', { p_offer: f.id, p_key: key, p_start: moved ? ns.value : null });
         if (!r.ok) { const el = m.el.querySelector('#err'); el.textContent = r.error; el.classList.remove('hidden'); setTimeout(route, 2500); return; }
         m.close(); toast('Предложение выбрано, ждём подтверждения исполнителя'); go('#/deals/' + r.deal_id);
       } catch (err) { const el = m.el.querySelector('#err'); el.textContent = err.message; el.classList.remove('hidden'); }
