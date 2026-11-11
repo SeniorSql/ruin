@@ -2,13 +2,14 @@
 import { sb, state, q, rpc } from '../api.js';
 import { esc, money, date, dateTime, period, POLICY, ORG_TYPE, errorState, emptyState, WORDMARK } from '../ui.js';
 import { renderContract } from '../contract.js';
+import { renderWaybill } from '../waybill.js';
 
 const TITLES = { request: 'Заявка-подтверждение', contract: 'Договор', 'handover-START': 'Акт приёма-передачи техники', 'handover-END': 'Акт возврата техники', act: 'Акт выполненных работ (оказанных услуг)' };
 
 export async function render(app, { id, type }) {
   let d, priv, events, hand, work;
   try {
-    d = await q(sb.from('deals').select('*, equipment(title,brand,model,year,specs,city,price_unit,price_minor,shift_hours), cust:organizations!deals_customer_org_id_fkey(id,name,type,inn,ogrn,city), prov:organizations!deals_provider_org_id_fkey(id,name,type,inn,ogrn,city)').eq('id', id).maybeSingle());
+    d = await q(sb.from('deals').select('*, equipment(title,brand,model,year,specs,city,price_unit,price_minor,shift_hours,categories(code)), cust:organizations!deals_customer_org_id_fkey(id,name,type,inn,ogrn,city), prov:organizations!deals_provider_org_id_fkey(id,name,type,inn,ogrn,city)').eq('id', id).maybeSingle());
     if (!d) { app.innerHTML = emptyState('Документ недоступен', 'Сделка не найдена или относится к другой организации — переключите контекст в меню.'); return; }
     [priv, events, hand, work] = await Promise.all([
       rpc('get_deal_private', { p_deal: id }),
@@ -18,10 +19,16 @@ export async function render(app, { id, type }) {
     ]);
   } catch (err) { app.innerHTML = errorState(err); return; }
   // Договор — отдельный модуль (шаблон ред. 3, форма дозаполнения, PDF и Word)
-  if (type === 'contract') {
-    // Рег. номер видит только исполнитель (карточка учёта его парка); заказчику поле останется для заполнения
-    const fc = await sb.from('fleet_cards').select('reg_number').eq('equipment_id', d.equipment_id).maybeSingle().then((r) => r.data, () => null);
-    return renderContract(app, d, priv, { reg: fc?.reg_number || '' });
+  if (type === 'contract' || type === 'waybill') {
+    // Рег. номер и машинист — из карточки учёта парка, её видит только исполнитель; заказчику поля останутся для заполнения
+    const fc = await sb.from('fleet_cards').select('reg_number, fleet_operators(full_name, license_no)').eq('equipment_id', d.equipment_id).maybeSingle().then((r) => r.data, () => null);
+    if (type === 'contract') return renderContract(app, d, priv, { reg: fc?.reg_number || '' });
+    const H = Object.fromEntries(hand.map((h) => [h.type, h]));
+    return renderWaybill(app, d, {
+      cat: d.equipment?.categories?.code, reg: fc?.reg_number || '', operator: fc?.fleet_operators || null,
+      address: priv?.address || '', custContact: priv?.customer, provPhone: priv?.provider?.phone || '',
+      work: work.filter((w) => w.status !== 'DISPUTED'), fuelStart: H.START?.fuel_level ?? null, fuelEnd: H.END?.fuel_level ?? null
+    });
   }
   const H = Object.fromEntries(hand.map((h) => [h.type, h]));
   const today = date(new Date().toISOString());
