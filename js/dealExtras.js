@@ -8,6 +8,9 @@ const REASONS = ['Техника не прибыла', 'Опоздание', 'Д
 const DOWNTIME = { CUSTOMER_FAULT: 'по вине заказчика', PROVIDER_FAULT: 'по вине исполнителя', WEATHER: 'погода', OTHER: 'другое' };
 const WS = { RECORDED: ['wait', 'Ждёт подтверждения'], ACCEPTED: ['ok', 'Принято'], DISPUTED: ['err', 'Оспорено'], ACCEPTED_BY_TIMEOUT: ['ok', 'Принято автоматически'] };
 const DS = { OPEN: ['wait', 'Ждёт ответа'], IN_REVIEW: ['work', 'У администратора'], RESOLVED: ['ok', 'Требование признано'], REJECTED: ['closed', 'Отклонено'], WITHDRAWN: ['closed', 'Отозвано'] };
+// Претензии скрыты по решению Этибара (11.11.2026): новые открыть нельзя, старые (если есть) видны, чтобы их можно было закрыть.
+// Вернуть — поставить true (и показать вкладку в admin.js, ответ в support.js).
+export const SHOW_DISPUTES = false;
 const st = (m, c) => `<span class="st ${m[c][0]}">${m[c][1]}</span>`;
 const CRIT = {
   PROVIDER: [['ON_TIME', 'Соблюдение сроков'], ['AS_DESCRIBED', 'Соответствие описанию'], ['EQUIPMENT_CONDITION', 'Состояние техники'], ['COMMUNICATION', 'Общение']],
@@ -79,10 +82,10 @@ export async function renderExtras(box, d) {
           <button class="btn dark">Записать</button></form>` : ''}
     </div>` : ''}
 
-    ${d.status === 'CANCELLED' || d.status === 'AWAITING_CONFIRMATION' ? '' : `
+    ${d.status === 'CANCELLED' || d.status === 'AWAITING_CONFIRMATION' || (!SHOW_DISPUTES && !disp.length) ? '' : `
     <div class="panel"><h2>Претензия</h2>
       ${disp.length ? disp.map((x) => disputeBlock(x, act)).join('<div class="divider"></div>') : '<p class="muted">Претензий нет.</p>'}
-      ${!openDisp && act && (d.status !== 'COMPLETED' || (Date.now() - new Date(d.completed_at)) < 7 * 864e5)
+      ${SHOW_DISPUTES && !openDisp && act && (d.status !== 'COMPLETED' || (Date.now() - new Date(d.completed_at)) < 7 * 864e5)
         ? '<button class="btn ghost sm" id="openDisp" style="margin-top:8px">Сообщить о проблеме</button>' : ''}
     </div>`}
 
