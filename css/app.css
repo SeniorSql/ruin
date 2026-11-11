@@ -287,6 +287,15 @@ textarea.inp{height:auto;min-height:96px;padding:10px 12px;resize:vertical}
 /* ночь: тёмно-синее небо сверху (без луны — по просьбе Этибара) */
 .hero-img.night:after{content:'';position:absolute;inset:0;
   background:linear-gradient(180deg,#071433f0 0%,#0a1c44c4 36%,#0d1f3d55 62%,#05080f8c 100%)}
+/* средние экраны: картинке меньше места, тексту больше — чтобы баннер не вырастал в высоту */
+@media (min-width:761px) and (max-width:1250px){
+  .hero{grid-template-columns:1.7fr .8fr}
+  .hero-copy{padding:22px 26px}
+  .hero h1{font-size:clamp(26px,3vw,36px);letter-spacing:-1.2px}
+  .hero .hero-copy p{font-size:14px;margin-bottom:14px}
+  .hero-cta .btn{height:40px;padding:0 14px}
+  .hero-sticker{right:12px;bottom:12px}
+}
 :root[data-theme=dark] .hero-img.day{display:none}
 :root[data-theme=dark] .hero-img.night{display:block}
 .overline{display:inline-flex;align-items:center;gap:8px;color:#e1e2dc;font-size:11px;font-weight:800;letter-spacing:1.5px}
