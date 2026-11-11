@@ -31,25 +31,44 @@ export async function renderExtras(box, d) {
   // Договор и путевые листы — после подтверждения сделки (загруженные файлы видны всегда); заявка — всегда
   const showFiles = (d.status !== 'AWAITING_CONFIRMATION' && d.status !== 'CANCELLED') || files.length > 0;
   const myReview = revs.find((r) => r.author_org_id === state.org.id);
-  const theirReview = revs.find((r) => r.author_org_id !== state.org.id && ['PUBLISHED', 'TEXT_HIDDEN'].includes(r.status));
+  const theirAny = revs.find((r) => r.author_org_id !== state.org.id);
+  const theirReview = theirAny && ['PUBLISHED', 'TEXT_HIDDEN'].includes(theirAny.status) ? theirAny : null;
   const reviewOpen = act && (Date.now() - new Date(d.completed_at)) < 14 * 864e5;
   const canEditReview = myReview && reviewOpen && (reviewPending(myReview) || myReview.status === 'REJECTED');
+  // Кто вторая сторона — чтобы было понятно, кто кому пишет отзыв (v=77)
+  const other = (amCust ? d.prov : d.cust) || {};
+  const otherName = other.type === 'PERSON' ? `${other.name || ''} (частное лицо)` : (other.name || '');
+  const R = amCust ? { about: 'об исполнителе', gen: 'исполнителя', Nom: 'Исполнитель' } : { about: 'о заказчике', gen: 'заказчика', Nom: 'Заказчик' };
+  const dir = (from, to) => `<div class="rv-dir"><span>${from}</span><span class="rv-arrow" aria-hidden="true">→</span><span>${to}</span></div>`;
 
   box.innerHTML = `
     <div class="panel"><h2>Документы</h2><div id="dealFiles"></div></div>
 
     ${d.status === 'COMPLETED' ? `
-    <div class="panel"><h2>Отзыв</h2>
-      ${myReview ? `<div><b>Ваш отзыв:</b> ${stars(myReview.overall)} ${reviewBadge(myReview)}
-          ${myReview.text ? `<p style="margin:6px 0 0">${esc(myReview.text)}</p>` : ''}
-          ${myReview.moderation_comment && myReview.status !== 'PUBLISHED' ? `<div class="small warn-text" style="margin-top:4px">Модератор: ${esc(myReview.moderation_comment)}</div>` : ''}
-          ${reviewPending(myReview) ? '<div class="small muted" style="margin-top:4px">Отзыв появится у всех после проверки модератором. Пока он на проверке, его можно исправить.</div>' : ''}
-          ${canEditReview ? `<button class="btn ghost sm" id="reviewBtn" style="margin-top:8px">${myReview.status === 'REJECTED' ? 'Исправить и отправить снова' : 'Исправить отзыв'}</button>` : ''}</div>`
-        : reviewOpen ? '<button class="btn" id="reviewBtn">Оставить отзыв</button> <span class="small muted">Отзыв опубликуется после проверки модератором</span>'
-        : '<p class="muted">Окно для отзыва закрыто.</p>'}
-      ${theirReview ? `<div class="divider"></div><div><b>Отзыв о вас:</b> ${stars(theirReview.overall)}${theirReview.text && theirReview.status !== 'TEXT_HIDDEN' ? `<p style="margin:6px 0 0">${esc(theirReview.text)}</p>` : ''}
-          ${theirReview.reply_text ? `<p class="small" style="margin:6px 0 0"><b>Ваш ответ:</b> ${esc(theirReview.reply_text)}</p>`
-          : act ? `<button class="btn ghost sm" data-reply="${theirReview.id}" style="margin-top:6px">Ответить на отзыв</button>` : ''}</div>` : ''}
+    <div class="panel"><h2>Отзывы по сделке</h2>
+      <p class="small muted" style="margin-top:-6px">После завершения стороны оценивают друг друга. Отзыв появится у всех после проверки модератором. Оставить его можно в течение 14 дней.</p>
+      <div class="rv-grid">
+        <div class="rv-card">
+          ${dir('Вы', `${R.Nom} · ${esc(otherName)}`)}
+          <h3>Ваш отзыв ${R.about}</h3>
+          ${myReview ? `<div>${stars(myReview.overall)} ${reviewBadge(myReview)}</div>
+              ${myReview.text ? `<p class="rv-text">${esc(myReview.text)}</p>` : ''}
+              ${myReview.moderation_comment && myReview.status !== 'PUBLISHED' ? `<div class="small warn-text" style="margin-top:4px">Модератор: ${esc(myReview.moderation_comment)}</div>` : ''}
+              ${reviewPending(myReview) ? '<div class="small muted" style="margin-top:4px">Пока отзыв на проверке, его можно исправить.</div>' : ''}
+              ${canEditReview ? `<button class="btn ghost sm" id="reviewBtn" style="margin-top:10px">${myReview.status === 'REJECTED' ? 'Исправить и отправить снова' : 'Исправить отзыв'}</button>` : ''}`
+            : reviewOpen ? `<p class="small muted" style="margin:0 0 10px">Расскажите, как прошла работа: сроки, техника, общение.</p><button class="btn" id="reviewBtn">Оценить ${R.gen === 'исполнителя' ? 'исполнителя' : 'заказчика'}</button>`
+            : '<p class="muted" style="margin:0">Срок для отзыва (14 дней) прошёл.</p>'}
+        </div>
+        <div class="rv-card">
+          ${dir(`${R.Nom} · ${esc(otherName)}`, 'Вы')}
+          <h3>Отзыв ${R.gen} о вас</h3>
+          ${theirReview ? `<div>${stars(theirReview.overall)}</div>${theirReview.text && theirReview.status !== 'TEXT_HIDDEN' ? `<p class="rv-text">${esc(theirReview.text)}</p>` : ''}
+              ${theirReview.reply_text ? `<p class="small" style="margin:8px 0 0"><b>Ваш ответ:</b> ${esc(theirReview.reply_text)}</p>`
+              : act ? `<button class="btn ghost sm" data-reply="${theirReview.id}" style="margin-top:10px">Ответить на отзыв</button>` : ''}`
+            : theirAny ? '<p class="muted" style="margin:0">Отзыв оставлен и проверяется модератором — появится здесь после проверки.</p>'
+            : `<p class="muted" style="margin:0">${R.Nom} пока не оставил отзыв.</p>`}
+        </div>
+      </div>
     </div>` : ''}`;
 
   const reload = () => route();
@@ -61,7 +80,7 @@ export async function renderExtras(box, d) {
   };
   drawFiles(files);
   // --- отзывы ---
-  box.querySelector('#reviewBtn')?.addEventListener('click', () => reviewDialog(d, amCust ? 'PROVIDER' : 'CUSTOMER', reload, myReview));
+  box.querySelector('#reviewBtn')?.addEventListener('click', () => reviewDialog(d, amCust ? 'PROVIDER' : 'CUSTOMER', reload, myReview, otherName));
   box.querySelectorAll('[data-reply]').forEach((b) => b.onclick = async () => {
     const r = await askReason('Ответ на отзыв', 'Ответ будет виден всем под отзывом. Изменить его нельзя.', 'Ответ', 'Опубликовать ответ');
     if (!r) return;
@@ -69,10 +88,11 @@ export async function renderExtras(box, d) {
   });
 }
 
-function reviewDialog(d, role, done, old) {
+function reviewDialog(d, role, done, old, whoName = '') {
   const crit = CRIT[role];
   const starInput = (name) => `<span class="star-input" data-name="${name}">${[1, 2, 3, 4, 5].map((i) => `<button type="button" data-v="${i}" aria-label="${i}">★</button>`).join('')}</span>`;
-  const m = modal(`<h2>Отзыв ${role === 'PROVIDER' ? 'об исполнителе' : 'о заказчике'}</h2>
+  const m = modal(`<h2>Ваш отзыв ${role === 'PROVIDER' ? 'об исполнителе' : 'о заказчике'}</h2>
+    ${whoName ? `<p style="margin:-6px 0 8px"><b>${esc(whoName)}</b> · сделка ${esc(d.number || '')}</p>` : ''}
     <p class="muted small" style="margin-top:-6px">Отзыв сначала проверит модератор площадки, после этого его увидят все. Пока отзыв на проверке, его можно исправить; после публикации — нельзя.</p>
     ${old?.status === 'REJECTED' && old.moderation_comment ? `<div class="banner warn small" style="display:block">Причина отклонения: ${esc(old.moderation_comment)}</div>` : ''}
     <form id="rf">
