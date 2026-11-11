@@ -121,6 +121,10 @@ async function orderPage(app, id) {
             ${offerParts(active).mode ? `<div class="small">Аренда ${money(offerParts(active).rent)} · доставка: ${esc(offerParts(active).text)}</div>` : `<div class="small">Доставка: ${esc(offerParts(active).text)}</div>`}
             ${active.comment ? `<p class="small" style="margin:6px 0 0;white-space:pre-wrap">${esc(active.comment)}</p>` : ''}
             <div class="small muted" style="margin-top:6px">Заказчик получил уведомление. Ждём его решения.</div></div>
+          ${active.dates_pending ? `<div class="banner warn" style="display:block"><b>Заказчик изменил даты: ${period(o.start_date, o.end_date)}.</b>
+            Подтвердите, что техника свободна на эти даты, — только после этого заказчик сможет выбрать ваше предложение. Если не подходит — отзовите предложение.
+            ${canManage() ? `<div class="actions" style="margin-top:8px"><button class="btn sm" data-cdates="${active.id}">Подтвердить даты</button>
+              <button class="btn ghost sm" data-wd="${active.id}">Отозвать</button></div>` : ''}</div>` : ''}
           ${open && canManage() ? '<button class="btn ghost wide" id="editOffer">Изменить предложение</button>' : ''}` : ''}
         ${!open ? '<div class="banner warn">Приём предложений закрыт.</div>'
         : !canManage() ? '<div class="banner info">У вас роль только для просмотра. Отправлять предложения могут владелец, администратор и менеджер.</div>'
@@ -147,6 +151,9 @@ async function orderPage(app, id) {
   app.querySelectorAll('[data-wd]').forEach((b) => b.onclick = async () => {
     try { await rpc('withdraw_offer', { p_offer: b.dataset.wd }); toast('Предложение отозвано'); route(); } catch (err) { toast(err.message, true); }
   });
+  app.querySelectorAll('[data-cdates]').forEach((b) => b.onclick = () => busy(b, async () => {
+    try { await rpc('confirm_offer_dates', { p_offer: b.dataset.cdates }); toast('Даты подтверждены — заказчик получил уведомление'); route(); } catch (err) { toast(err.message, true); }
+  }));
   const f = app.querySelector('#of');
   if (!f) return;
   const fillFormats = async () => {
@@ -222,6 +229,6 @@ async function myOffers(app) {
     ${rows.length ? `<div class="panel">${rows.map((f) => { const p = photoOf(f.equipment || {}); return `<a class="row-item" href="#/feed/${f.order_id}">
       ${p ? `<img src="${esc(p.url)}" alt="" referrerpolicy="no-referrer">` : '<img alt="">'}
       <div class="grow"><b>${esc(f.orders?.title)}</b><div class="small muted">${esc(f.equipment?.title)} · ${esc(f.orders?.city)} · ${date(f.orders?.start_date)} — ${date(f.orders?.end_date)}</div>
-      <div class="small num">${money(f.total_minor)} · редакция №${f.rev}</div></div>${status('offer', f.status)}</a>`; }).join('')}</div>`
+      <div class="small num">${money(f.total_minor)} · редакция №${f.rev}</div></div>${f.status === 'SUBMITTED' && f.dates_pending ? '<span class="st warn">Подтвердите новые даты</span>' : status('offer', f.status)}</a>`; }).join('')}</div>`
     : emptyState('Предложений пока нет', 'Откройте ленту заказов и ответьте на подходящий заказ.', state.org.can_provide ? '<a class="btn" href="#/feed">Лента заказов</a>' : '')}`;
 }
