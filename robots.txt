@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /config.test.js
+Disallow: /index-test.html
+
+Sitemap: https://ru-in.ru/sitemap.xml
