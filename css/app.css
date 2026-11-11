@@ -100,6 +100,24 @@ h1,h2,h3{letter-spacing:-.4px;margin:0}
 .avatar{width:38px;height:38px;border-radius:50%;background:var(--accent-soft);color:var(--ink);display:grid;place-items:center;font-weight:800;font-size:14px;flex:none}
 .me b{font-size:13px;display:block;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .me small{font-size:12px;color:var(--muted)}
+/* Отзывы в сделке (v=77): две карточки «Вы → сторона» и «сторона → Вы» */
+.rv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.rv-card{border:1px solid var(--line);border-radius:14px;padding:16px;background:var(--surface);min-width:0}
+.rv-card h3{margin:8px 0 8px}
+.rv-dir{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted)}
+.rv-dir span:not(.rv-arrow){background:var(--fill);border-radius:999px;padding:3px 9px;color:var(--ink2);overflow-wrap:anywhere}
+.rv-arrow{color:var(--ok-ink,#22b45e);font-size:14px}
+.rv-text{margin:8px 0 0;white-space:pre-wrap}
+/* Счётчик техники в шапке (v=77): «живая» точка + число, досчитывающее до значения */
+.top-count{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 14px 0 12px;border-radius:999px;border:1px solid var(--line2);
+  background:color-mix(in srgb,var(--surface) 70%,transparent);text-decoration:none;color:var(--ink);white-space:nowrap;transition:background .2s,border-color .2s}
+.top-count:hover{background:var(--surface);border-color:color-mix(in srgb,var(--ok-ink,#22b45e) 40%,var(--line2))}
+.top-count b{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.3px;min-width:2ch;text-align:right}
+.top-count span{font-size:11.5px;line-height:1.15;color:var(--muted);white-space:normal;max-width:78px}
+.live-dot{flex:none;width:9px;height:9px;border-radius:50%;background:#22b45e;animation:livePulse 2.2s ease-out infinite}
+@keyframes livePulse{0%{box-shadow:0 0 0 0 #22b45e8c}70%{box-shadow:0 0 0 8px #22b45e00}100%{box-shadow:0 0 0 0 #22b45e00}}
+@media (max-width:1100px){.top-count span{display:none}.top-count{padding:0 12px}}
+@media (max-width:760px){.top-count{display:none}}
 /* Меню под аватаром (v=73) */
 .me-wrap{position:relative}
 button.me{border:0;background:transparent;color:var(--ink);font:inherit;text-align:left;padding:3px 6px 3px 3px;border-radius:999px;cursor:pointer;transition:background .15s}
@@ -283,10 +301,15 @@ html[data-theme] #app>.prerender{display:none}
 .hero-cta{display:flex;flex-wrap:wrap;gap:10px}
 .hero .hero-ghost{background:#ffffff14;color:#fff;border-color:#ffffff40;box-shadow:none}
 .hero .hero-ghost:hover{background:#ffffff26;border-color:#ffffff66}
-.hero-img{position:absolute;inset:0;background-size:cover;background-position:center;background-repeat:no-repeat}
-.hero-img.day{background-image:url('https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Caterpillar_320.jpg/960px-Caterpillar_320.jpg')}
-/* ночное фото Zoomlion ZE215E — прислал Этибар (img/hero-night.jpg), без затемнения и фильтров */
-.hero-img.night{display:none;background-image:url('../img/hero-night.jpg');background-position:68% 55%}
+/* Фото баннера (v=77, прислал Этибар): светлая тема — Komatsu PC220-8 днём (img/hero-day.jpg), тёмная — Zoomlion ZE215E ночью (img/hero-night.jpg).
+   Фото занимает правые ~72% баннера и плавно растворяется влево маской — без резкой границы с фоном. */
+.hero-img{position:absolute;top:0;bottom:0;right:0;left:auto;width:72%;background-size:cover;background-position:62% 55%;background-repeat:no-repeat;pointer-events:none;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.08) 14%,rgba(0,0,0,.3) 30%,rgba(0,0,0,.62) 46%,rgba(0,0,0,.88) 60%,#000 74%);
+  mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.08) 14%,rgba(0,0,0,.3) 30%,rgba(0,0,0,.62) 46%,rgba(0,0,0,.88) 60%,#000 74%)}
+.hero-img.day{background-image:url('../img/hero-day.jpg')}
+.hero-img.night{display:none;background-image:url('../img/hero-night.jpg')}
+.hero-copy{position:relative}
+.hero .hero-copy h1,.hero .hero-copy p{text-shadow:0 1px 14px #00000080}
 /* средние экраны: картинке меньше места, тексту больше — чтобы баннер не вырастал в высоту */
 @media (min-width:761px) and (max-width:1250px){
   .hero{grid-template-columns:1.7fr .8fr}
@@ -308,9 +331,7 @@ html[data-theme] #app>.prerender{display:none}
 .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px;align-items:center;font-size:13px;color:#c4c7c1}
 .chips a{border:1px solid #ffffff33;color:#f2f2ee;border-radius:20px;padding:5px 11px;text-decoration:none;background:#ffffff0d;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .chips a:hover{background:#ffffff1f}
-.hero-visual{position:relative;overflow:hidden}
-.hero-visual img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.hero-visual:after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,var(--hero-bg) 0%,transparent 40%)}
+.hero-visual{position:static;min-height:220px}
 .hero-sticker{position:absolute;z-index:2;right:22px;bottom:22px;background:var(--glass-strong);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);color:var(--ink);border:1px solid var(--glass-line);border-radius:16px;padding:10px 14px;box-shadow:0 7px 25px #0003}
 .hero-sticker b{font-size:16px;display:block}
 .hero-sticker span{font-size:12px;color:var(--muted)}
