@@ -117,6 +117,37 @@ export function parseHash() {
 }
 export const go = (hash) => { location.hash = hash; };
 
+// ---------- уведомление о cookie (152-ФЗ, v=79) ----------
+// Необходимые (вход, тема, язык, черновики, этот выбор) работают всегда. Аналитика (например, Яндекс Метрика,
+// когда её подключат) включается ТОЛЬКО если analyticsAllowed() === true — то есть после «Принять».
+// Выбор хранится в браузере и пишется в журнал cookie_consents (SQL 29). Изменить — «Настройки cookie» в подвале.
+const COOKIE_KEY = 'ruin.cookieConsent', COOKIE_VER = 1;
+export function cookieChoice() { try { return JSON.parse(localStorage.getItem(COOKIE_KEY) || 'null'); } catch { return null; } }
+export const analyticsAllowed = () => cookieChoice()?.analytics === true;
+function showCookieBar(force = false) {
+  const ch = cookieChoice();
+  if (!force && ch && ch.v === COOKIE_VER) return;
+  document.getElementById('cookieBar')?.remove();
+  const bar = document.createElement('div');
+  bar.id = 'cookieBar'; bar.className = 'cookie-bar'; bar.setAttribute('role', 'region'); bar.setAttribute('aria-label', t('Уведомление о cookie', 'Cookie notice'));
+  bar.innerHTML = `<div class="cookie-text"><b>${t('Этот сайт использует cookie', 'This site uses cookies')}</b>
+      <span>${t('Необходимые cookie нужны для входа и настроек и работают всегда. Аналитические (статистика посещений) включаем только с вашего согласия.',
+        'Necessary cookies are required for login and settings and are always on. Analytics cookies (visit statistics) are enabled only with your consent.')}
+      <a href="#/privacy">${t('Политика', 'Policy')}</a> · <a href="#/consent">${t('Согласие', 'Consent')}</a></span></div>
+    <div class="cookie-actions"><button type="button" class="btn ghost sm" data-ck="0">${t('Только необходимые', 'Necessary only')}</button>
+      <button type="button" class="btn sm" data-ck="1">${t('Принять', 'Accept')}</button></div>`;
+  bar.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ck]');
+    if (!b) return;
+    const v = { v: COOKIE_VER, analytics: b.dataset.ck === '1', at: new Date().toISOString() };
+    try { localStorage.setItem(COOKIE_KEY, JSON.stringify(v)); } catch {}
+    if (configured) sb.from('cookie_consents').insert({ analytics: v.analytics, version: COOKIE_VER }).then(() => {}, () => {});
+    bar.remove();
+    window.dispatchEvent(new CustomEvent('ruin:cookie', { detail: v }));
+  });
+  document.body.appendChild(bar);
+}
+
 // ---------- счётчик техники в шапке (v=77, раньше был на баннере главной) ----------
 // Число опубликованной техники; обновляется раз в 5 минут, при первом показе плавно досчитывает от 0.
 let eqCount = null, eqCountAt = 0, countShown = 0;
@@ -273,7 +304,7 @@ let cleanup = null;
 const PUBLIC = new Set(['home', 'catalog', 'item', 'auth', 'static', 'company']);
 
 const FOOTER = `<footer class="foot"><span>© RUIN, ${new Date().getFullYear()}</span><a href="#" data-onb>${t('Как пользоваться', 'How it works')}</a><a href="#/help">${t('Помощь', 'Help')}</a><a href="#/support">${t('Поддержка', 'Support')}</a>
-  <a href="#/terms">${t('Пользовательское соглашение', 'Terms of use')}</a><a href="#/privacy">${t('Политика обработки ПДн', 'Privacy policy')}</a><a href="#/consent">${t('Согласие на обработку ПДн', 'Personal data consent')}</a>
+  <a href="#/terms">${t('Пользовательское соглашение', 'Terms of use')}</a><a href="#/privacy">${t('Политика обработки ПДн', 'Privacy policy')}</a><a href="#/consent">${t('Согласие на обработку ПДн', 'Personal data consent')}</a><a href="#" data-cookies>${t('Настройки cookie', 'Cookie settings')}</a>
   <span>${t('Фото техники — Wikimedia Commons, свободные лицензии, авторы указаны на фото', 'Machinery photos — Wikimedia Commons, free licences, authors credited on photos')}</span></footer>`;
 
 export async function route() {
@@ -521,7 +552,14 @@ async function boot() {
     e.preventDefault();
     showOnboarding();
   });
+  // «Настройки cookie» в подвале — показать уведомление снова и выбрать заново
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('[data-cookies]')) return;
+    e.preventDefault();
+    showCookieBar(true);
+  });
   await route();
+  showCookieBar();
   maybeShowOnboarding();
 }
 boot();
