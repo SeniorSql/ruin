@@ -104,7 +104,7 @@ async function detail(app, id) {
           <div class="small muted">${esc(d.equipment?.brand)} ${esc(d.equipment?.model)}${d.equipment?.year ? ', ' + d.equipment.year : ''}</div></div></div>
           <dl class="kv"><dt>Период</dt><dd>${period(d.start_date, d.end_date)}</dd><dt>Формат</dt><dd>${d.with_operator ? 'с оператором' : 'без оператора'}</dd>
             <dt>Источник</dt><dd>${d.source === 'CATALOG' ? 'бронь из каталога' : `<a href="#/${amCust ? 'orders' : 'feed'}/${d.order_id}">заказ на бирже</a>`}</dd>
-            <dt>Отмена</dt><dd>${esc(POLICY[d.cancel_policy] || '')}</dd>
+            <dt>Условия отмены</dt><dd>${esc(POLICY[d.cancel_policy] || '')}</dd>
             <dt>Оплата</dt><dd>напрямую исполнителю, платформа деньги не принимает</dd>
             ${d.customer_comment ? `<dt>Комментарий</dt><dd style="white-space:pre-wrap">${esc(d.customer_comment)}</dd>` : ''}
             ${d.cancel_reason ? `<dt>Причина отмены</dt><dd>${esc(reasonText(d.cancel_reason))}</dd>` : ''}</dl>
@@ -216,12 +216,12 @@ function nextStep(d, amCust, amProv) {
 }
 
 function cancelInfo(d) {
-  const days = { FLEXIBLE: 1, MODERATE: 3, STRICT: 7 }[d.cancel_policy] || 1;
+  // Условия отмены (11.11.2026): FLEXIBLE — бесплатно до начала работ; остальное — по согласованию сторон
   const startMs = new Date(d.start_date + 'T00:00:00+03:00').getTime();
-  const free = startMs - Date.now() > days * 864e5;
   if (d.status === 'AWAITING_CONFIRMATION') return 'Сделка ещё не подтверждена — отмена без последствий, бронь снимется.';
-  return free ? 'Отмена в бесплатный период по правилам этой сделки. Бронь снимется, обе стороны получат уведомление.'
-    : `Бесплатный период по правилам «${(POLICY[d.cancel_policy] || '').split(':')[0]}» прошёл. Расчёты между сторонами — напрямую по договорённости; поздняя отмена учитывается в репутации.`;
+  if (d.cancel_policy !== 'FLEXIBLE') return 'Условия отмены по этой сделке — по согласованию сторон. Перед отменой обсудите порядок и стоимость в чате сделки. Бронь снимется, обе стороны получат уведомление.';
+  return startMs > Date.now() ? 'Бесплатная отмена: работы ещё не начались. Бронь снимется, обе стороны получат уведомление.'
+    : 'Работы уже начались — бесплатный период прошёл. Расчёты между сторонами — напрямую по договорённости; поздняя отмена учитывается в репутации.';
 }
 
 const EVENT = {
