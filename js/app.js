@@ -105,7 +105,10 @@ function match(path) {
 }
 
 export function parseHash() {
-  const h = location.hash.replace(/^#\/?/, '');
+  let h = location.hash.replace(/^#\/?/, '');
+  // Страницы для поисковиков (/tehnika/…, /arenda/…) делает сервер (server/seo_gen.py): в них <meta name="ruin-route">
+  // с нужным разделом сайта. Пока в адресе нет #/…, открываем этот раздел — пользователь видит обычную страницу сайта.
+  if (!location.hash) { const m = document.querySelector('meta[name="ruin-route"]'); if (m) h = m.content; }
   const [path, query = ''] = h.split('?');
   return { path, query: Object.fromEntries(new URLSearchParams(query)) };
 }
