@@ -8,6 +8,7 @@ const DRAFT = '<div class="banner warn"><b>Черновик.</b>&nbsp;Текст
 const OP = 'Индивидуальный предприниматель Исмаилов Этибар Худавердиевич (ИНН 771572170870, ОГРНИП 326774600325074), адрес: г. Москва, Алтуфьевское шоссе, д. 26А, кв. 72';
 const MAIL = 'info@ru-in.ru';
 const EDITION = '<p class="small muted">Редакция от 11.11.2026</p>';
+const EDITION_PRIVACY = '<p class="small muted">Редакция от 12.11.2026 (добавлен раздел 10 о файлах cookie)</p>';
 
 const PAGES = {
   terms: `<h1>Пользовательское соглашение</h1>${DRAFT}
@@ -28,7 +29,8 @@ const PAGES = {
     <h2>6. Где хранятся данные</h2><p>Все персональные данные пользователей (база данных, фотографии, файлы) хранятся и обрабатываются на сервере, расположенном на территории Российской Федерации (хостинг-провайдер AdminVPS), в соответствии с ч. 5 ст. 18 Федерального закона № 152-ФЗ. Трансграничная передача персональных данных не осуществляется.</p>
     <h2>7. Сроки</h2><p>Данные хранятся, пока действует аккаунт, и удаляются в течение 30 дней после отзыва согласия или удаления аккаунта. Сведения о сделках и документы хранятся в сроки, установленные законом (в том числе 5 лет для первичных документов).</p>
     <h2>8. Защита</h2><p>Доступ к данным разграничен по ролям; соединение защищено (HTTPS); пароли хранятся только в виде хеша; важные действия подтверждаются кодом.</p>
-    <h2>9. Ваши права</h2><p>Вы можете узнать, какие данные мы обрабатываем, исправить их, отозвать согласие или удалить аккаунт, написав на <a href="mailto:${MAIL}">${MAIL}</a>. Ответим в течение 10 рабочих дней.</p>${EDITION}`,
+    <h2>9. Ваши права</h2><p>Вы можете узнать, какие данные мы обрабатываем, исправить их, отозвать согласие или удалить аккаунт, написав на <a href="mailto:${MAIL}">${MAIL}</a>. Ответим в течение 10 рабочих дней.</p>
+    <h2>10. Файлы cookie и хранение данных в браузере</h2><p><b>Необходимые</b> — без них сайт не работает: вход в аккаунт и продление сессии, выбранные тема и язык, черновики форм, ваш выбор по cookie. Хранятся в вашем браузере (cookie и localStorage), никому не передаются, для них согласие не требуется. <b>Аналитические</b> (статистика посещений, например Яндекс Метрика) включаются только после того, как вы нажмёте «Принять» в уведомлении о cookie; при выборе «Только необходимые» они не используются. Изменить выбор можно в любой момент — ссылка «Настройки cookie» внизу страницы. Также cookie можно удалить в настройках браузера.</p>${EDITION_PRIVACY}`,
   consent: `<h1>Согласие на обработку персональных данных</h1>${DRAFT}
     <p>Я, регистрируясь на сайте ru-in.ru (RUIN), свободно, своей волей и в своём интересе даю согласие оператору — ${OP} — на обработку моих персональных данных на следующих условиях.</p>
     <h2>1. Цель</h2><p>Регистрация и использование сервиса RUIN: каталог техники, заказы, сделки, связь со сторонами сделки, уведомления, проверка организаций, разбор обращений.</p>
@@ -49,6 +51,7 @@ const OP_EN = 'Sole proprietor Etibar Khudaverdiyevich Ismailov (INN 77157217087
 const DRAFT_EN = '<div class="banner warn"><b>Draft.</b>&nbsp;This text is a working basis and must be reviewed and approved by a lawyer before the service opens to everyone.</div>';
 const NOTE_EN = '<div class="banner info">English translation for information only. In case of any discrepancy, the Russian version prevails.</div>';
 const EDITION_EN = '<p class="small muted">Version of 11 November 2026</p>';
+const EDITION_PRIVACY_EN = '<p class="small muted">Version of 12 November 2026 (section 10 on cookies added)</p>';
 
 const PAGES_EN = {
   terms: `<h1>Terms of use</h1>${NOTE_EN}${DRAFT_EN}
@@ -69,7 +72,8 @@ const PAGES_EN = {
     <h2>6. Where data is stored</h2><p>All users' personal data (database, photos, files) is stored and processed on a server located in the Russian Federation (hosting provider AdminVPS), in accordance with Part 5 of Article 18 of Federal Law 152-FZ. Personal data is not transferred across borders.</p>
     <h2>7. Retention</h2><p>Data is kept while the account exists and deleted within 30 days after consent is withdrawn or the account is deleted. Deal records and documents are kept for the periods required by law (including 5 years for primary documents).</p>
     <h2>8. Protection</h2><p>Access to data is role-based; connections are encrypted (HTTPS); passwords are stored only as hashes; important actions are confirmed with a code.</p>
-    <h2>9. Your rights</h2><p>You can find out what data we process, correct it, withdraw your consent or delete your account by writing to <a href="mailto:${MAIL}">${MAIL}</a>. We reply within 10 business days.</p>${EDITION_EN}`,
+    <h2>9. Your rights</h2><p>You can find out what data we process, correct it, withdraw your consent or delete your account by writing to <a href="mailto:${MAIL}">${MAIL}</a>. We reply within 10 business days.</p>
+    <h2>10. Cookies and browser storage</h2><p><b>Necessary</b> — the site does not work without them: logging in and keeping your session, the chosen theme and language, form drafts, your cookie choice. They are stored in your browser (cookies and localStorage), are not shared with anyone and do not require consent. <b>Analytics</b> cookies (visit statistics, e.g. Yandex Metrica) are enabled only after you click “Accept” in the cookie notice; with “Necessary only” they are not used. You can change your choice at any time via the “Cookie settings” link at the bottom of the page, or delete cookies in your browser settings.</p>${EDITION_PRIVACY_EN}`,
   consent: `<h1>Consent to personal data processing</h1>${NOTE_EN}${DRAFT_EN}
     <p>By registering on ru-in.ru (RUIN), I freely, of my own will and in my own interest, give my consent to the operator — ${OP_EN} — to process my personal data on the following terms.</p>
     <h2>1. Purpose</h2><p>Registration and use of the RUIN service: machinery catalogue, orders, deals, communication with deal parties, notifications, verification of organisations, handling requests.</p>
