@@ -148,8 +148,8 @@ function renderSide(active) {
     if (actsAsProvider(o)) {
       html += `<div class="nav-group provider"><div class="nav-role">${icon('truck', 16)}<span>${t('Я исполнитель', 'I am a provider')}</span><small>${t('сдаю технику', 'I rent out machinery')}</small></div><nav class="nav">
         ${!o.can_provide ? `<a href="#/account" class="role-off">${t('Роль исполнителя выключена — техника скрыта из каталога. Включить →', 'Provider role is off — machinery hidden from the catalogue. Turn on →')}</a>` : ''}
-        ${link('#/crm', 'desk', t('Рабочий стол', 'Desk'), c.crm_due)}${link('#/fleet', 'truck', t('Моя техника', 'My machinery'))}${link('#/park', 'gauge', t('Учёт парка', 'Fleet management'))}${o.can_provide ? link('#/feed', 'feed', t('Лента заказов', 'Order feed'), c.feed_new) : ''}
-        ${link('#/offers', 'send', t('Мои предложения', 'My offers'))}${link('#/deals?tab=provider', 'deal', t('Сделки', 'Deals'), c.deals_provider, c.deals_provider_wait)}</nav></div>`;
+        ${link('#/crm', 'desk', t('Рабочий стол', 'Desk'), c.crm_due)}${link('#/fleet', 'truck', t('Моя техника', 'My machinery'))}${link('#/park', 'gauge', t('Учёт парка', 'Fleet management'))}${o.can_provide ? link('#/feed', 'feed', t('Лента заказов', 'Order feed'), (c.feed_new || 0) + (c.dates_pending || 0)) : ''}
+        ${link('#/offers', 'send', t('Мои предложения', 'My offers'), c.dates_pending)}${link('#/deals?tab=provider', 'deal', t('Сделки', 'Deals'), c.deals_provider, c.deals_provider_wait)}</nav></div>`;
     }
     html += `<div class="nav-caption">${t('АККАУНТ', 'ACCOUNT')}</div><nav class="nav">
       ${link('#/messages', 'chat', t('Сообщения', 'Messages'), c.unread_messages)}${link('#/notifications', 'bell', t('Уведомления', 'Notifications'), c.notifications)}
