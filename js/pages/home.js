@@ -2,12 +2,10 @@
 import { sb, state, q, rpc, loadCategories } from '../api.js';
 import { esc, photoOf, skeleton, plural } from '../ui.js';
 import { EQ_SELECT, productCard, loadFavs, bindFavs, loadRatings } from '../cards.js';
-import { icon } from '../app.js';
 import { t, catName } from '../i18n.js';
 
 // Картинки баннера заданы в css/app.css (.hero-img.day / .hero-img.night): в светлой теме — CAT 320,
-// в тёмной — Zoomlion ZE215E с ночным затемнением (v=73). Грузится только картинка текущей темы.
-// Фото ZE215E: Wikimedia Commons, автор Beeveevee, CC BY-SA 4.0.
+// в тёмной — ночное фото Zoomlion ZE215E от Этибара (img/hero-night.jpg, v=75). Грузится только картинка текущей темы.
 
 export async function render(app) {
   const cats = await loadCategories();
@@ -22,11 +20,6 @@ export async function render(app) {
     <div class="hero-visual" role="img" aria-label="${t('Гусеничный экскаватор на объекте', 'Crawler excavator on site')}"><div class="hero-img day"></div><div class="hero-img night"></div>
       <div class="hero-sticker"><b id="heroCount">…</b><span>${t('единиц техники на RUIN', 'machines on RUIN')}</span></div></div>
   </section>
-  <div class="benefits">
-    <div class="benefit"><div class="benefit-ic">${icon('shield')}</div><div><b>${t('Проверенные исполнители', 'Verified providers')}</b><small>${t('Реквизиты сверены модератором', 'Company details checked by a moderator')}</small></div></div>
-    <div class="benefit"><div class="benefit-ic">${icon('list')}</div><div><b>${t('Биржа заказов', 'Order exchange')}</b><small>${t('Опишите задачу — исполнители пришлют цены', 'Describe the job — providers send their prices')}</small></div></div>
-    <div class="benefit"><div class="benefit-ic">${icon('deal')}</div><div><b>${t('Без двойных броней', 'No double bookings')}</b><small>${t('Календарь занятости обновляется сразу', 'Availability calendar updates instantly')}</small></div></div>
-  </div>
   <div class="section-head"><div><div class="eyebrow">${t('БЫСТРЫЙ ДОСТУП', 'QUICK ACCESS')}</div><h2>${t('Найдите свою категорию', 'Find your category')}</h2></div><a class="see-all" href="#/catalog">${t('Весь каталог', 'Full catalogue')} <span>→</span></a></div>
   <section class="cats" id="cats">${cats.slice(0, 12).map(() => '<div class="skeleton" style="height:140px"></div>').join('')}</section>
   <div class="section-head"><div><div class="eyebrow">${t('ПРЕДЛОЖЕНИЯ ИСПОЛНИТЕЛЕЙ', 'PROVIDER OFFERS')}</div><h2>${t('Свежая техника в каталоге', 'New in the catalogue')}</h2></div><a class="see-all" href="#/catalog">${t('Смотреть все', 'See all')} <span>→</span></a></div>
