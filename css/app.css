@@ -222,6 +222,9 @@ textarea.inp{height:auto;min-height:96px;padding:10px 12px;resize:vertical}
 /* ---------- панели ---------- */
 .panel{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);padding:20px;box-shadow:var(--shadow)}
 .panel+.panel{margin-top:14px}
+/* Страницы для поисковиков (/tehnika/…, /arenda/…): готовый текст страницы для роботов без JavaScript.
+   Когда скрипты работают (theme.js ставит data-theme), сайт сам рисует ту же страницу — заготовку не показываем, чтобы не мелькала. */
+html[data-theme] #app>.prerender{display:none}
 /* сделка: блок «Документы» (#extras) не прилипает к верхней панели */
 #extras>.panel:first-child{margin-top:14px}
 .panel h2{font-size:18px;margin-bottom:12px}
