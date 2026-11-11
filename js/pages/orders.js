@@ -129,6 +129,8 @@ async function detail(app, id) {
     ? await q(sb.from('deals').select('id,number,status').eq('order_id', id).neq('status', 'CANCELLED').maybeSingle()) : null;
   const cheapest = Math.min(...active.filter((f) => f.status === 'SUBMITTED').map((f) => f.total_minor));
   const canCancel = ['PUBLISHED', 'OFFERS_RECEIVED'].includes(o.status) && canManage();
+  const pending = active.filter((f) => f.status === 'SUBMITTED' && f.dates_pending).length;
+  const startPassed = o.start_date <= mskToday(0);
 
   app.innerHTML = `
     <div class="crumbs"><a href="#/orders">Мои заказы</a> › <b>${esc(o.title)}</b></div>
@@ -140,11 +142,17 @@ async function detail(app, id) {
     ${!canManage() ? `<div class="banner info">У вас роль «${ROLE_NAME[state.org.role] || state.org.role}» — только просмотр. Выбирать предложения и отменять заказ могут владелец, администратор и менеджер.</div>` : ''}
     ${['PUBLISHED', 'OFFERS_RECEIVED'].includes(o.status) ? `<div class="banner info">Приём предложений: ${new Date(o.deadline_at) > Date.now() ? 'ещё ' + timeLeft(o.deadline_at) : 'завершён — выберите предложение'}.</div>` : ''}
     ${['PUBLISHED', 'OFFERS_RECEIVED'].includes(o.status) && o.start_date <= mskToday(0) ? `<div class="banner warn" style="display:block"><b>Дата начала заказа уже прошла.</b>
-      Выберите предложение — при выборе укажете новую дату начала, срок аренды и цена останутся прежними. Если не выбрать, заказ закроется ${date(addDays(o.start_date, 4))}.</div>` : ''}
+      Измените даты — исполнители получат уведомление и подтвердят, что техника свободна. После подтверждения предложение можно выбрать. Срок аренды и цена останутся прежними.
+      Если даты не изменить, заказ закроется ${date(addDays(o.start_date, 4))}.
+      ${canManage() ? '<div style="margin-top:8px"><button class="btn sm" data-resched>Изменить даты</button></div>' : ''}</div>` : ''}
+    ${pending ? `<div class="banner info">Ждём подтверждения новых дат от исполнителей: ${pending} ${plural(pending, 'предложение', 'предложения', 'предложений')}. Выбрать предложение можно после подтверждения.</div>` : ''}
     <div class="cols">
       <div>
         <div class="panel"><h2>Предложения ${active.length ? `<span class="muted">(${active.length})</span>` : ''}</h2>
-          ${active.length ? compareTable(active, stats, cheapest) : `<div class="empty"><b>Пока нет предложений</b>Исполнители получили уведомление. Обычно первые предложения приходят в течение нескольких часов.
+          ${active.length ? `${active.length > 1 ? `<div class="actions" style="margin:-4px 0 10px"><label class="small muted">Порядок:
+              <select class="inp" id="cmpSort" style="width:auto;display:inline-block">
+                <option value="price">сначала дешевле</option><option value="deals">больше завершённых сделок</option><option value="new">сначала новые</option></select></label></div>` : ''}
+            <div id="cmp"></div>` : `<div class="empty"><b>Пока нет предложений</b>Исполнители получили уведомление. Обычно первые предложения приходят в течение нескольких часов.
             <div><a class="btn ghost" href="#/catalog?cat=${o.categories?.code}">Посмотреть технику в каталоге</a></div></div>`}
         </div>
         ${other.length ? `<div class="panel"><h3>Неактивные предложения</h3>${other.map((f) => `<div class="row-item"><div class="grow"><b>${esc(f.organizations?.name)}</b>
@@ -152,7 +160,8 @@ async function detail(app, id) {
       </div>
       <aside class="sticky"><div class="panel"><h2>Детали заказа</h2>
         <dl class="kv"><dt>Техника</dt><dd>${esc(o.categories?.name)}, ${o.qty} шт.</dd><dt>Формат</dt><dd>${FORMAT[o.format]}</dd>
-          <dt>Даты</dt><dd>${period(o.start_date, o.end_date)}</dd><dt>Город</dt><dd>${esc(o.city)}${o.district ? ', ' + esc(o.district) : ''}</dd>
+          <dt>Даты</dt><dd>${period(o.start_date, o.end_date)}${['PUBLISHED', 'OFFERS_RECEIVED'].includes(o.status) && canManage()
+            ? '<div><button class="btn ghost sm" data-resched style="margin-top:4px">Изменить даты</button></div>' : ''}</dd><dt>Город</dt><dd>${esc(o.city)}${o.district ? ', ' + esc(o.district) : ''}</dd>
           <dt>Адрес</dt><dd>${esc(priv?.address_exact || '—')}</dd>
           <dt>Бюджет</dt><dd>${o.budget_minor ? money(o.budget_minor) + (o.budget_visible ? '' : ' (скрыт)') : 'не указан'}</dd>
           <dt>Создан</dt><dd>${dateTime(o.created_at)}</dd></dl>
@@ -161,46 +170,76 @@ async function detail(app, id) {
     </div>`;
 
   mountAssign(app.querySelector('#assign'), 'ORDER', id).catch(() => {});
-  if (!canManage()) app.querySelectorAll('[data-select],[data-decline]').forEach((b) => b.remove());
   app.querySelector('#cancelBtn')?.addEventListener('click', async () => {
     const r = await askReason('Отменить заказ?', 'Исполнители получат уведомление, их предложения закроются.', 'Причина', 'Отменить заказ');
     if (!r) return;
     try { await rpc('cancel_order', { p_order: id, p_reason: r }); toast('Заказ отменён'); route(); } catch (err) { toast(err.message, true); }
   });
-  app.querySelectorAll('[data-select]').forEach((b) => b.onclick = () => selectDialog(o, active.find((f) => f.id === b.dataset.select)));
-  app.querySelectorAll('[data-decline]').forEach((b) => b.onclick = async () => {
-    try { await rpc('decline_offer', { p_offer: b.dataset.decline }); toast('Предложение отклонено'); route(); } catch (err) { toast(err.message, true); }
-  });
-  app.querySelectorAll('[data-chat]').forEach((b) => b.onclick = async () => {
-    try { const c = await rpc('open_conversation', { p_org: state.org.id, p_equipment: null, p_order: id, p_provider: b.dataset.chat }); go('#/messages/' + c); }
-    catch (err) { toast(err.message, true); }
-  });
+  app.querySelectorAll('[data-resched]').forEach((b) => b.onclick = () => rescheduleDialog(o, active.some((f) => f.status === 'SUBMITTED')));
+  const bind = (root) => {
+    if (!canManage()) root.querySelectorAll('[data-select],[data-decline]').forEach((b) => b.remove());
+    root.querySelectorAll('[data-select]').forEach((b) => b.onclick = () => selectDialog(o, active.find((f) => f.id === b.dataset.select)));
+    root.querySelectorAll('[data-decline]').forEach((b) => b.onclick = async () => {
+      try { await rpc('decline_offer', { p_offer: b.dataset.decline }); toast('Предложение отклонено'); route(); } catch (err) { toast(err.message, true); }
+    });
+    root.querySelectorAll('[data-chat]').forEach((b) => b.onclick = async () => {
+      try { const c = await rpc('open_conversation', { p_org: state.org.id, p_equipment: null, p_order: id, p_provider: b.dataset.chat }); go('#/messages/' + c); }
+      catch (err) { toast(err.message, true); }
+    });
+  };
+  bind(app);
+  // Сравнение предложений: порядок и показ по 5 штук, чтобы при большом числе откликов таблица оставалась читаемой
+  const cmp = app.querySelector('#cmp');
+  if (cmp) {
+    const PAGE = 5;
+    let shown = PAGE;
+    const sortSel = app.querySelector('#cmpSort');
+    const draw = () => {
+      const key = sortSel?.value || 'price';
+      const done = (f) => stats[f.provider_org_id]?.completed ?? 0;
+      const sorted = [...active].sort((a, b) => (a.status === 'SUBMITTED') - (b.status === 'SUBMITTED')
+        || (key === 'deals' ? done(b) - done(a) || a.total_minor - b.total_minor
+          : key === 'new' ? new Date(b.created_at) - new Date(a.created_at)
+          : a.total_minor - b.total_minor));
+      const rest = sorted.length - shown;
+      cmp.innerHTML = compareTable(sorted.slice(0, shown), stats, cheapest, startPassed)
+        + (rest > 0 ? `<button class="btn ghost wide" id="cmpMore" style="margin-top:10px">Показать ещё ${Math.min(PAGE, rest)} (осталось ${rest})</button>` : '');
+      cmp.querySelector('#cmpMore')?.addEventListener('click', () => { shown += PAGE; draw(); });
+      bind(cmp);
+    };
+    sortSel?.addEventListener('change', () => { shown = PAGE; draw(); });
+    draw();
+  }
 }
 
 // Сравнение предложений: одинаковый набор строк для всех (F1)
-function compareTable(list, stats, cheapest) {
+function compareTable(list, stats, cheapest, startPassed) {
   const cell = (f, html) => `<td>${html}</td>`;
-  const row = (label, fn) => `<tr><th style="white-space:nowrap">${label}</th>${list.map((f) => cell(f, fn(f))).join('')}</tr>`;
-  return `<div style="overflow-x:auto"><table class="table" style="min-width:${180 + list.length * 200}px">
-    <thead><tr><th></th>${list.map((f) => {
+  // Первая колонка (названия строк) закреплена — при прокрутке вбок видно, что сравниваем
+  const head = 'position:sticky;left:0;z-index:1;background:var(--panel);min-width:96px;max-width:130px';
+  const row = (label, fn) => `<tr><th style="${head}">${label}</th>${list.map((f) => cell(f, fn(f))).join('')}</tr>`;
+  return `<div style="overflow-x:auto"><table class="table" style="min-width:${130 + list.length * 190}px">
+    <thead><tr><th style="${head}"></th>${list.map((f) => {
       const p = photoOf(f.equipment || {});
       return `<th style="vertical-align:top">${p ? `<img src="${esc(p.url)}" alt="" style="width:100%;height:90px;object-fit:cover;border-radius:8px" referrerpolicy="no-referrer">` : ''}
         <a href="#/item/${f.equipment_id}" target="_blank" style="color:var(--ink);font-size:14px">${esc(f.equipment?.title)}</a></th>`;
     }).join('')}</tr></thead>
     <tbody>
-      ${row('Итого к оплате', (f) => `<b class="num" style="font-size:17px">${money(f.total_minor)}</b>${f.total_minor === cheapest && list.length > 1 ? '<div><span class="st ok">Лучшая цена</span></div>' : ''}`)}
+      ${row('Итого к оплате', (f) => `<b class="num" style="font-size:18px">${money(f.total_minor)}</b>${f.total_minor === cheapest && list.length > 1 ? '<div><span class="st ok">Лучшая цена</span></div>' : ''}`)}
       ${row('Аренда', (f) => offerParts(f).mode ? `<span class="num">${money(offerParts(f).rent)}</span>` : '<span class="small muted">в итоге</span>')}
       ${row('Доставка', (f) => `<span class="small${offerParts(f).mode === 'PAID' ? '' : ' muted'}">${offerParts(f).mode === 'PAID' ? `<b class="num">${money(offerParts(f).delivery)}</b><br>оплачивает заказчик` : esc(offerParts(f).text)}</span>`)}
       ${row('Исполнитель', (f) => `<b>${esc(f.organizations?.name)}</b><div>${status('org', f.organizations?.verification_status)}</div>`)}
       ${row('Завершённых сделок', (f) => String(stats[f.provider_org_id]?.completed ?? 0))}
       ${row('Формат', (f) => f.with_operator ? 'С оператором' : 'Без оператора')}
       ${row('Техника', (f) => `${esc(f.equipment?.brand)} ${esc(f.equipment?.model)}${f.equipment?.year ? ', ' + f.equipment.year : ''}`)}
-      ${row('Отмена', (f) => esc((POLICY[f.equipment?.cancel_policy] || '').split(':')[0]))}
+      ${row('Условия отмены', (f) => esc(POLICY[f.equipment?.cancel_policy] || '—'))}
       ${row('Комментарий', (f) => `<span class="small">${esc(f.comment || '—')}</span>`)}
       ${row('Действует до', (f) => `<span class="small">${dateTime(f.expires_at)}</span>`)}
       ${row('Редакция', (f) => `№${f.rev}`)}
       ${row('', (f) => f.status === 'SUBMITTED' ? `<div class="actions" style="flex-direction:column;align-items:stretch">
-        <button class="btn sm" data-select="${f.id}">Выбрать</button>
+        ${f.dates_pending ? '<span class="st wait">Ждёт подтверждения дат</span>'
+          : startPassed ? '<span class="small muted">Сначала измените даты</span>'
+          : `<button class="btn sm" data-select="${f.id}">Выбрать</button>`}
         <button class="btn ghost sm" data-decline="${f.id}">Отклонить</button></div>` : status('offer', f.status))}
     </tbody></table></div>`;
 }
@@ -211,36 +250,55 @@ const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDa
 function selectDialog(o, f) {
   const key = idemKey();
   const p = offerParts(f);
-  // Дата начала прошла — заказчик выбирает новую, срок аренды (дней) сохраняется
-  const moved = o.start_date <= mskToday(0);
-  const len = Math.round((new Date(o.end_date) - new Date(o.start_date)) / 864e5);
+  // Даты заказа уже согласованы с исполнителем (SQL 26): перенос — через «Изменить даты» и подтверждение исполнителя
   const m = modal(`<h2>Выбрать предложение</h2>
     <p class="muted" style="margin-top:-6px">${esc(f.organizations?.name)} · ${esc(f.equipment?.title)}</p>
-    ${moved ? `<div class="banner warn" style="display:block">Дата начала заказа (${date(o.start_date)}) уже прошла. Выберите новую дату начала — срок аренды останется ${len + 1} ${plural(len + 1, 'день', 'дня', 'дней')}, цена не изменится. Исполнитель подтвердит новые даты.</div>
-      <label class="f"><span>Новая дата начала <i>*</i></span><input class="inp" type="date" id="nstart" required min="${mskToday(1)}" value="${mskToday(1)}"></label>` : ''}
-    <dl class="kv"><dt>Даты</dt><dd id="sdates">${period(o.start_date, o.end_date)}</dd><dt>Формат</dt><dd>${f.with_operator ? 'с оператором' : 'без оператора'}</dd>
+    <dl class="kv"><dt>Даты</dt><dd>${period(o.start_date, o.end_date)}</dd><dt>Формат</dt><dd>${f.with_operator ? 'с оператором' : 'без оператора'}</dd>
       ${p.mode ? `<dt>Аренда</dt><dd class="num">${money(p.rent)}</dd>` : ''}
       <dt>Доставка</dt><dd>${esc(p.text)}</dd>
-      <dt>Итого к оплате</dt><dd class="num" style="font-size:18px">${money(f.total_minor)}</dd><dt>Отмена</dt><dd>${esc(POLICY[f.equipment?.cancel_policy] || '')}</dd>
+      <dt>Итого к оплате</dt><dd class="num" style="font-size:18px">${money(f.total_minor)}</dd><dt>Условия отмены</dt><dd>${esc(POLICY[f.equipment?.cancel_policy] || '')}</dd>
       <dt>Оплата</dt><dd>напрямую исполнителю</dd></dl>
     ${f.comment ? `<p class="small" style="white-space:pre-wrap"><b>Комментарий исполнителя:</b> ${esc(f.comment)}</p>` : ''}
     <div class="banner info" style="margin-top:14px">Техника забронируется на ваши даты. Исполнитель подтвердит сделку в течение 12 часов — после этого откроются контакты и адрес.</div>
     <label class="check"><input type="checkbox" id="agree"> <span>Подтверждаю условия предложения и <a href="#/terms" target="_blank">правила сервиса</a></span></label>
     <div class="form-error hidden" id="err"></div>
     <button class="btn wide" id="go">Выбрать и забронировать</button>`);
-  const ns = m.el.querySelector('#nstart');
-  const showDates = () => { if (ns?.value) m.el.querySelector('#sdates').textContent = period(ns.value, addDays(ns.value, len)); };
-  ns?.addEventListener('input', showDates); showDates();
   m.el.querySelector('#go').onclick = (ev) => {
     const err = m.el.querySelector('#err');
-    if (moved && (!ns.value || ns.value < mskToday(1))) { err.textContent = 'Выберите новую дату начала — не раньше завтрашнего дня'; err.classList.remove('hidden'); return; }
     if (!m.el.querySelector('#agree').checked) { err.textContent = 'Подтвердите условия'; err.classList.remove('hidden'); return; }
     busy(ev.currentTarget, async () => {
       try {
-        const r = await rpc('select_offer', { p_offer: f.id, p_key: key, p_start: moved ? ns.value : null });
+        const r = await rpc('select_offer', { p_offer: f.id, p_key: key, p_start: null });
         if (!r.ok) { const el = m.el.querySelector('#err'); el.textContent = r.error; el.classList.remove('hidden'); setTimeout(route, 2500); return; }
         m.close(); toast('Предложение выбрано, ждём подтверждения исполнителя'); go('#/deals/' + r.deal_id);
       } catch (err) { const el = m.el.querySelector('#err'); el.textContent = err.message; el.classList.remove('hidden'); }
+    });
+  };
+}
+
+// Изменение дат заказа (SQL 26): срок аренды сохраняется, исполнители подтверждают новые даты
+function rescheduleDialog(o, hasOffers) {
+  const len = Math.round((new Date(o.end_date) - new Date(o.start_date)) / 864e5);
+  const first = o.start_date > mskToday(0) ? o.start_date : mskToday(1);
+  const m = modal(`<h2>Изменить даты заказа</h2>
+    <p class="muted" style="margin-top:-6px">Сейчас: ${period(o.start_date, o.end_date)}. Срок аренды останется ${len + 1} ${plural(len + 1, 'день', 'дня', 'дней')}.</p>
+    <label class="f"><span>Новая дата начала <i>*</i></span><input class="inp" type="date" id="nstart" required min="${mskToday(1)}" max="${addDays(mskToday(0), 365)}" value="${first}"></label>
+    <dl class="kv"><dt>Новые даты</dt><dd id="ndates"></dd></dl>
+    ${hasOffers ? '<div class="banner info" style="display:block;margin-top:10px">Исполнители, приславшие предложения, получат уведомление и подтвердят, что техника свободна. Выбрать предложение можно будет после их подтверждения.</div>' : ''}
+    <div class="form-error hidden" id="err"></div>
+    <button class="btn wide" id="go">Сохранить новые даты</button>`);
+  const ns = m.el.querySelector('#nstart');
+  const show = () => { m.el.querySelector('#ndates').textContent = ns.value ? period(ns.value, addDays(ns.value, len)) : '—'; };
+  ns.addEventListener('input', show); show();
+  m.el.querySelector('#go').onclick = (ev) => {
+    const err = m.el.querySelector('#err');
+    if (!ns.value || ns.value < mskToday(1)) { err.textContent = 'Новая дата начала — не раньше завтрашнего дня'; err.classList.remove('hidden'); return; }
+    if (ns.value === o.start_date) { err.textContent = 'Это прежняя дата начала — выберите другую'; err.classList.remove('hidden'); return; }
+    busy(ev.currentTarget, async () => {
+      try {
+        const n = await rpc('reschedule_order', { p_order: o.id, p_start: ns.value });
+        m.close(); toast(n ? 'Даты изменены. Ждём подтверждения исполнителей' : 'Даты изменены'); route();
+      } catch (e) { err.textContent = e.message; err.classList.remove('hidden'); }
     });
   };
 }
