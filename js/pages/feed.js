@@ -43,10 +43,23 @@ async function feed(app, query) {
   const myByOrder = Object.fromEntries(mine.map((x) => [x.order_id, x.status]));
   const seen = seenOrders();
   const fresh = rows.filter((o) => !myByOrder[o.id] && !seen.has(o.id)).length;
+  // Заказчик изменил даты — эти заказы показываем отдельно сверху: после переноса приём предложений может быть
+  // уже закрыт и заказ не попадёт в общий список, а подтвердить даты всё равно нужно
+  let pend = [];
+  try {
+    pend = await q(sb.from('offers').select('order_id, orders(id,title,city,start_date,end_date,categories(name))')
+      .eq('provider_org_id', state.org.id).eq('status', 'SUBMITTED').eq('dates_pending', true));
+  } catch { pend = []; }
+  const pendSet = new Set(pend.map((x) => x.order_id));
 
   app.innerHTML = `
     <div class="page-head"><div><h1>Лента заказов</h1><p>Открытые заказы заказчиков. Отвечайте быстрее — это повышает шансы.</p></div>
       ${fresh ? `<button class="btn ghost sm" id="seenAll">Отметить все просмотренными (${fresh})</button>` : ''}</div>
+    ${pend.length ? `<div class="banner warn" style="display:block"><b>Заказчик изменил даты — подтвердите, что техника свободна (${pend.length})</b>
+      <div style="margin-top:6px">${pend.filter((x) => x.orders).map((x) => `<a class="row-item" href="#/feed/${x.order_id}" style="background:transparent">
+        <div class="grow"><b>${esc(x.orders.title)}</b><div class="small">Новые даты: ${period(x.orders.start_date, x.orders.end_date)} · ${esc(x.orders.categories?.name || '')} · ${esc(x.orders.city || '')}</div></div>
+        <span class="btn sm">Открыть</span></a>`).join('')}</div>
+      <div class="small" style="margin-top:4px">Пока вы не подтвердите даты, заказчик не может выбрать ваше предложение.</div></div>` : ''}
     ${!myEq.length ? '<div class="banner warn">У вас нет опубликованной техники — отправить предложение не получится. <a href="#/fleet/new">Добавить технику</a></div>' : ''}
     <form class="filters" id="ff">
       <select class="inp" name="cat"><option value="">Все категории</option>${cats.map((c) => `<option value="${c.id}" ${String(c.id) === f.cat ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
@@ -54,7 +67,7 @@ async function feed(app, query) {
       <label class="check" style="margin:0"><input type="checkbox" name="mine" value="1" ${f.mine === '1' ? 'checked' : ''}> Подходит моей технике</label>
       <button class="btn dark">Показать</button></form>
     ${rows.length ? `<div class="panel">${rows.map((o) => `<a class="row-item" href="#/feed/${o.id}">
-      <div class="grow"><b>${esc(o.title)}</b>${!myByOrder[o.id] && !seen.has(o.id) ? '<span class="badge-new">НОВЫЙ</span>' : ''}
+      <div class="grow"><b>${esc(o.title)}</b>${!myByOrder[o.id] && !seen.has(o.id) ? '<span class="badge-new">НОВЫЙ</span>' : ''}${pendSet.has(o.id) ? ' <span class="st warn">Даты изменены — подтвердите</span>' : ''}
         <div class="small muted">${esc(o.categories?.name)} · ${o.qty} шт. · ${esc(o.city)}${o.district ? ', ' + esc(o.district) : ''} · ${FORMAT[o.format].toLowerCase()}</div>
         <div class="small">${period(o.start_date, o.end_date)}${o.budget_visible && o.budget_minor ? ' · бюджет ' + money(o.budget_minor) : ''}
           ${o.visibility === 'DIRECT' ? ' · <b>личный запрос вам</b>' : ''}</div></div>
@@ -96,6 +109,10 @@ async function orderPage(app, id) {
     <div class="page-head"><div><h1>${esc(o.title)}</h1><div style="margin-top:6px">${status('order', o.status)}
       ${o.visibility === 'DIRECT' ? '<span class="st warn">Личный запрос вам</span>' : ''}</div></div>
       <span class="small muted" style="max-width:260px">Чат с заказчиком откроется, когда он выберет ваше предложение и оформится сделка.</span></div>
+    ${active?.status === 'SUBMITTED' && active.dates_pending ? `<div class="banner warn" style="display:block"><b>Заказчик изменил даты: ${period(o.start_date, o.end_date)}.</b>
+      Подтвердите, что техника свободна на эти даты, — только после этого заказчик сможет выбрать ваше предложение. Если не подходит — отзовите предложение.
+      ${canManage() ? `<div class="actions" style="margin-top:8px"><button class="btn sm" data-cdates="${active.id}">Подтвердить даты</button>
+        <button class="btn ghost sm" data-wd="${active.id}">Отозвать предложение</button></div>` : '<div class="small" style="margin-top:6px">Подтвердить может владелец, администратор или менеджер организации.</div>'}</div>` : ''}
     <div class="cols">
       <div>
         <div class="panel"><h2>Что нужно</h2>
@@ -121,10 +138,6 @@ async function orderPage(app, id) {
             ${offerParts(active).mode ? `<div class="small">Аренда ${money(offerParts(active).rent)} · доставка: ${esc(offerParts(active).text)}</div>` : `<div class="small">Доставка: ${esc(offerParts(active).text)}</div>`}
             ${active.comment ? `<p class="small" style="margin:6px 0 0;white-space:pre-wrap">${esc(active.comment)}</p>` : ''}
             <div class="small muted" style="margin-top:6px">Заказчик получил уведомление. Ждём его решения.</div></div>
-          ${active.dates_pending ? `<div class="banner warn" style="display:block"><b>Заказчик изменил даты: ${period(o.start_date, o.end_date)}.</b>
-            Подтвердите, что техника свободна на эти даты, — только после этого заказчик сможет выбрать ваше предложение. Если не подходит — отзовите предложение.
-            ${canManage() ? `<div class="actions" style="margin-top:8px"><button class="btn sm" data-cdates="${active.id}">Подтвердить даты</button>
-              <button class="btn ghost sm" data-wd="${active.id}">Отозвать</button></div>` : ''}</div>` : ''}
           ${open && canManage() ? '<button class="btn ghost wide" id="editOffer">Изменить предложение</button>' : ''}` : ''}
         ${!open ? '<div class="banner warn">Приём предложений закрыт.</div>'
         : !canManage() ? '<div class="banner info">У вас роль только для просмотра. Отправлять предложения могут владелец, администратор и менеджер.</div>'
@@ -149,10 +162,10 @@ async function orderPage(app, id) {
     </div>`;
 
   app.querySelectorAll('[data-wd]').forEach((b) => b.onclick = async () => {
-    try { await rpc('withdraw_offer', { p_offer: b.dataset.wd }); toast('Предложение отозвано'); route(); } catch (err) { toast(err.message, true); }
+    try { await rpc('withdraw_offer', { p_offer: b.dataset.wd }); toast('Предложение отозвано'); await refreshCounters(); refreshShell(); route(); } catch (err) { toast(err.message, true); }
   });
   app.querySelectorAll('[data-cdates]').forEach((b) => b.onclick = () => busy(b, async () => {
-    try { await rpc('confirm_offer_dates', { p_offer: b.dataset.cdates }); toast('Даты подтверждены — заказчик получил уведомление'); route(); } catch (err) { toast(err.message, true); }
+    try { await rpc('confirm_offer_dates', { p_offer: b.dataset.cdates }); toast('Даты подтверждены — заказчик получил уведомление'); await refreshCounters(); refreshShell(); route(); } catch (err) { toast(err.message, true); }
   }));
   const f = app.querySelector('#of');
   if (!f) return;
