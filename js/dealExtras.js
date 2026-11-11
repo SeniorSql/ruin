@@ -52,7 +52,8 @@ export async function renderExtras(box, d) {
       <p class="small muted" style="margin-top:-6px">Формируются из данных сделки. Откроются в новой вкладке — сохраните в PDF через «Печать → Сохранить как PDF».</p>
       <div class="actions">
         <a class="btn ghost sm" target="_blank" href="#/deals/${d.id}/doc/request">Заявка-подтверждение</a>
-        ${d.status !== 'AWAITING_CONFIRMATION' && d.status !== 'CANCELLED' ? `<a class="btn ghost sm" target="_blank" href="#/deals/${d.id}/doc/contract">Договор (PDF / Word)</a>` : ''}
+        ${d.status !== 'AWAITING_CONFIRMATION' && d.status !== 'CANCELLED' ? `<a class="btn ghost sm" target="_blank" href="#/deals/${d.id}/doc/contract">Договор (PDF / Word)</a>
+          <a class="btn ghost sm" target="_blank" href="#/deals/${d.id}/doc/waybill">Путевой лист / ЭСМ-7</a>` : ''}
         ${H.START ? `<a class="btn ghost sm" target="_blank" href="#/deals/${d.id}/doc/handover-START">Акт передачи</a>` : ''}
         ${H.END ? `<a class="btn ghost sm" target="_blank" href="#/deals/${d.id}/doc/handover-END">Акт возврата</a>` : ''}
         ${d.status === 'COMPLETED' ? `<a class="btn ghost sm" target="_blank" href="#/deals/${d.id}/doc/act">Акт выполненных работ</a>` : ''}
