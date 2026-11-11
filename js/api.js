@@ -186,8 +186,14 @@ export function markOrderSeen(id) {
 // «Лента заказов»: новые открытые заказы под мою технику (или личные запросы мне), которые я ещё не открывал и не ответил
 async function feedCounter() {
   const o = state.org, c = state.counters;
-  c.feed_new = 0;
+  c.feed_new = 0; c.dates_pending = 0; c.dates_pending_orders = [];
   if (!o?.can_provide || o.verification_status !== 'VERIFIED') return;
+  // Заказчик изменил даты — мои предложения ждут подтверждения новых дат (SQL 26). Это «нужно ваше действие».
+  try {
+    const p = await q(sb.from('offers').select('order_id').eq('provider_org_id', o.id).eq('status', 'SUBMITTED').eq('dates_pending', true));
+    c.dates_pending_orders = [...new Set(p.map((x) => x.order_id))];
+    c.dates_pending = c.dates_pending_orders.length;
+  } catch {}
   try {
     const [eq, orders] = await Promise.all([
       q(sb.from('equipment').select('category_id').eq('org_id', o.id).eq('status', 'PUBLISHED')),
