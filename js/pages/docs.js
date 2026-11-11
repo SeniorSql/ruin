@@ -1,12 +1,12 @@
 // Документы сделки для печати и сохранения в PDF (Модуль 5, упрощённо: формируются из данных сделки в браузере)
 import { sb, state, q, rpc } from '../api.js';
 import { esc, money, date, dateTime, period, POLICY, ORG_TYPE, errorState, emptyState, WORDMARK } from '../ui.js';
-import { renderContract } from '../contract.js';
-import { renderWaybill } from '../waybill.js';
 
-const TITLES = { request: 'Заявка-подтверждение', contract: 'Договор', 'handover-START': 'Акт приёма-передачи техники', 'handover-END': 'Акт возврата техники', act: 'Акт выполненных работ (оказанных услуг)' };
+// Договор и путевые листы с 11.11.2026 — не здесь: форма .docx/zip скачивается и подписанные файлы загружаются в блоке сделки (dealFiles.js)
+const TITLES = { request: 'Заявка-подтверждение', 'handover-START': 'Акт приёма-передачи техники', 'handover-END': 'Акт возврата техники', act: 'Акт выполненных работ (оказанных услуг)' };
 
 export async function render(app, { id, type }) {
+  if (!TITLES[type]) { app.innerHTML = emptyState('Документ недоступен', 'Договор и путевые листы теперь скачиваются и загружаются в карточке сделки, блок «Документы».'); return; }
   let d, priv, events, hand, work;
   try {
     d = await q(sb.from('deals').select('*, equipment(title,brand,model,year,specs,city,price_unit,price_minor,shift_hours,categories(code)), cust:organizations!deals_customer_org_id_fkey(id,name,type,inn,ogrn,city), prov:organizations!deals_provider_org_id_fkey(id,name,type,inn,ogrn,city)').eq('id', id).maybeSingle());
@@ -18,18 +18,6 @@ export async function render(app, { id, type }) {
       q(sb.from('work_sessions').select('*').eq('deal_id', id))
     ]);
   } catch (err) { app.innerHTML = errorState(err); return; }
-  // Договор — отдельный модуль (шаблон ред. 3, форма дозаполнения, PDF и Word)
-  if (type === 'contract' || type === 'waybill') {
-    // Рег. номер и машинист — из карточки учёта парка, её видит только исполнитель; заказчику поля останутся для заполнения
-    const fc = await sb.from('fleet_cards').select('reg_number, fleet_operators(full_name, license_no)').eq('equipment_id', d.equipment_id).maybeSingle().then((r) => r.data, () => null);
-    if (type === 'contract') return renderContract(app, d, priv, { reg: fc?.reg_number || '' });
-    const H = Object.fromEntries(hand.map((h) => [h.type, h]));
-    return renderWaybill(app, d, {
-      cat: d.equipment?.categories?.code, reg: fc?.reg_number || '', operator: fc?.fleet_operators || null,
-      address: priv?.address || '', custContact: priv?.customer, provPhone: priv?.provider?.phone || '',
-      work: work.filter((w) => w.status !== 'DISPUTED'), fuelStart: H.START?.fuel_level ?? null, fuelEnd: H.END?.fuel_level ?? null
-    });
-  }
   const H = Object.fromEntries(hand.map((h) => [h.type, h]));
   const today = date(new Date().toISOString());
   const party = (o, c) => `<b>${esc(o.type === 'PERSON' ? o.name + ' (физическое лицо)' : o.name)}</b>${o.type !== 'PERSON' ? `, ${ORG_TYPE[o.type]}` : ''}
@@ -57,16 +45,6 @@ export async function render(app, { id, type }) {
       <h3>Условия отмены</h3><p>${esc(POLICY[d.cancel_policy] || '')}.</p>
       ${d.customer_comment ? `<h3>Комментарий заказчика</h3><p>${esc(d.customer_comment)}</p>` : ''}
       <h3>Электронные подтверждения на платформе RUIN</h3><ul>${confirms || '<li>Подтверждений пока нет</li>'}</ul>`;
-  } else if (type === 'contract') {
-    const kind = d.with_operator ? 'оказания услуг специальной техникой с экипажем' : 'аренды специальной техники без экипажа';
-    body = `<div class="doc-draft">ШАБЛОН. Текст договора подготовлен как основа и должен быть проверен юристом перед использованием.</div>
-      <p>${esc(d.prov.name)} (далее — Исполнитель) и ${esc(d.cust.name)} (далее — Заказчик) заключили настоящий договор ${kind} о нижеследующем.</p>
-      <h3>1. Предмет договора</h3><p>1.1. Исполнитель предоставляет Заказчику технику ${d.with_operator ? 'вместе с экипажем, который управляет техникой и обеспечивает её техническую эксплуатацию' : 'во временное владение и пользование без оказания услуг по управлению'} на условиях, указанных ниже.</p>${subject}
-      <h3>2. Стоимость и порядок расчётов</h3>${cost}<p>2.1. Окончательная стоимость определяется по фактически отработанному времени на основании подтверждённых сторонами записей о сменах и простоях.</p>
-      <h3>3. Передача и возврат</h3><p>3.1. Передача и возврат техники оформляются актами с фотофиксацией, показаниями моточасов и уровня топлива.</p>
-      <h3>4. Отмена</h3><p>4.1. ${esc(POLICY[d.cancel_policy] || '')}.</p>
-      <h3>5. Ответственность и споры</h3><p>5.1. Стороны решают разногласия путём переговоров. Платформа RUIN не является стороной договора и не участвует в урегулировании споров. При недостижении согласия спор передаётся в суд по месту нахождения ответчика.</p>
-      <h3>6. Реквизиты сторон</h3>${sides}${signs}`;
   } else if (type.startsWith('handover-')) {
     const h = H[type.split('-')[1]];
     if (!h) { body = '<p>Акт ещё не оформлен.</p>'; } else {
