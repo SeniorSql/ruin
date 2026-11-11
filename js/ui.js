@@ -186,7 +186,11 @@ export function modal(html, { onClose } = {}) {
   bg.innerHTML = `<div class="modal" role="dialog" aria-modal="true"><button class="x" aria-label="${t('Закрыть', 'Close')}">×</button>${html}</div>`;
   const close = () => { bg.remove(); document.removeEventListener('keydown', onKey); onClose && onClose(); };
   const onKey = (e) => { if (e.key === 'Escape') close(); };
-  bg.addEventListener('click', (e) => { if (e.target === bg) close(); });
+  // Закрываем по клику на фон, только если и нажатие, и отпускание были на фоне.
+  // Иначе выделение текста в поле мышью (справа налево с выходом за окно) в Chrome закрывало окно.
+  let downOnBg = false;
+  bg.addEventListener('pointerdown', (e) => { downOnBg = e.target === bg; });
+  bg.addEventListener('click', (e) => { if (e.target === bg && downOnBg) close(); downOnBg = false; });
   bg.querySelector('.x').addEventListener('click', close);
   document.addEventListener('keydown', onKey);
   document.body.appendChild(bg);
