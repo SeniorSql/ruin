@@ -2,6 +2,7 @@
 import { sb, q, rpc, isAdmin, state, refreshCounters, loadMe } from '../api.js';
 import { esc, status, toast, askReason, emptyState, errorState, dateTime, ORG_TYPE, photoOf, priceText, qs, money, mskToday } from '../ui.js';
 import { route, refreshShell } from '../app.js';
+import { SHOW_DISPUTES } from '../dealExtras.js';
 
 export async function render(app, _p, query) {
   if (!isAdmin()) { app.innerHTML = emptyState('Нет доступа', 'Раздел доступен только администраторам платформы.'); return; }
@@ -15,7 +16,9 @@ export async function render(app, _p, query) {
   const firstQueue = ['equipment', 'orgs', 'disputes', 'reviews', 'reports'].find((k) => n[k]);
   const tab = query.tab || firstQueue || 'stats';
   const tabs = [['stats', 'Статистика'], ['orgs', 'Проверка организаций', n.orgs], ['equipment', 'Модерация техники', n.equipment], ['disputes', 'Претензии', n.disputes],
-    ['reviews', 'Отзывы', n.reviews], ['reports', 'Жалобы', n.reports], ['all', 'Все организации']];
+    ['reviews', 'Отзывы', n.reviews], ['reports', 'Жалобы', n.reports], ['all', 'Все организации']]
+    // Претензии скрыты (SHOW_DISPUTES): вкладка видна, только если остались открытые
+    .filter(([k]) => k !== 'disputes' || SHOW_DISPUTES || n.disputes || tab === 'disputes');
   app.innerHTML = `<div class="page-head"><div><h1>Админка</h1><p>Каждое решение записывается в журнал с автором, временем и причиной.</p></div></div>
     ${n.total ? `<div class="banner warn">Ждут вашего решения: ${[['orgs', 'организаций на проверке'], ['equipment', 'техники на модерации'], ['disputes', 'претензий'], ['reviews', 'отзывов на проверке'], ['reports', 'жалоб']]
       .filter(([k]) => n[k]).map(([k, t]) => `<a href="#/admin?tab=${k}"><b>${n[k]}</b> ${t}</a>`).join(' · ')}</div>` : ''}
@@ -52,7 +55,7 @@ async function stats(box, query) {
       <div class="divider"></div><h3>Очереди</h3><dl class="kv">
       <dt><a href="#/admin?tab=orgs">Проверка организаций</a></dt><dd>${a.queue_orgs}</dd>
       <dt><a href="#/admin?tab=equipment">Модерация техники</a></dt><dd>${a.queue_equipment}</dd>
-      <dt><a href="#/admin?tab=disputes">Открытые претензии</a></dt><dd>${a.disputes_open}</dd></dl></div>
+      ${SHOW_DISPUTES || a.disputes_open ? `<dt><a href="#/admin?tab=disputes">Открытые претензии</a></dt><dd>${a.disputes_open}</dd>` : ''}</dl></div>
     <div class="panel"><h2>Попытки передать контакты</h2>
       <p class="small muted" style="margin-top:-6px">За 30 дней, до подтверждения сделки. 3 и больше за неделю — повод проверить организацию.</p>
       ${bypass.length ? `<table class="table"><tbody>${bypass.map((b) => `<tr><td>${esc(b.org_name)}</td><td class="num"><b style="color:${b.attempts >= 3 ? 'var(--red)' : 'inherit'}">${b.attempts}</b></td><td class="small muted">${dateTime(b.last_at)}</td></tr>`).join('')}</tbody></table>`
