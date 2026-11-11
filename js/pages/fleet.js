@@ -1,7 +1,7 @@
 // Мой парк: список техники, мастер карточки, фото, календарь и блокировки (SCR-CAT-06/07/08)
 import { sb, state, q, rpc, loadCategories, categoryById, uploadPhoto, canManage, actsAsProvider } from '../api.js';
 import { esc, money, priceText, photoOf, status, toast, busy, confirmBox, emptyState, errorState, SPEC_LABELS, CATEGORY_SPECS,
-  toMinor, fromMinor, mskToday, date, statusLabel, POLICY } from '../ui.js';
+  toMinor, fromMinor, mskToday, date, statusLabel, POLICY, POLICY_CHOICES, policyChoice } from '../ui.js';
 import { go, route } from '../app.js';
 
 const SINGULAR = {
@@ -116,8 +116,8 @@ async function editor(app, o, id) {
           <label class="f"><span>Доставка (подача и возврат), ₽</span><input class="inp" name="delivery" type="number" min="0" step="1" max="1000000000" value="${e.delivery_minor == null ? '' : fromMinor(e.delivery_minor)}" ${e.delivery_minor == null ? 'disabled' : ''}></label>
           <label class="check" style="margin-top:30px"><input type="checkbox" name="delivery_request" ${e.delivery_minor == null ? 'checked' : ''}> <span>Доставка по запросу</span></label>
         </div>
-        <label class="f"><span>Правила отмены</span><select class="inp" name="cancel_policy">
-          ${Object.entries(POLICY).map(([k, v]) => `<option value="${k}" ${e.cancel_policy === k ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></label>
+        <label class="f"><span>Условия отмены</span><select class="inp" name="cancel_policy">
+          ${POLICY_CHOICES.map((k) => `<option value="${k}" ${policyChoice(e.cancel_policy) === k ? 'selected' : ''}>${esc(POLICY[k])}</option>`).join('')}</select></label>
         <label class="check"><input type="checkbox" name="instant_book" ${e.instant_book ? 'checked' : ''}> <span>Мгновенное бронирование — бронь подтверждается автоматически, без моего ответа</span></label>
       </div>
       <div class="form-error hidden" id="err"></div>
