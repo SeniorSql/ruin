@@ -178,10 +178,10 @@ export async function render(app, { id }) {
     cta.innerHTML = `
       ${!negotiable ? `<button class="btn wide" id="bookBtn" ${canBook && !blocked ? '' : 'disabled'}>${t('Забронировать', 'Book')}</button>` : ''}
       <button class="btn ${negotiable ? '' : 'ghost'} wide" id="priceBtn" ${blocked ? 'disabled' : ''}>${t('Запросить цену', 'Request a price')}</button>
-      <p class="small muted" style="margin:4px 0 0">${actingOwner ? t('Это техника организации, от имени которой вы сейчас действуете. Чтобы запросить цену как заказчик, переключитесь в меню слева на другой профиль.', 'This machine belongs to the organisation you are acting for. To request a price as a customer, switch to another profile in the left menu.') : t('Бронь бесплатна. Исполнитель подтвердит её в течение 12 часов. Чат с исполнителем откроется после оформления брони, контакты — после подтверждения.', 'Booking is free. The provider confirms within 12 hours. Chat opens after booking, contacts after confirmation.')}</p>`;
+      <p class="small muted" style="margin:4px 0 0">${actingOwner ? t('Это техника организации, от имени которой вы сейчас действуете. Чтобы запросить цену как заказчик, переключитесь на другой профиль в меню под вашим именем (справа вверху).', 'This machine belongs to the organisation you are acting for. To request a price as a customer, switch to another profile in the menu under your name (top right).') : t('Бронь бесплатна. Исполнитель подтвердит её в течение 12 часов. Чат с исполнителем откроется после оформления брони, контакты — после подтверждения.', 'Booking is free. The provider confirms within 12 hours. Chat opens after booking, contacts after confirmation.')}</p>`;
     const need = (fn) => () => {
       if (!state.user) return go('#/login?next=' + encodeURIComponent(location.hash));
-      if (!state.org?.can_order) return toast(t('Переключитесь на организацию-заказчика в меню слева', 'Switch to a customer organisation in the left menu'), true);
+      if (!state.org?.can_order) return toast(t('Переключитесь на организацию-заказчика в меню под вашим именем (справа вверху)', 'Switch to a customer organisation in the menu under your name (top right)'), true);
       fn();
     };
     cta.querySelector('#bookBtn')?.addEventListener('click', need(() => bookDialog(e, calcForm, lastQuote)));
