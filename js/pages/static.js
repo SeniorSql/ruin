@@ -7,7 +7,7 @@ const DRAFT = '<div class="banner warn"><b>Черновик.</b>&nbsp;Текст
 // Оператор персональных данных и платформы (данные ЕГРИП)
 const OP = 'Индивидуальный предприниматель Исмаилов Этибар Худавердиевич (ИНН 771572170870, ОГРНИП 326774600325074), адрес: г. Москва, Алтуфьевское шоссе, д. 26А, кв. 72';
 const MAIL = 'info@ru-in.ru';
-const EDITION = '<p class="small muted">Редакция от 06.11.2026</p>';
+const EDITION = '<p class="small muted">Редакция от 11.11.2026</p>';
 
 const PAGES = {
   terms: `<h1>Пользовательское соглашение</h1>${DRAFT}
@@ -15,17 +15,17 @@ const PAGES = {
     <h2>2. Регистрация и организации</h2><p>Пользователь указывает достоверные данные. Действия на платформе совершаются от имени организации (в том числе личного профиля частного лица). Исполнители проходят проверку реквизитов до публикации техники.</p>
     <h2>3. Бронь и сделки</h2><p>Бронь или выбор предложения означает согласие заказчика с условиями, показанными перед подтверждением. Сделка считается подтверждённой после подтверждения исполнителем. Неподтверждённая в течение 12 часов бронь снимается автоматически.</p>
     <h2>4. Оплата</h2><p>На текущем этапе расчёты производятся напрямую между сторонами. Платформа не принимает и не хранит денежные средства и данные банковских карт.</p>
-    <h2>5. Отмена</h2><p>Условия отмены указываются в карточке техники и фиксируются в сделке. Поздние отмены и неявки учитываются в репутации сторон.</p>
+    <h2>5. Отмена</h2><p>Условия отмены указываются в карточке техники и фиксируются в сделке: «Бесплатная отмена» (в любое время до начала работ) или «По согласованию сторон» (порядок и стоимость отмены стороны согласуют между собой). Платформа не участвует в урегулировании споров между сторонами. Поздние отмены и неявки учитываются в репутации сторон.</p>
     <h2>6. Контакты и обход площадки</h2><p>Контакты сторон открываются после подтверждения сделки. Телефоны, почта и ссылки в описаниях и сообщениях до подтверждения скрываются автоматически.</p>
     <h2>7. Контент</h2><p>Исполнитель отвечает за достоверность описаний и права на опубликованные фотографии. Платформа вправе скрывать карточки, нарушающие правила.</p>
     <h2>8. Контакты платформы</h2><p>${OP}. Email: <a href="mailto:${MAIL}">${MAIL}</a>.</p>${EDITION}`,
   privacy: `<h1>Политика обработки персональных данных</h1>${DRAFT}
     <h2>1. Оператор</h2><p>${OP}. Email для обращений: <a href="mailto:${MAIL}">${MAIL}</a>.</p>
     <h2>2. Какие данные мы обрабатываем</h2><p>Имя, email, телефон; данные организаций и ИП (наименование, ИНН, ОГРН/ОГРНИП, город, контактное лицо); сведения о технике, заказах и сделках; переписку в чатах сделок; адреса объектов; технические данные входа (дата и время, сведения о браузере).</p>
-    <h2>3. Зачем</h2><p>Регистрация и вход; работа каталога, биржи заказов и сделок; связь сторон сделки; уведомления (в том числе в Telegram и MAX — по желанию пользователя); проверка организаций; разбор претензий и жалоб; выполнение требований закона.</p>
+    <h2>3. Зачем</h2><p>Регистрация и вход; работа каталога, биржи заказов и сделок; связь сторон сделки; уведомления (в том числе в Telegram и MAX — по желанию пользователя); проверка организаций; разбор жалоб и обращений; выполнение требований закона.</p>
     <h2>4. Основания</h2><p>Согласие пользователя (<a href="#/consent">Согласие на обработку персональных данных</a>), договор с пользователем (<a href="#/terms">Пользовательское соглашение</a>), исполнение обязанностей по закону.</p>
     <h2>5. Кто видит ваши данные</h2><p>Контакты и точный адрес объекта видит только контрагент по подтверждённой сделке. Оператор получает доступ к данным только для проверки организаций, модерации и разбора обращений. В Telegram и MAX уведомления отправляются без имён и контактов.</p>
-    <h2>6. Где хранятся данные</h2><p>[Укажите место хранения. Для открытия сервиса гражданам РФ данные должны храниться на серверах в России — 152-ФЗ, ст. 18 ч. 5.]</p>
+    <h2>6. Где хранятся данные</h2><p>Все персональные данные пользователей (база данных, фотографии, файлы) хранятся и обрабатываются на сервере, расположенном на территории Российской Федерации (хостинг-провайдер AdminVPS), в соответствии с ч. 5 ст. 18 Федерального закона № 152-ФЗ. Трансграничная передача персональных данных не осуществляется.</p>
     <h2>7. Сроки</h2><p>Данные хранятся, пока действует аккаунт, и удаляются в течение 30 дней после отзыва согласия или удаления аккаунта. Сведения о сделках и документы хранятся в сроки, установленные законом (в том числе 5 лет для первичных документов).</p>
     <h2>8. Защита</h2><p>Доступ к данным разграничен по ролям; соединение защищено (HTTPS); пароли хранятся только в виде хеша; важные действия подтверждаются кодом.</p>
     <h2>9. Ваши права</h2><p>Вы можете узнать, какие данные мы обрабатываем, исправить их, отозвать согласие или удалить аккаунт, написав на <a href="mailto:${MAIL}">${MAIL}</a>. Ответим в течение 10 рабочих дней.</p>${EDITION}`,
@@ -48,7 +48,7 @@ const PAGES = {
 const OP_EN = 'Sole proprietor Etibar Khudaverdiyevich Ismailov (INN 771572170870, OGRNIP 326774600325074), address: Altufyevskoye Shosse 26A, apt. 72, Moscow, Russia';
 const DRAFT_EN = '<div class="banner warn"><b>Draft.</b>&nbsp;This text is a working basis and must be reviewed and approved by a lawyer before the service opens to everyone.</div>';
 const NOTE_EN = '<div class="banner info">English translation for information only. In case of any discrepancy, the Russian version prevails.</div>';
-const EDITION_EN = '<p class="small muted">Version of 6 November 2026</p>';
+const EDITION_EN = '<p class="small muted">Version of 11 November 2026</p>';
 
 const PAGES_EN = {
   terms: `<h1>Terms of use</h1>${NOTE_EN}${DRAFT_EN}
@@ -56,17 +56,17 @@ const PAGES_EN = {
     <h2>2. Registration and organisations</h2><p>Users provide accurate details. Actions on the platform are performed on behalf of an organisation (including an individual's personal profile). Providers have their company details verified before publishing machinery.</p>
     <h2>3. Bookings and deals</h2><p>Booking or selecting an offer means the customer agrees to the terms shown before confirmation. A deal is confirmed once the provider confirms it. A booking not confirmed within 12 hours is cancelled automatically.</p>
     <h2>4. Payment</h2><p>At this stage payments are made directly between the parties. The platform does not accept or hold money or bank card details.</p>
-    <h2>5. Cancellation</h2><p>Cancellation terms are shown on the listing and recorded in the deal. Late cancellations and no-shows affect the parties' reputation.</p>
+    <h2>5. Cancellation</h2><p>Cancellation terms are shown on the listing and recorded in the deal: “Free cancellation” (any time before work starts) or “By agreement” (the parties agree on cancellation terms and costs). The platform does not take part in settling disputes between the parties. Late cancellations and no-shows affect the parties' reputation.</p>
     <h2>6. Contacts and bypassing the platform</h2><p>The parties' contacts open after the deal is confirmed. Phone numbers, emails and links in descriptions and messages are hidden automatically before that.</p>
     <h2>7. Content</h2><p>The provider is responsible for accurate descriptions and the rights to published photos. The platform may hide listings that break the rules.</p>
     <h2>8. Platform contacts</h2><p>${OP_EN}. Email: <a href="mailto:${MAIL}">${MAIL}</a>.</p>${EDITION_EN}`,
   privacy: `<h1>Personal data processing policy</h1>${NOTE_EN}${DRAFT_EN}
     <h2>1. Operator</h2><p>${OP_EN}. Email for requests: <a href="mailto:${MAIL}">${MAIL}</a>.</p>
     <h2>2. What data we process</h2><p>Name, email, phone; details of organisations and sole proprietors (name, INN, OGRN/OGRNIP, city, contact person); information about machinery, orders and deals; messages in deal chats; site addresses; technical login data (date and time, browser information).</p>
-    <h2>3. Why</h2><p>Registration and login; running the catalogue, order exchange and deals; communication between deal parties; notifications (including Telegram and MAX — at the user's choice); verification of organisations; handling claims and complaints; compliance with the law.</p>
+    <h2>3. Why</h2><p>Registration and login; running the catalogue, order exchange and deals; communication between deal parties; notifications (including Telegram and MAX — at the user's choice); verification of organisations; handling complaints and requests; compliance with the law.</p>
     <h2>4. Legal grounds</h2><p>The user's consent (<a href="#/consent">Personal data consent</a>), the agreement with the user (<a href="#/terms">Terms of use</a>), and legal obligations.</p>
     <h2>5. Who sees your data</h2><p>Contacts and the exact site address are visible only to the counterparty of a confirmed deal. The operator accesses data only to verify organisations, moderate and handle requests. Telegram and MAX notifications are sent without names or contacts.</p>
-    <h2>6. Where data is stored</h2><p>[To be specified. To open the service to Russian citizens, data must be stored on servers in Russia — Federal Law 152-FZ, Art. 18 Part 5.]</p>
+    <h2>6. Where data is stored</h2><p>All users' personal data (database, photos, files) is stored and processed on a server located in the Russian Federation (hosting provider AdminVPS), in accordance with Part 5 of Article 18 of Federal Law 152-FZ. Personal data is not transferred across borders.</p>
     <h2>7. Retention</h2><p>Data is kept while the account exists and deleted within 30 days after consent is withdrawn or the account is deleted. Deal records and documents are kept for the periods required by law (including 5 years for primary documents).</p>
     <h2>8. Protection</h2><p>Access to data is role-based; connections are encrypted (HTTPS); passwords are stored only as hashes; important actions are confirmed with a code.</p>
     <h2>9. Your rights</h2><p>You can find out what data we process, correct it, withdraw your consent or delete your account by writing to <a href="mailto:${MAIL}">${MAIL}</a>. We reply within 10 business days.</p>${EDITION_EN}`,
