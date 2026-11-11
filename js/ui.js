@@ -53,15 +53,20 @@ export const priceText = (e) => e.price_unit === 'NEGOTIABLE' || e.price_minor =
   ? t('Договорная', 'Negotiable') : `${money(e.price_minor)}<small> / ${UNIT[e.price_unit]}</small>`;
 
 export const ORG_TYPE = isEn() ? { PERSON: 'Individual', LEGAL: 'Company', SOLE_PROP: 'Sole proprietor', SELF_EMPLOYED: 'Self-employed' } : { PERSON: 'Физлицо', LEGAL: 'Юрлицо', SOLE_PROP: 'ИП', SELF_EMPLOYED: 'Самозанятый' };
+// Условия отмены (с 11.11.2026 — два варианта). Коды в базе прежние: FLEXIBLE = бесплатно,
+// STRICT = по согласованию; старый MODERATE показывается как «по согласованию».
 export const POLICY = isEn() ? {
-  FLEXIBLE: 'Flexible: free cancellation up to 24 h before start',
-  MODERATE: 'Moderate: free cancellation up to 72 h before start',
-  STRICT: 'Strict: free cancellation up to 7 days before start'
+  FLEXIBLE: 'Free cancellation — any time before work starts',
+  MODERATE: 'By agreement — the parties agree on cancellation terms and costs between themselves',
+  STRICT: 'By agreement — the parties agree on cancellation terms and costs between themselves'
 } : {
-  FLEXIBLE: 'Гибкие: бесплатная отмена за 24 ч до начала',
-  MODERATE: 'Умеренные: бесплатная отмена за 72 ч до начала',
-  STRICT: 'Строгие: бесплатная отмена за 7 суток до начала'
+  FLEXIBLE: 'Бесплатная отмена — в любое время до начала работ',
+  MODERATE: 'По согласованию сторон — порядок и стоимость отмены стороны согласуют между собой',
+  STRICT: 'По согласованию сторон — порядок и стоимость отмены стороны согласуют между собой'
 };
+// Что можно выбрать в карточке техники
+export const POLICY_CHOICES = ['FLEXIBLE', 'STRICT'];
+export const policyChoice = (p) => (p === 'MODERATE' ? 'STRICT' : p || 'FLEXIBLE');
 export const FORMAT = isEn() ? { WITH_OPERATOR: 'With operator', WITHOUT_OPERATOR: 'Without operator', ANY: 'Any' } : { WITH_OPERATOR: 'С оператором', WITHOUT_OPERATOR: 'Без оператора', ANY: 'Не важно' };
 
 // Единый справочник подписей статусов (D99): [класс, подпись]
