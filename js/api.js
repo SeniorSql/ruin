@@ -230,13 +230,13 @@ async function adminCounters() {
   const n = async (b) => { const { count, error } = await b; return error ? 0 : count || 0; };
   const head = { count: 'exact', head: true };
   try {
-    const [orgs, equipment, disputes, reports] = await Promise.all([
+    // Претензии убраны с сайта (11.11.2026) — в очередь админа не входят
+    const [orgs, equipment, reports] = await Promise.all([
       n(sb.from('organizations').select('id', head).eq('verification_status', 'PENDING_REVIEW')),
       n(sb.from('equipment').select('id', head).eq('status', 'PENDING_MODERATION')),
-      n(sb.from('disputes').select('id', head).in('status', ['OPEN', 'IN_REVIEW'])),
       n(sb.from('listing_reports').select('id', head).eq('status', 'NEW'))
     ]);
-    c.admin = { orgs, equipment, disputes, reports, total: orgs + equipment + disputes + reports };
+    c.admin = { orgs, equipment, reports, total: orgs + equipment + reports };
   } catch {}
 }
 
