@@ -43,7 +43,7 @@ export async function render(app, { id }) {
         <h3>Рейтинг</h3>
         ${rating?.rating ? `<div class="price-big rating">★ ${rating.rating}</div><div class="small muted">${n} ${plural(n, 'отзыв', 'отзыва', 'отзывов')}</div>
           <div class="bars" style="margin-top:10px">${[5, 4, 3, 2, 1].map((s) => `<span>${s}★</span><span class="bar"><i style="width:${n ? Math.round(100 * rating.dist[s] / n) : 0}%"></i></span><span>${rating.dist[s]}</span>`).join('')}</div>`
-          : `<p class="muted" style="margin:0">${n ? 'Мало оценок: рейтинг появится после 3 отзывов' : 'Нет оценок — новичок на платформе'}</p>`}
+          : `<p class="muted" style="margin:0">Нет оценок — новичок на платформе</p>`}
         <p class="small muted" style="margin:12px 0 0">Контакты компании откроются после подтверждения сделки.</p>
       </div></aside>
     </div>`;
