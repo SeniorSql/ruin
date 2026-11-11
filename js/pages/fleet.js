@@ -1,8 +1,8 @@
 // Мой парк: список техники, мастер карточки, фото, календарь и блокировки (SCR-CAT-06/07/08)
-import { sb, state, q, rpc, loadCategories, categoryById, uploadPhoto, canManage, actsAsProvider } from '../api.js';
+import { sb, state, q, rpc, loadCategories, categoryById, uploadPhoto, canManage, actsAsProvider, calStale, refreshCounters } from '../api.js';
 import { esc, money, priceText, photoOf, status, toast, busy, confirmBox, emptyState, errorState, SPEC_LABELS, CATEGORY_SPECS,
   toMinor, fromMinor, mskToday, date, statusLabel, POLICY, POLICY_CHOICES, policyChoice } from '../ui.js';
-import { go, route } from '../app.js';
+import { go, route, refreshShell } from '../app.js';
 
 const SINGULAR = {
   excavators: 'Экскаватор', mini_excavators: 'Мини-экскаватор', backhoe_loaders: 'Экскаватор-погрузчик', wheel_loaders: 'Фронтальный погрузчик',
@@ -12,7 +12,7 @@ const SINGULAR = {
 };
 const TEXT_SPECS = new Set(['undercarriage', 'roller_type', 'chassis', 'axle_formula', 'drill_type', 'description_specs']);
 
-export async function render(app, params, _q, pattern) {
+export async function render(app, params, query, pattern) {
   const o = state.org;
   // Смотреть свою технику можно, если она есть, даже когда галочку «Исполнитель» сняли; добавлять новую — только исполнителю
   if (!(pattern === 'fleet/new' ? o.can_provide : actsAsProvider(o))) {
@@ -23,7 +23,7 @@ export async function render(app, params, _q, pattern) {
   }
   await loadCategories();
   if (pattern === 'fleet') return list(app, o);
-  return editor(app, o, pattern === 'fleet/new' ? null : params.id);
+  return editor(app, o, pattern === 'fleet/new' ? null : params.id, query || {});
 }
 
 async function list(app, o) {
@@ -37,17 +37,18 @@ async function list(app, o) {
     ${o.verification_status !== 'VERIFIED' ? `<div class="banner warn">Организация ${statusLabel('org', o.verification_status).toLowerCase()}. Карточки можно заполнять, а публиковать — после проверки. <a href="#/account">Подробнее</a></div>` : ''}
     ${rows.length ? `<div class="panel">${rows.map((e) => {
       const p = photoOf(e);
-      const stale = e.status === 'PUBLISHED' && Date.now() - new Date(e.availability_confirmed_at) > 5 * 864e5;
-      return `<a class="row-item" href="#/fleet/${e.id}">${p ? `<img src="${esc(p.url)}" alt="" referrerpolicy="no-referrer">` : '<img alt="">'}
+      // Календарь давно не подтверждали — строка подсвечена и ведёт сразу к шагу «6. Календарь» (v=78)
+      const stale = calStale(e);
+      return `<a class="row-item ${stale ? 'row-attn' : ''}" href="#/fleet/${e.id}${stale ? '?go=s6' : ''}">${p ? `<img src="${esc(p.url)}" alt="" referrerpolicy="no-referrer">` : '<img alt="">'}
         <div class="grow"><b>${esc(e.title)}</b><div class="small muted">${esc(e.categories?.name)} · ${esc(e.city)} · <span class="num">${priceText(e)}</span></div>
-        ${stale ? '<div class="small warn-text">Подтвердите актуальность календаря</div>' : ''}
+        ${stale ? '<div class="small warn-text"><span class="attn-link">Подтвердите календарь →</span> иначе в каталоге появится «Доступность уточняется»</div>' : ''}
         ${e.moderation_comment && e.status === 'REJECTED' ? `<div class="small" style="color:var(--red)">Модератор: ${esc(e.moderation_comment)}</div>` : ''}</div>
         ${status('equipment', e.status)}</a>`;
     }).join('')}</div>`
     : emptyState('Пока нет техники', 'Добавьте первую единицу — заказчики увидят её в каталоге после модерации.', canManage() && o.can_provide ? '<a class="btn" href="#/fleet/new">Добавить технику</a>' : '')}`;
 }
 
-async function editor(app, o, id) {
+async function editor(app, o, id, query = {}) {
   let e = { category_id: '', brand: '', model: '', year: '', title: '', description: '', city: o.city || '', district: '', service_radius_km: 50,
     with_operator: true, without_operator: false, price_unit: 'SHIFT', price_minor: null, shift_hours: 8, min_units: 1, operator_minor: 0,
     delivery_minor: 0, deposit_minor: 0, cancel_policy: 'FLEXIBLE', instant_book: false, specs: {}, photos: [], status: 'DRAFT' };
@@ -183,21 +184,30 @@ async function editor(app, o, id) {
       s3: photos.length >= 3 ? 'ok' : 'todo',
       s4: filled('city') ? 'ok' : 'todo',
       s5: (f.with_operator.checked || f.without_operator.checked) && (f.price_unit.value === 'NEGOTIABLE' || filled('price')) ? 'ok' : 'todo',
-      s6: ''
+      s6: id && calStale(e) ? 'attn' : ''
     };
-    const tips = { ok: 'Обязательные поля заполнены', todo: 'Есть незаполненные обязательные поля', '': 'Необязательный раздел' };
+    const tips = { ok: 'Обязательные поля заполнены', todo: 'Есть незаполненные обязательные поля', '': 'Необязательный раздел',
+      attn: 'Подтвердите, что календарь актуален — иначе в каталоге появится «Доступность уточняется»' };
     app.querySelectorAll('#steps [data-go]').forEach((b) => {
       b.className = st[b.dataset.go] || '';
       b.title = b.dataset.go === 's3' && st.s3 === 'todo' ? `Нужно минимум 3 фото, сейчас ${photos.length}` : tips[st[b.dataset.go] || ''];
     });
   }
-  app.querySelector('#steps').addEventListener('click', (ev) => {
-    const b = ev.target.closest('[data-go]');
-    if (!b) return;
-    const el = app.querySelector('#' + b.dataset.go);
+  // Прокрутка к разделу. Для «6. Календарь», когда календарь давно не подтверждали, — ещё и подсветка кнопки «Календарь актуален»
+  const goTo = (k) => {
+    const el = app.querySelector('#' + k);
+    if (!el) return;
     const top = el.getBoundingClientRect().top + window.scrollY - (app.querySelector('#steps').offsetHeight + 80);
     window.scrollTo({ top, behavior: 'smooth' });
     el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1200);
+    if (k === 's6' && calStale(e)) {
+      const btn = el.querySelector('#fresh');
+      if (btn) { btn.classList.remove('attn-btn'); void btn.offsetWidth; btn.classList.add('attn-btn'); setTimeout(() => btn.focus({ preventScroll: true }), 600); }
+    }
+  };
+  app.querySelector('#steps').addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-go]');
+    if (b) goTo(b.dataset.go);
   });
   f.addEventListener('input', markSteps);
   f.addEventListener('change', markSteps);
@@ -267,10 +277,16 @@ async function editor(app, o, id) {
     toast('Создана копия-черновик'); go('#/fleet/' + data.id);
   }));
 
-  if (id) calendar(app.querySelector('#calBox'), e, editable);
+  if (id) {
+    // После «Календарь актуален»: снимаем подсветку шага и обновляем счётчик «Моя техника» в меню
+    const onConfirm = async () => { markSteps(); await refreshCounters(); refreshShell(); };
+    await calendar(app.querySelector('#calBox'), e, editable, onConfirm).catch(() => {});
+    // Пришли из списка или меню с ?go=s6 — сразу к календарю и кнопке
+    if (query.go) setTimeout(() => goTo(query.go), 150);
+  }
 }
 
-async function calendar(box, e, editable) {
+async function calendar(box, e, editable, onConfirm) {
   const rows = await q(sb.from('bookings').select('*').eq('equipment_id', e.id).in('status', ['HOLD', 'CONFIRMED', 'ACTIVE'])
     .order('period', { ascending: true }));
   const range = (r) => {
@@ -297,18 +313,18 @@ async function calendar(box, e, editable) {
       <input class="inp" name="r" placeholder="Комментарий (видите только вы)" style="width:220px">
       <button class="btn dark">Закрыть даты</button></form>` : ''}`;
   box.querySelector('#fresh')?.addEventListener('click', async () => {
-    try { await rpc('confirm_calendar', { p_id: e.id }); toast('Спасибо! Календарь отмечен актуальным'); e.availability_confirmed_at = new Date().toISOString(); calendar(box, e, editable); }
+    try { await rpc('confirm_calendar', { p_id: e.id }); toast('Спасибо! Календарь отмечен актуальным'); e.availability_confirmed_at = new Date().toISOString(); calendar(box, e, editable, onConfirm); onConfirm?.(); }
     catch (err) { toast(err.message, true); }
   });
   box.querySelectorAll('[data-rm]').forEach((b) => b.onclick = async () => {
-    try { await rpc('remove_block', { p_id: b.dataset.rm }); toast('Даты освобождены'); calendar(box, e, editable); }
+    try { await rpc('remove_block', { p_id: b.dataset.rm }); toast('Даты освобождены'); calendar(box, e, editable, onConfirm); }
     catch (err) { toast(err.message, true); }
   });
   const bf = box.querySelector('#bf');
   if (bf) bf.onsubmit = (ev) => {
     ev.preventDefault();
     busy(bf.querySelector('button'), async () => {
-      try { await rpc('add_block', { p_eq: e.id, p_start: bf.s.value, p_end: bf.e.value, p_type: bf.t.value, p_reason: bf.r.value || null }); toast('Даты закрыты'); calendar(box, e, editable); }
+      try { await rpc('add_block', { p_eq: e.id, p_start: bf.s.value, p_end: bf.e.value, p_type: bf.t.value, p_reason: bf.r.value || null }); toast('Даты закрыты'); calendar(box, e, editable, onConfirm); }
       catch (err) { toast(err.message, true); }
     });
   };
