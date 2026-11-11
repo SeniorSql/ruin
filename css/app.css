@@ -100,6 +100,31 @@ h1,h2,h3{letter-spacing:-.4px;margin:0}
 .avatar{width:38px;height:38px;border-radius:50%;background:var(--accent-soft);color:var(--ink);display:grid;place-items:center;font-weight:800;font-size:14px;flex:none}
 .me b{font-size:13px;display:block;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .me small{font-size:12px;color:var(--muted)}
+/* Меню под аватаром (v=73) */
+.me-wrap{position:relative}
+button.me{border:0;background:transparent;color:var(--ink);font:inherit;text-align:left;padding:3px 6px 3px 3px;border-radius:999px;cursor:pointer;transition:background .15s}
+button.me:hover,button.me[aria-expanded=true]{background:var(--hover)}
+.me small{display:block;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.me-chev{color:var(--muted);flex:none;transition:transform .15s}
+button.me[aria-expanded=true] .me-chev{transform:rotate(180deg)}
+.avatar{position:relative}
+.me-dot{position:absolute;top:-1px;right:-1px;width:11px;height:11px;border-radius:50%;background:var(--accent);border:2px solid var(--surface)}
+.me-menu{position:absolute;right:0;top:calc(100% + 8px);z-index:60;width:300px;max-width:calc(100vw - 20px);max-height:calc(100dvh - 90px);overflow-y:auto;
+  background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 40px -12px #0000004d,0 2px 6px #0000001a;padding:8px}
+.me-menu.hidden{display:none}
+.mm-cap{font-size:11px;letter-spacing:1px;color:var(--muted);font-weight:800;padding:6px 10px 6px}
+.me-menu a,.me-menu button{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:8px 10px;border:0;border-radius:10px;background:transparent;
+  color:var(--ink2);font:inherit;font-size:14px;font-weight:600;text-decoration:none;text-align:left;cursor:pointer}
+.me-menu a:hover,.me-menu button:hover{background:var(--hover)}
+.me-menu svg{flex:none}
+.mm-org .mm-check{width:16px;flex:none;color:var(--ok-ink)}
+.mm-org .mm-name{flex:1;min-width:0;overflow-wrap:anywhere}
+.mm-org.on{color:var(--ink);background:var(--fill)}
+.mm-org .cnt{margin-left:auto;border-radius:8px;background:var(--accent);color:var(--accent-ink);padding:1px 7px;font-size:12px;font-weight:800}
+.mm-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:4px 10px 6px 36px;font-size:12px;color:var(--muted)}
+.mm-meta b{color:var(--ink2)}
+.mm-sep{height:1px;background:var(--line);margin:6px 4px}
+.me-menu .mm-out{color:var(--red)}
 
 /* ---------- раскладка ---------- */
 .layout{display:grid;grid-template-columns:236px minmax(0,1fr);gap:28px;padding:24px 32px 64px;max-width:1600px;margin:0 auto}
@@ -206,11 +231,19 @@ textarea.inp{height:auto;min-height:96px;padding:10px 12px;resize:vertical}
 .kv dd{margin:0;font-weight:600}
 .divider{height:1px;background:var(--line);margin:14px 0}
 /* Сделка: договор и путевые листы (dealFiles.js) */
-.df-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
-.df-box{border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}
-.df-box h3{margin-bottom:4px}
-.df-box>p{margin:0 0 10px}
-.df-list{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:8px}
+/* Блок «Документы» (v=73): карточки по сетке; строки «шапка / кнопки / файлы» выровнены между карточками (subgrid) */
+.df-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;align-items:stretch}
+.df-box{border:1px solid var(--line);border-radius:14px;padding:16px;min-width:0;background:var(--surface);display:grid;grid-row:span 3;grid-template-rows:subgrid;row-gap:12px}
+.df-head{display:flex;gap:12px;align-items:flex-start;min-width:0}
+.df-head h3{margin:0 0 4px}
+.df-head p{margin:0}
+.df-ic{flex:none;width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:var(--accent-soft,var(--green-soft));color:var(--ink)}
+.df-ic svg{width:20px;height:20px}
+.df-btns{display:flex;flex-direction:column;gap:8px;align-self:start}
+.df-btns .btn{width:100%;white-space:normal;text-align:center;line-height:1.2;min-height:44px;height:auto;padding-top:8px;padding-bottom:8px}
+.df-bottom{min-width:0}
+.df-empty{margin:0}
+.df-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .df-list li{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding-top:8px;border-top:1px solid var(--line);min-width:0}
 .df-list li .small{flex:1 1 160px}
 .linkbtn{background:none;border:0;padding:0;font:inherit;font-weight:600;color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer;text-align:left;overflow-wrap:anywhere;max-width:100%}
@@ -237,8 +270,25 @@ textarea.inp{height:auto;min-height:96px;padding:10px 12px;resize:vertical}
 .st.closed{background:var(--surface3);color:var(--muted)}.st.closed:before{content:'▣'}
 
 /* ---------- главная ---------- */
-.hero{position:relative;min-height:300px;border-radius:24px;background:var(--hero-bg);overflow:hidden;color:#fff;display:grid;grid-template-columns:1.1fr .9fr;border:1px solid var(--line)}
-.hero-copy{padding:36px 40px;z-index:2}
+/* v=73: баннер без поиска, ниже на ~3 см; в тёмной теме — Zoomlion ZE215E ночью */
+.hero{position:relative;min-height:0;border-radius:24px;background:var(--hero-bg);overflow:hidden;color:#fff;display:grid;grid-template-columns:1.1fr .9fr;border:1px solid var(--line)}
+.hero-copy{padding:28px 36px;z-index:2}
+.hero .hero-copy h1{margin:0 0 10px}
+.hero .hero-copy p{margin-bottom:16px}
+.hero-cta{display:flex;flex-wrap:wrap;gap:10px}
+.hero .hero-ghost{background:#ffffff14;color:#fff;border-color:#ffffff40;box-shadow:none}
+.hero .hero-ghost:hover{background:#ffffff26;border-color:#ffffff66}
+.hero-img{position:absolute;inset:0;background-size:cover;background-position:center;background-repeat:no-repeat}
+.hero-img.day{background-image:url('https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Caterpillar_320.jpg/960px-Caterpillar_320.jpg')}
+.hero-img.night{display:none}
+.hero-img.night:before{content:'';position:absolute;inset:0;background-size:cover;background-position:30% 60%;background-repeat:no-repeat;
+  background-image:url('https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Construction_of_San_Fernando_station_Sindalan_Calulut_Malpitic_30.jpg/960px-Construction_of_San_Fernando_station_Sindalan_Calulut_Malpitic_30.jpg');
+  filter:brightness(.62) saturate(.75) contrast(1.1)}
+/* ночь: тёмно-синее небо сверху (без луны — по просьбе Этибара) */
+.hero-img.night:after{content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,#071433f0 0%,#0a1c44c4 36%,#0d1f3d55 62%,#05080f8c 100%)}
+:root[data-theme=dark] .hero-img.day{display:none}
+:root[data-theme=dark] .hero-img.night{display:block}
 .overline{display:inline-flex;align-items:center;gap:8px;color:#e1e2dc;font-size:11px;font-weight:800;letter-spacing:1.5px}
 .overline i{width:8px;height:8px;border-radius:2px;background:var(--accent);transform:rotate(45deg)}
 .hero h1{font-size:clamp(32px,3.2vw,46px);font-weight:800;line-height:1.04;letter-spacing:-2px;margin:14px 0 12px}
