@@ -14,7 +14,7 @@ const ROLE_HINT = {
 export async function render(app) {
   const o = state.org;
   if (o.type === 'PERSON') {
-    app.innerHTML = emptyState('В личном профиле нет сотрудников', 'Чтобы работать командой, создайте организацию и переключитесь на неё в меню слева.', '<a class="btn" href="#/account">Создать организацию</a>');
+    app.innerHTML = emptyState('В личном профиле нет сотрудников', 'Чтобы работать командой, создайте организацию и переключитесь на неё в меню под вашим именем (справа вверху).', '<a class="btn" href="#/account">Создать организацию</a>');
     return;
   }
   const admin = isOwnerAdmin();
