@@ -104,6 +104,7 @@ function match(path) {
   return null;
 }
 
+const SEO_TITLE = document.querySelector('meta[name="ruin-route"]') ? document.title : null;
 export function parseHash() {
   let h = location.hash.replace(/^#\/?/, '');
   // Страницы для поисковиков (/tehnika/…, /arenda/…) делает сервер (server/seo_gen.py): в них <meta name="ruin-route">
@@ -291,6 +292,8 @@ export async function route() {
   try {
     const page = await import(`./pages/${m.mod}.js`);
     cleanup = await page.render(app, m.params, query, m.pattern);
+    // Страница для поисковиков (/arenda/…, /tehnika/…): оставляем её заголовок, пока пользователь не ушёл в другой раздел
+    if (SEO_TITLE && !location.hash) document.title = SEO_TITLE;
     if (!app.querySelector('.foot')) app.insertAdjacentHTML('beforeend', FOOTER);
     if (m.mod !== 'static') askConsent();
     if (!['static', 'auth'].includes(m.mod)) tgPrompt(app);
