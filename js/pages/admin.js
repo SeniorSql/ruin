@@ -8,9 +8,8 @@ export async function render(app, _p, query) {
   if (!isAdmin()) { app.innerHTML = emptyState('Нет доступа', 'Раздел доступен только администраторам платформы.'); return; }
   await refreshCounters(); refreshShell();
   const n = { ...(state.counters.admin || {}) };
-  // Отзывы на проверке (SQL 24) — считаем здесь, счётчики базы их не включают
-  const { count: pendingReviews } = await sb.from('reviews').select('id', { count: 'exact', head: true }).in('status', ['PENDING', 'SUBMITTED']);
-  n.reviews = pendingReviews || 0;
+  // Отзывы на проверке (SQL 24) с v=75 считаются в refreshCounters (api.js) вместе с остальными очередями
+  n.reviews = n.reviews || 0;
   n.total = (n.orgs || 0) + (n.equipment || 0) + (n.reports || 0) + n.reviews;
   // Если ничего не выбрано — открываем первую очередь, где есть работа
   const firstQueue = ['equipment', 'orgs', 'reviews', 'reports'].find((k) => n[k]);
