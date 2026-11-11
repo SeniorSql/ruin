@@ -2,6 +2,7 @@
 import { sb, state, q, rpc, canManage, uploadPhoto } from './api.js';
 import { esc, money, toast, busy, modal, askReason, date, dateTime, mskToday, safeUrl } from './ui.js';
 import { route } from './app.js';
+import { docFilesPanel, bindDocFiles } from './dealFiles.js';
 
 const REASONS = ['Техника не прибыла', 'Опоздание', 'Другая техника', 'Характеристики не соответствуют', 'Техника неисправна',
   'Площадка не готова / нет доступа', 'Спор о простое или переработке', 'Ущерб технике или имуществу', 'Несогласованная стоимость', 'Другое'];
@@ -31,12 +32,15 @@ export async function renderExtras(box, d) {
   const amCust = state.org.id === d.customer_org_id;
   const amProv = state.org.id === d.provider_org_id;
   const act = canManage();
-  const [hand, work, disp, revs] = await Promise.all([
+  const [hand, work, disp, revs, files] = await Promise.all([
     q(sb.from('handovers').select('*').eq('deal_id', d.id)),
     q(sb.from('work_sessions').select('*').eq('deal_id', d.id).order('work_date').order('created_at')),
     q(sb.from('disputes').select('*').eq('deal_id', d.id).order('created_at', { ascending: false })),
-    q(sb.from('reviews').select('*').eq('deal_id', d.id))
+    q(sb.from('reviews').select('*').eq('deal_id', d.id)),
+    q(sb.from('deal_files').select('*').eq('deal_id', d.id).order('created_at')).catch(() => [])
   ]);
+  // Договор и путевые листы: формы для скачивания и загрузка подписанных файлов (после подтверждения сделки; загруженные видны всегда)
+  const showFiles = (d.status !== 'AWAITING_CONFIRMATION' && d.status !== 'CANCELLED') || files.length;
   const H = Object.fromEntries(hand.map((h) => [h.type, h]));
   const openDisp = disp.find((x) => ['OPEN', 'IN_REVIEW'].includes(x.status));
   const started = ['IN_PROGRESS', 'COMPLETION_PENDING', 'COMPLETED'].includes(d.status);
@@ -49,15 +53,14 @@ export async function renderExtras(box, d) {
 
   box.innerHTML = `
     <div class="panel"><h2>Документы</h2>
-      <p class="small muted" style="margin-top:-6px">Формируются из данных сделки. Откроются в новой вкладке — сохраните в PDF через «Печать → Сохранить как PDF».</p>
+      <p class="small muted" style="margin-top:-6px">Заявка и акты формируются из данных сделки и откроются в новой вкладке — сохраните в PDF через «Печать → Сохранить как PDF».</p>
       <div class="actions">
         <a class="btn ghost sm" target="_blank" href="#/deals/${d.id}/doc/request">Заявка-подтверждение</a>
-        ${d.status !== 'AWAITING_CONFIRMATION' && d.status !== 'CANCELLED' ? `<a class="btn ghost sm" target="_blank" href="#/deals/${d.id}/doc/contract">Договор (PDF / Word)</a>
-          <a class="btn ghost sm" target="_blank" href="#/deals/${d.id}/doc/waybill">Путевой лист / ЭСМ-7</a>` : ''}
         ${H.START ? `<a class="btn ghost sm" target="_blank" href="#/deals/${d.id}/doc/handover-START">Акт передачи</a>` : ''}
         ${H.END ? `<a class="btn ghost sm" target="_blank" href="#/deals/${d.id}/doc/handover-END">Акт возврата</a>` : ''}
         ${d.status === 'COMPLETED' ? `<a class="btn ghost sm" target="_blank" href="#/deals/${d.id}/doc/act">Акт выполненных работ</a>` : ''}
-      </div></div>
+      </div>
+      ${showFiles ? '<div class="divider"></div><div id="dealFiles"></div>' : ''}</div>
 
     ${d.status === 'CANCELLED' || d.status === 'AWAITING_CONFIRMATION' ? '' : `
     <div class="panel"><h2>Передача и возврат техники</h2>
@@ -105,6 +108,13 @@ export async function renderExtras(box, d) {
     </div>` : ''}`;
 
   const reload = () => route();
+  // --- договор и путевые листы: после загрузки/удаления обновляется только этот блок ---
+  const filesBox = box.querySelector('#dealFiles');
+  const drawFiles = (list) => {
+    filesBox.innerHTML = docFilesPanel(d, list, act && d.status !== 'CANCELLED');
+    bindDocFiles(filesBox, d, list, async () => drawFiles(await q(sb.from('deal_files').select('*').eq('deal_id', d.id).order('created_at')).catch(() => list)));
+  };
+  if (filesBox) drawFiles(files);
   // --- акты ---
   box.querySelectorAll('[data-hand]').forEach((b) => b.onclick = () => handoverDialog(d, b.dataset.hand, reload));
   box.querySelectorAll('[data-hconf]').forEach((b) => b.onclick = () => busy(b, async () => {
