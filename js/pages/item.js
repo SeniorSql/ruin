@@ -63,7 +63,7 @@ export async function render(app, { id }) {
             ${e.operator_minor ? `<dt>${t('Оператор', 'Operator')}</dt><dd>+${money(e.operator_minor)} ${t('за', 'per')} ${UNIT[e.price_unit]}</dd>` : ''}
             <dt>${t('Доставка', 'Delivery')}</dt><dd>${e.delivery_minor == null ? t('по запросу', 'on request') : e.delivery_minor ? money(e.delivery_minor) + t(' (подача и возврат)', ' (delivery and return)') : t('включена', 'included')}</dd>
             <dt>${t('Залог', 'Deposit')}</dt><dd>${e.deposit_minor ? money(e.deposit_minor) + t(' — возвращается после возврата техники', ' — refunded when the machine is returned') : t('без залога', 'no deposit')}</dd>
-            <dt>${t('Отмена', 'Cancellation')}</dt><dd>${esc(POLICY[e.cancel_policy])}</dd>
+            <dt>${t('Условия отмены', 'Cancellation terms')}</dt><dd>${esc(POLICY[e.cancel_policy])}</dd>
             <dt>${t('Оплата', 'Payment')}</dt><dd>${t('напрямую исполнителю по договорённости (платформа не принимает деньги)', 'directly to the provider as agreed (the platform does not take payments)')}</dd>
           </dl>
         </div>
