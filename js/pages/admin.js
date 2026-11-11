@@ -2,7 +2,7 @@
 import { sb, q, rpc, isAdmin, state, refreshCounters, loadMe } from '../api.js';
 import { esc, status, toast, askReason, emptyState, errorState, dateTime, ORG_TYPE, photoOf, priceText, qs, money, mskToday } from '../ui.js';
 import { route, refreshShell } from '../app.js';
-import { SHOW_DISPUTES } from '../dealExtras.js';
+// Претензии убраны с сайта (11.11.2026, v=73): вкладки нет, счётчик не учитывается
 
 export async function render(app, _p, query) {
   if (!isAdmin()) { app.innerHTML = emptyState('Нет доступа', 'Раздел доступен только администраторам платформы.'); return; }
@@ -11,16 +11,14 @@ export async function render(app, _p, query) {
   // Отзывы на проверке (SQL 24) — считаем здесь, счётчики базы их не включают
   const { count: pendingReviews } = await sb.from('reviews').select('id', { count: 'exact', head: true }).in('status', ['PENDING', 'SUBMITTED']);
   n.reviews = pendingReviews || 0;
-  n.total = (n.total || 0) + n.reviews;
+  n.total = (n.orgs || 0) + (n.equipment || 0) + (n.reports || 0) + n.reviews;
   // Если ничего не выбрано — открываем первую очередь, где есть работа
-  const firstQueue = ['equipment', 'orgs', 'disputes', 'reviews', 'reports'].find((k) => n[k]);
+  const firstQueue = ['equipment', 'orgs', 'reviews', 'reports'].find((k) => n[k]);
   const tab = query.tab || firstQueue || 'stats';
-  const tabs = [['stats', 'Статистика'], ['orgs', 'Проверка организаций', n.orgs], ['equipment', 'Модерация техники', n.equipment], ['disputes', 'Претензии', n.disputes],
-    ['reviews', 'Отзывы', n.reviews], ['reports', 'Жалобы', n.reports], ['all', 'Все организации']]
-    // Претензии скрыты (SHOW_DISPUTES): вкладка видна, только если остались открытые
-    .filter(([k]) => k !== 'disputes' || SHOW_DISPUTES || n.disputes || tab === 'disputes');
+  const tabs = [['stats', 'Статистика'], ['orgs', 'Проверка организаций', n.orgs], ['equipment', 'Модерация техники', n.equipment],
+    ['reviews', 'Отзывы', n.reviews], ['reports', 'Жалобы', n.reports], ['all', 'Все организации']];
   app.innerHTML = `<div class="page-head"><div><h1>Админка</h1><p>Каждое решение записывается в журнал с автором, временем и причиной.</p></div></div>
-    ${n.total ? `<div class="banner warn">Ждут вашего решения: ${[['orgs', 'организаций на проверке'], ['equipment', 'техники на модерации'], ['disputes', 'претензий'], ['reviews', 'отзывов на проверке'], ['reports', 'жалоб']]
+    ${n.total ? `<div class="banner warn">Ждут вашего решения: ${[['orgs', 'организаций на проверке'], ['equipment', 'техники на модерации'], ['reviews', 'отзывов на проверке'], ['reports', 'жалоб']]
       .filter(([k]) => n[k]).map(([k, t]) => `<a href="#/admin?tab=${k}"><b>${n[k]}</b> ${t}</a>`).join(' · ')}</div>` : ''}
     <div class="tabs">${tabs.map(([k, t, c]) => `<a href="#/admin?tab=${k}" class="${k === tab ? 'on' : ''} ${c ? 'need' : ''}">${t}${c ? `<span class="tab-cnt">${c}</span>` : ''}</a>`).join('')}</div><div id="box"></div>`;
   const box = app.querySelector('#box');
@@ -30,7 +28,6 @@ export async function render(app, _p, query) {
     if (tab === 'equipment') await equipment(box);
     if (tab === 'reports') await reports(box);
     if (tab === 'stats') await stats(box, query);
-    if (tab === 'disputes') await disputes(box);
     if (tab === 'reviews') await reviews(box);
   } catch (err) { box.innerHTML = errorState(err); }
 }
@@ -54,33 +51,12 @@ async function stats(box, query) {
       <dt>Реальной техники</dt><dd>${a.equipment_published}</dd><dt>Демо-карточек</dt><dd>${a.equipment_demo}</dd></dl>
       <div class="divider"></div><h3>Очереди</h3><dl class="kv">
       <dt><a href="#/admin?tab=orgs">Проверка организаций</a></dt><dd>${a.queue_orgs}</dd>
-      <dt><a href="#/admin?tab=equipment">Модерация техники</a></dt><dd>${a.queue_equipment}</dd>
-      ${SHOW_DISPUTES || a.disputes_open ? `<dt><a href="#/admin?tab=disputes">Открытые претензии</a></dt><dd>${a.disputes_open}</dd>` : ''}</dl></div>
+      <dt><a href="#/admin?tab=equipment">Модерация техники</a></dt><dd>${a.queue_equipment}</dd></dl></div>
     <div class="panel"><h2>Попытки передать контакты</h2>
       <p class="small muted" style="margin-top:-6px">За 30 дней, до подтверждения сделки. 3 и больше за неделю — повод проверить организацию.</p>
       ${bypass.length ? `<table class="table"><tbody>${bypass.map((b) => `<tr><td>${esc(b.org_name)}</td><td class="num"><b style="color:${b.attempts >= 3 ? 'var(--red)' : 'inherit'}">${b.attempts}</b></td><td class="small muted">${dateTime(b.last_at)}</td></tr>`).join('')}</tbody></table>`
         : '<p class="muted">Попыток не было.</p>'}</div></aside></div>`;
   box.querySelector('#sf').onsubmit = (e) => { e.preventDefault(); location.hash = '#/admin' + qs({ tab: 'stats', from: e.target.from.value, to: e.target.to.value }); };
-}
-
-async function disputes(box) {
-  const rows = await q(sb.from('disputes').select('*, deals(id,number,total_minor), op:organizations!disputes_opened_by_org_fkey(name), rs:organizations!disputes_respondent_org_fkey(name)')
-    .in('status', ['OPEN', 'IN_REVIEW']).order('created_at').limit(200));
-  box.innerHTML = rows.length ? `<div class="panel">${rows.map((x) => `<div class="row-item" style="align-items:flex-start"><div class="grow">
-      <b>${esc(x.reason)}</b> · <a href="#/deals/${x.deal_id}">сделка ${esc(x.deals?.number)}</a> (${money(x.deals?.total_minor)})
-      <div class="small">Заявитель: <b>${esc(x.op?.name)}</b> → ответчик: <b>${esc(x.rs?.name)}</b> · ${dateTime(x.created_at)}</div>
-      <p class="small" style="white-space:pre-wrap;margin:6px 0">${esc(x.description)}</p>
-      ${x.amount_minor ? `<div class="small">Сумма требования: ${money(x.amount_minor)}${x.desired_outcome ? ' · ' + esc(x.desired_outcome) : ''}</div>` : ''}
-      <div class="small" style="margin-top:4px"><b>Ответ:</b> ${x.response_text ? esc(x.response_text) : '<span class="muted">ещё нет</span>'}</div></div>
-      <div class="actions" style="justify-content:flex-end"><button class="btn sm" data-dec="${x.id}" data-s="RESOLVED">Признать</button>
-        <button class="btn ghost sm" data-dec="${x.id}" data-s="REJECTED">Отклонить</button></div></div>`).join('')}</div>`
-    : emptyState('Открытых претензий нет', 'Новые претензии по сделкам появятся здесь.');
-  box.querySelectorAll('[data-dec]').forEach((b) => b.onclick = async () => {
-    const t = await askReason(b.dataset.s === 'RESOLVED' ? 'Признать требование' : 'Отклонить требование',
-      'Опишите решение и основания (переписка, акты, смены). Стороны увидят этот текст. Деньги платформа не переводит — стороны рассчитываются напрямую.', 'Решение', 'Сохранить решение');
-    if (!t) return;
-    try { await rpc('admin_decide_dispute', { p_id: b.dataset.dec, p_status: b.dataset.s, p_decision: t }); toast('Решение сохранено'); route(); } catch (e) { toast(e.message, true); }
-  });
 }
 
 async function reviews(box) {
