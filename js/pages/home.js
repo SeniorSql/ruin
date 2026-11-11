@@ -4,8 +4,9 @@ import { esc, photoOf, skeleton, plural } from '../ui.js';
 import { EQ_SELECT, productCard, loadFavs, bindFavs, loadRatings } from '../cards.js';
 import { t, catName } from '../i18n.js';
 
-// Картинки баннера заданы в css/app.css (.hero-img.day / .hero-img.night): в светлой теме — CAT 320,
-// в тёмной — ночное фото Zoomlion ZE215E от Этибара (img/hero-night.jpg, v=75). Грузится только картинка текущей темы.
+// Картинки баннера заданы в css/app.css (.hero-img.day / .hero-img.night): в светлой теме — Komatsu днём (img/hero-day.jpg),
+// в тёмной — Zoomlion ночью (img/hero-night.jpg), фото Этибара. Грузится только картинка текущей темы.
+// Счётчик техники с v=77 — в шапке сайта (app.js, .top-count).
 
 export async function render(app) {
   const cats = await loadCategories();
@@ -17,8 +18,7 @@ export async function render(app) {
       <div class="hero-cta"><a class="btn" href="#/catalog">${t('Каталог техники', 'Machinery catalogue')} <span class="arr">→</span></a>
         <a class="btn ghost hero-ghost" href="#/orders/new">${t('Разместить заказ', 'Post an order')}</a></div>
     </div>
-    <div class="hero-visual" role="img" aria-label="${t('Гусеничный экскаватор на объекте', 'Crawler excavator on site')}"><div class="hero-img day"></div><div class="hero-img night"></div>
-      <div class="hero-sticker"><b id="heroCount">…</b><span>${t('единиц техники на RUIN', 'machines on RUIN')}</span></div></div>
+    <div class="hero-visual" role="img" aria-label="${t('Гусеничный экскаватор на объекте', 'Crawler excavator on site')}"><div class="hero-img day"></div><div class="hero-img night"></div></div>
   </section>
   <div class="section-head"><div><div class="eyebrow">${t('БЫСТРЫЙ ДОСТУП', 'QUICK ACCESS')}</div><h2>${t('Найдите свою категорию', 'Find your category')}</h2></div><a class="see-all" href="#/catalog">${t('Весь каталог', 'Full catalogue')} <span>→</span></a></div>
   <section class="cats" id="cats">${cats.slice(0, 12).map(() => '<div class="skeleton" style="height:140px"></div>').join('')}</section>
@@ -35,7 +35,6 @@ export async function render(app) {
     loadFavs(),
     rpc('open_orders_count').catch(() => 0)
   ]);
-  app.querySelector('#heroCount').textContent = all.length;
   if (openOrders) app.querySelector('#ordersInfo').textContent = t(
     `Сейчас на бирже ${openOrders} ${plural(openOrders, 'открытый заказ', 'открытых заказа', 'открытых заказов')}. Разместите свой — исполнители пришлют предложения.`,
     `There ${openOrders === 1 ? 'is 1 open order' : `are ${openOrders} open orders`} on the exchange now. Post yours — providers will send offers.`);
