@@ -43,8 +43,38 @@ const themeBtn = () => {
   const [ic, , text] = THEMES[themeMode()] || THEMES.auto;
   return `<button class="icon-btn" id="themeBtn" type="button" title="${t('Тема', 'Theme')}: ${text}" aria-label="${t('Тема', 'Theme')}: ${text}">${icon(ic)}</button>`;
 };
-const themeSeg = () => `<div class="nav-caption">${t('ТЕМА', 'THEME')}</div><div class="theme-seg" role="group" aria-label="${t('Тема оформления', 'Colour theme')}">${Object.entries(THEMES).map(([k, [ic, label]]) =>
-  `<button type="button" data-theme-set="${k}" class="${themeMode() === k ? 'on' : ''}" aria-pressed="${themeMode() === k}">${icon(ic, 14)}${label}</button>`).join('')}</div>`;
+
+// Организации пользователя: подпись и роль (для меню под аватаром)
+const orgName = (x) => (x.type === 'PERSON' ? t('Я (частное лицо)', 'Me (individual)') : x.name);
+const ROLE = () => (isEn() ? { OWNER: 'owner', ADMIN: 'administrator', MANAGER: 'manager', APPROVER: 'approver', FINANCE: 'accountant', VIEWER: 'viewer' }
+  : { OWNER: 'владелец', ADMIN: 'администратор', MANAGER: 'менеджер', APPROVER: 'согласующий', FINANCE: 'бухгалтер', VIEWER: 'наблюдатель' });
+const CHECK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>';
+const CHEVRON = '<svg class="me-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+const LOGOUT = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l-5-5 5-5M5 12h11"/></svg>';
+
+// Меню под аватаром (v=73): переключение организации («действую от имени»), профиль, отзывы, аналитика, сотрудники, выход
+function meMenu() {
+  const o = state.org;
+  const others = (state.counters || {}).other_orgs || {};
+  const item = (href, ic, text) => `<a href="${href}" role="menuitem">${icon(ic)}<span>${text}</span></a>`;
+  let html = '';
+  if (o && state.orgs.length) {
+    html += `<div class="mm-cap">${t('ДЕЙСТВУЮ ОТ ИМЕНИ', 'ACTING ON BEHALF OF')}</div>
+      ${state.orgs.map((x) => `<button type="button" role="menuitemradio" aria-checked="${x.id === o.id}" class="mm-org ${x.id === o.id ? 'on' : ''}" data-org="${x.id}">
+        <span class="mm-check">${x.id === o.id ? CHECK : ''}</span><span class="mm-name">${esc(orgName(x))}</span>
+        ${others[x.id] ? `<span class="cnt" title="${t('Сделки ждут вашего действия', 'Deals await your action')}">${others[x.id]}</span>` : ''}</button>`).join('')}
+      ${o.type !== 'PERSON' ? `<div class="mm-meta">${status('org', o.verification_status)}<span>${t('Ваша роль', 'Your role')}: <b>${ROLE()[o.role] || o.role}</b>${canManage(o) ? '' : t(' · только просмотр', ' · view only')}</span></div>` : ''}
+      <div class="mm-sep"></div>`;
+  }
+  html += item('#/account', 'org', t('Профиль и организации', 'Profile and organisations'));
+  if (o) {
+    html += item('#/reviews', 'heart', t('Отзывы', 'Reviews')) + item('#/analytics', 'grid', t('Аналитика', 'Analytics'));
+    if (o.type !== 'PERSON') html += item('#/team', 'org', t('Сотрудники', 'Team'));
+  }
+  html += `<a href="#" data-onb role="menuitem">${icon('send')}<span>${t('Как пользоваться', 'How it works')}</span></a>
+    <div class="mm-sep"></div><button type="button" class="mm-out" data-logout role="menuitem">${LOGOUT}<span>${t('Выйти', 'Log out')}</span></button>`;
+  return html;
+}
 
 // Маршруты: шаблон → модуль страницы
 const ROUTES = [
@@ -97,10 +127,13 @@ function renderTop() {
         <a class="icon-btn" href="#/favorites" title="${t('Избранное', 'Favourites')}">${icon('heart')}</a>
         <a class="icon-btn" href="#/messages" title="${t('Сообщения', 'Messages')}">${icon('chat')}${c.unread_messages ? `<span class="badge-count">${c.unread_messages}</span>` : ''}</a>
         <a class="icon-btn" href="#/notifications" title="${t('Уведомления', 'Notifications')}">${icon('bell')}${c.notifications ? `<span class="badge-count">${c.notifications}</span>` : ''}</a>
-        <a class="me" href="#/account"><span class="avatar">${esc(initials(state.profile?.full_name || u.email))}</span>
-          <div><b>${esc(state.profile?.full_name || u.email)}</b><small>${t('Мой кабинет', 'My account')}</small></div></a>`
+        <div class="me-wrap"><button type="button" class="me" id="meBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="meMenu" title="${t('Профиль, организации, выход', 'Profile, organisations, log out')}">
+          <span class="avatar">${esc(initials(state.profile?.full_name || u.email))}${Object.keys(c.other_orgs || {}).some((k) => c.other_orgs[k]) ? '<i class="me-dot"></i>' : ''}</span>
+          <div><b>${esc(state.profile?.full_name || u.email)}</b><small>${state.org ? esc(orgName(state.org)) : t('Мой кабинет', 'My account')}</small></div>${CHEVRON}</button>
+          <div class="me-menu hidden" id="meMenu" role="menu">${meMenu()}</div></div>`
       : `<a class="btn ghost sm" href="#/login">${t('Войти', 'Log in')}</a><a class="btn sm" href="#/register">${t('Регистрация', 'Sign up')}</a>`}
     </div>`;
+  if (u) bindMeMenu();
   document.getElementById('langBtn').onclick = () => setLang(isEn() ? 'ru' : 'en');
   document.getElementById('topSearch').onsubmit = (e) => {
     e.preventDefault();
@@ -114,32 +147,58 @@ function renderTop() {
   };
 }
 
+// Меню под аватаром: открыть/закрыть, переключить организацию, выйти
+let meOutsideBound = false;
+function bindMeMenu() {
+  const btn = document.getElementById('meBtn');
+  const menu = document.getElementById('meMenu');
+  if (!btn || !menu) return;
+  const setOpen = (open) => { menu.classList.toggle('hidden', !open); btn.setAttribute('aria-expanded', String(open)); };
+  btn.onclick = (e) => { e.stopPropagation(); setOpen(menu.classList.contains('hidden')); };
+  menu.addEventListener('click', (e) => { if (e.target.closest('a,[data-logout]')) setOpen(false); });
+  menu.querySelectorAll('[data-org]').forEach((b) => b.onclick = async () => {
+    setOpen(false);
+    if (b.dataset.org === state.org?.id) return;
+    const waiting = (state.counters?.other_orgs || {})[b.dataset.org];
+    setOrg(b.dataset.org);
+    await refreshCounters();
+    toast(t('Теперь вы действуете от имени: ', 'Now acting on behalf of: ') + orgName(state.org));
+    // В организации ждут действия по сделкам — сразу открываем сделки
+    if (waiting) {
+      const x = state.counters || {};
+      const to = x.deals_provider ? '#/deals?tab=provider' : '#/deals?tab=customer';
+      if (location.hash === to) route(); else go(to);
+    } else route();
+  });
+  menu.querySelector('[data-logout]')?.addEventListener('click', async () => {
+    if (!await signOutSafe()) return;
+    await loadMe(); refreshShell(); go('#/');
+  });
+  if (!meOutsideBound) {
+    meOutsideBound = true;
+    document.addEventListener('click', (e) => {
+      const m = document.getElementById('meMenu');
+      if (m && !m.classList.contains('hidden') && !e.target.closest('.me-wrap')) { m.classList.add('hidden'); document.getElementById('meBtn')?.setAttribute('aria-expanded', 'false'); }
+    });
+    document.addEventListener('keydown', (e) => {
+      const m = document.getElementById('meMenu');
+      if (e.key === 'Escape' && m && !m.classList.contains('hidden')) { m.classList.add('hidden'); document.getElementById('meBtn')?.setAttribute('aria-expanded', 'false'); document.getElementById('meBtn')?.focus(); }
+    });
+  }
+}
+
 // ---------- боковое меню ----------
+// v=73: слева — только работа (каталог, заказы, сделки, техника). Сообщения, уведомления и тема — в шапке;
+// организации, профиль, отзывы, аналитика, сотрудники, «Как пользоваться» — в меню под аватаром; поддержка — в подвале и у помощника.
 function renderSide(active) {
   const c = state.counters || {};
   const o = state.org;
   // cnt — нужно ваше действие (жёлтый), wait — ждёт другую сторону (серый)
   const link = (href, ic, text, cnt, wait) =>
     `<a href="${href}" class="${active === href ? 'active' : ''}">${icon(ic)}<span>${text}</span>${cnt ? `<span class="cnt" title="${t('Нужно ваше действие', 'Needs your action')}">${cnt}</span>` : ''}${wait ? `<span class="cnt wait" title="${t('Ждёт другую сторону', 'Waiting for the other party')}">${wait}</span>` : ''}</a>`;
-  const others = c.other_orgs || {};
-  const orgName = (x) => (x.type === 'PERSON' ? t('Я (частное лицо)', 'Me (individual)') : x.name);
-  const ROLE = isEn() ? { OWNER: 'owner', ADMIN: 'administrator', MANAGER: 'manager', APPROVER: 'approver', FINANCE: 'accountant', VIEWER: 'viewer' }
-    : { OWNER: 'владелец', ADMIN: 'администратор', MANAGER: 'менеджер', APPROVER: 'согласующий', FINANCE: 'бухгалтер', VIEWER: 'наблюдатель' };
-  let html = '';
-  if (state.user && o) {
-    html += `<div class="context"><small>${t('ДЕЙСТВУЮ ОТ ИМЕНИ', 'ACTING ON BEHALF OF')}</small>
-      <select id="ctxSel" aria-label="${t('Рабочий контекст', 'Working context')}">${state.orgs.map((x) =>
-        `<option value="${x.id}" ${x.id === o.id ? 'selected' : ''}>${esc(orgName(x))}${others[x.id] ? ` — ${t('ждёт действий', 'actions waiting')}: ${others[x.id]}` : ''}</option>`).join('')}</select>
-      ${o.type !== 'PERSON' ? `<div class="ctx-status">${status('org', o.verification_status)}</div>` : ''}
-      ${o.type !== 'PERSON' ? `<div class="ctx-role">${t('Ваша роль', 'Your role')}: <b>${ROLE[o.role] || o.role}</b>${canManage(o) ? '' : t(' · только просмотр', ' · view only')}</div>` : ''}</div>`;
-    // Действия, которые ждут вас в других ваших организациях
-    html += state.orgs.filter((x) => others[x.id]).map((x) =>
-      `<button class="ctx-alert" data-switch="${x.id}"><b>${esc(orgName(x))}</b>: ${others[x.id]} ${t(others[x.id] === 1 ? 'сделка ждёт' : 'сделки ждут', others[x.id] === 1 ? 'deal awaits' : 'deals await')} ${t('вашего действия', 'your action')} <span>${t('Перейти →', 'Open →')}</span></button>`).join('');
-  }
-  html += `<div class="navs"><div class="nav-caption">${t('МАРКЕТПЛЕЙС', 'MARKETPLACE')}</div><nav class="nav">
+  let html = `<div class="navs"><nav class="nav">
     ${link('#/', 'home', t('Главная', 'Home'))}${link('#/catalog', 'grid', t('Каталог техники', 'Machinery catalogue'))}
-    ${state.user && (!o || (canManage(o) && o.can_order)) ? link('#/orders/new', 'plus', t('Разместить заказ', 'Post an order')) : ''}
-    ${link('#/support', 'chat', t('Поддержка', 'Support'))}</nav>`;
+    ${state.user && (!o || (canManage(o) && o.can_order)) ? link('#/orders/new', 'plus', t('Разместить заказ', 'Post an order')) : ''}</nav>`;
   if (state.user && o) {
     if (actsAsCustomer(o)) {
       html += `<div class="nav-group customer"><div class="nav-role">${icon('list', 16)}<span>${t('Я заказчик', 'I am a customer')}</span><small>${t('арендую технику', 'I rent machinery')}</small></div><nav class="nav">
@@ -151,37 +210,10 @@ function renderSide(active) {
         ${link('#/crm', 'desk', t('Рабочий стол', 'Desk'), c.crm_due)}${link('#/fleet', 'truck', t('Моя техника', 'My machinery'))}${link('#/park', 'gauge', t('Учёт парка', 'Fleet management'))}${o.can_provide ? link('#/feed', 'feed', t('Лента заказов', 'Order feed'), (c.feed_new || 0) + (c.dates_pending || 0)) : ''}
         ${link('#/offers', 'send', t('Мои предложения', 'My offers'), c.dates_pending)}${link('#/deals?tab=provider', 'deal', t('Сделки', 'Deals'), c.deals_provider, c.deals_provider_wait)}</nav></div>`;
     }
-    html += `<div class="nav-caption">${t('АККАУНТ', 'ACCOUNT')}</div><nav class="nav">
-      ${link('#/messages', 'chat', t('Сообщения', 'Messages'), c.unread_messages)}${link('#/notifications', 'bell', t('Уведомления', 'Notifications'), c.notifications)}
-      ${link('#/reviews', 'heart', t('Отзывы', 'Reviews'))}${link('#/analytics', 'grid', t('Аналитика', 'Analytics'))}${o.type !== 'PERSON' ? link('#/team', 'org', t('Сотрудники', 'Team')) : ''}
-      ${link('#/account', 'org', t('Профиль и организации', 'Profile and organisations'))}${isAdmin() ? link('#/admin', 'shield', t('Админка', 'Admin'), c.admin?.total) : ''}
-      <a href="#" data-onb>${icon('send')}<span>${t('Как пользоваться', 'How it works')}</span></a></nav>`;
   }
+  if (state.user && isAdmin()) html += `<nav class="nav">${link('#/admin', 'shield', t('Админка', 'Admin'), c.admin?.total)}</nav>`;
   html += `</div>`;
-  html += themeSeg();
-  if (state.user && o && !o.can_provide) {
-    html += `<div class="side-note"><b>${t('Есть своя техника?', 'Own machinery?')}</b>${t('Создайте организацию исполнителя и получайте заказы.', 'Create a provider organisation and get orders.')} <a href="#/account?become=provider">${t('Начать →', 'Start →')}</a></div>`;
-  } else if (!state.user) {
-    html += `<div class="side-note"><b>${t('Техника рядом — проще, чем кажется', 'Machinery nearby — easier than you think')}</b>${t('Сравнивайте предложения проверенных исполнителей и бронируйте онлайн.', 'Compare offers from verified providers and book online.')}</div>`;
-  }
-  const side = document.getElementById('sidebar');
-  side.innerHTML = html;
-  side.querySelectorAll('[data-theme-set]').forEach((b) => b.onclick = () => setTheme(b.dataset.themeSet));
-  const sel = side.querySelector('#ctxSel');
-  if (sel) sel.onchange = async () => {
-    setOrg(sel.value);
-    await refreshCounters();
-    toast(t('Теперь вы действуете от имени: ', 'Now acting on behalf of: ') + sel.options[sel.selectedIndex].text.split(' — ')[0]);
-    route();
-  };
-  side.querySelectorAll('[data-switch]').forEach((b) => b.onclick = async () => {
-    setOrg(b.dataset.switch);
-    await refreshCounters();
-    const x = state.counters;
-    toast(t('Теперь вы действуете от имени: ', 'Now acting on behalf of: ') + orgName(state.org));
-    go(x.deals_provider ? '#/deals?tab=provider' : '#/deals?tab=customer');
-    if (location.hash.startsWith('#/deals')) route();
-  });
+  document.getElementById('sidebar').innerHTML = html;
 }
 
 export function refreshShell() {
