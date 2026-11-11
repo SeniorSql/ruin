@@ -180,7 +180,7 @@ function model(v, d) {
 }
 
 // ---------- HTML (экран и печать в PDF) ----------
-function toHtml(B) {
+export function toHtml(B) {
   const br = (s) => esc(s).replace(/\n/g, '<br>');
   return B.map((b) => {
     switch (b.t) {
@@ -192,8 +192,8 @@ function toHtml(B) {
       case 'p': return `<p style="text-align:justify;margin:4px 0">${br(b.text)}</p>`;
       case 'req': return `<table class="doc-t"><tr>${b.head.map((h) => `<td><b>${h}</b></td>`).join('')}</tr>
         <tr>${b.cols.map((c) => `<td>${c.map(br).join('<br>')}</td>`).join('')}</tr></table>`;
-      case 'table': return `<div style="overflow-x:auto"><table class="doc-t" style="min-width:560px"><tr>${b.head.map((h) => `<td><b>${br(h)}</b></td>`).join('')}</tr>
-        ${b.rows.map((r) => `<tr>${r.map((c) => `<td>${br(c)}</td>`).join('')}</tr>`).join('')}</table></div>`;
+      case 'table': return `<div style="overflow-x:auto"><table class="doc-t" style="min-width:${Math.max(560, b.head.length * 64)}px${b.head.length > 8 ? ';font-size:11px' : ''}"><tr>${b.head.map((h) => `<td><b>${br(h)}</b></td>`).join('')}</tr>
+        ${b.rows.map((r) => `<tr>${r.map((c) => `<td>${br(c) || '&nbsp;'}</td>`).join('')}</tr>`).join('')}</table></div>`;
       case 'signs': return `<table class="doc-sign"><tr><td>${br(b.l)}</td><td>${br(b.r)}</td></tr></table>`;
       case 'break': return '<div style="break-before:page;page-break-before:always;height:24px"></div>';
       default: return '';
@@ -223,7 +223,12 @@ function toDocxXml(B) {
       case 'h': return para(run(b.text, { b: true }), { ...o, before: 160, jc: 'center' });
       case 'p': return para(run(b.text), { ...o, jc: 'both' });
       case 'req': return table([b.head.map((h) => para(run(h, { b: true }))), b.cols.map((c) => c.map((l) => para(run(l), { after: 20 })).join(''))], [4819, 4819]);
-      case 'table': return table([b.head.map((h) => para(run(h, { b: true, sz: 18 }))), ...b.rows.map((r) => r.map((c) => para(run(c, { sz: 18 }))))], [400, 1700, 1100, 1800, 1500, 1100, 2038]);
+      case 'table': {
+        const n = b.head.length, sz = n > 8 ? 14 : 18;
+        // ширины: заданные, для заявки договора (7 колонок) — прежние, иначе поровну
+        const w = b.widths || (n === 7 ? [400, 1700, 1100, 1800, 1500, 1100, 2038] : Array.from({ length: n }, (_, i) => Math.floor(9638 / n) + (i === n - 1 ? 9638 % n : 0)));
+        return table([b.head.map((h) => para(run(h, { b: true, sz }), { after: 0 })), ...b.rows.map((r) => r.map((c) => para(run(c, { sz }), { after: 0 })))], w);
+      }
       case 'signs': return para('') + table([[para(run(b.l)), para(run(b.r))]], [4819, 4819], false);
       case 'break': pb = true; return '';
       default: return '';
