@@ -5,22 +5,21 @@ import { EQ_SELECT, productCard, loadFavs, bindFavs, loadRatings } from '../card
 import { icon } from '../app.js';
 import { t, catName } from '../i18n.js';
 
-const HERO = 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Caterpillar_320.jpg/960px-Caterpillar_320.jpg';
+// Картинки баннера заданы в css/app.css (.hero-img.day / .hero-img.night): в светлой теме — CAT 320,
+// в тёмной — Zoomlion ZE215E с ночным затемнением (v=73). Грузится только картинка текущей темы.
+// Фото ZE215E: Wikimedia Commons, автор Beeveevee, CC BY-SA 4.0.
 
 export async function render(app) {
   const cats = await loadCategories();
-  const byCode = Object.fromEntries(cats.map((c) => [c.code, c]));
   app.innerHTML = `
   <section class="hero">
     <div class="hero-copy">
-      <div class="overline"><i></i> ${t('МАРКЕТПЛЕЙС СТРОИТЕЛЬНОЙ ТЕХНИКИ', 'CONSTRUCTION MACHINERY MARKETPLACE')}</div>
       <h1>${t('Работа начинается <br>с <em>правильной техники</em>', 'Great work starts <br>with <em>the right machinery</em>')}</h1>
       <p>${t('Сравнивайте предложения, выбирайте проверенных исполнителей и бронируйте технику без лишних звонков.', 'Compare offers, choose verified providers and book machinery without endless calls.')}</p>
-      <form class="hero-search" id="heroSearch"><input name="q" placeholder="${t('Какая техника нужна вашему проекту?', 'What machinery does your project need?')}" aria-label="${t('Поиск', 'Search')}"><button class="btn">${t('Подобрать', 'Find')}</button></form>
-      <div class="chips"><span>${t('Ищут сейчас:', 'Popular now:')}</span>
-        ${['excavators', 'truck_cranes', 'dump_trucks'].map((c) => `<a href="#/catalog?cat=${c}">${esc(catName(byCode[c] || { code: c, name: c }))}</a>`).join('')}</div>
+      <div class="hero-cta"><a class="btn" href="#/catalog">${t('Каталог техники', 'Machinery catalogue')} <span class="arr">→</span></a>
+        <a class="btn ghost hero-ghost" href="#/orders/new">${t('Разместить заказ', 'Post an order')}</a></div>
     </div>
-    <div class="hero-visual"><img src="${HERO}" alt="${t('Гусеничный экскаватор на объекте', 'Crawler excavator on site')}" referrerpolicy="no-referrer">
+    <div class="hero-visual" role="img" aria-label="${t('Гусеничный экскаватор на объекте', 'Crawler excavator on site')}"><div class="hero-img day"></div><div class="hero-img night"></div>
       <div class="hero-sticker"><b id="heroCount">…</b><span>${t('единиц техники на RUIN', 'machines on RUIN')}</span></div></div>
   </section>
   <div class="benefits">
@@ -36,11 +35,6 @@ export async function render(app) {
     <a class="btn dark" href="${state.user ? '#/account?become=provider' : '#/register'}">${t('Стать исполнителем →', 'Become a provider →')}</a></div>
   <div class="wide-banner accent"><div><b>${t('Не нашли подходящую технику?', 'Could not find the right machine?')}</b><p id="ordersInfo">${t('Разместите заказ — исполнители сами пришлют предложения.', 'Post an order — providers will send you offers.')}</p></div>
     <a class="btn dark" href="#/orders/new">${t('Разместить заказ →', 'Post an order →')}</a></div>`;
-
-  app.querySelector('#heroSearch').onsubmit = (e) => {
-    e.preventDefault();
-    location.hash = '#/catalog?q=' + encodeURIComponent(e.target.q.value.trim());
-  };
 
   const [all, fresh, favs, openOrders] = await Promise.all([
     q(sb.from('equipment').select('id,category_id,photos').eq('status', 'PUBLISHED').limit(2000)),
