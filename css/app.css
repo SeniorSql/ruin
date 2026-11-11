@@ -581,6 +581,13 @@ html[data-theme] #app>.prerender{display:none}
 .steps button.todo{background:var(--hot-soft);border-color:var(--hot-line);color:var(--wait-ink)}.steps .todo,.steps button.todo i{background:#e08600}
 .steps-legend{display:inline-flex;align-items:center;gap:5px;margin-left:6px}.steps-legend i{margin-left:6px}
 .panel.flash{box-shadow:0 0 0 3px var(--accent);transition:box-shadow .3s}
+/* v=78: нужно действие (календарь давно не подтверждали) — шаг пульсирует, кнопка действия подсвечивается */
+.steps button.attn{background:var(--hot-soft);border-color:var(--hot-line);color:var(--wait-ink);animation:attnPulse 1.8s ease-out infinite}
+.steps button.attn i{background:#e08600}
+@keyframes attnPulse{0%{box-shadow:0 0 0 0 #f5a52499}70%{box-shadow:0 0 0 7px #f5a52400}100%{box-shadow:0 0 0 0 #f5a52400}}
+.btn.attn-btn{animation:attnPulse 1.4s ease-out 4}
+.row-item.row-attn{background:var(--hot-soft);border-radius:12px;padding-left:8px;padding-right:8px}
+.row-attn .attn-link{font-weight:700;color:var(--wait-ink);text-decoration:underline;text-underline-offset:3px}
 @media (max-width:700px){.steps-legend{display:none}}
 
 /* ---------- модальные окна и тосты (стекло) ---------- */
