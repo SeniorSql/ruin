@@ -1,6 +1,6 @@
 // Точка входа: шапка, меню, маршрутизация по #/адресам
 import { sb, configured, state, loadMe, setOrg, refreshCounters, loadCategories, isAdmin, canManage, CONSENT_VERSION, actsAsProvider, actsAsCustomer, passwordRecovery, signOutSafe } from './api.js';
-import { esc, status, initials, toast, modal, WORDMARK } from './ui.js';
+import { esc, status, initials, toast, modal, WORDMARK, plural } from './ui.js';
 import { t, isEn, setLang } from './i18n.js';
 import { initDrafts } from './drafts.js';
 import { initCityList } from './cities.js';
@@ -17,6 +17,8 @@ const ICON = {
   bell: '<path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/>',
   org: '<path d="M4 21V5l8-3 8 3v16M2 21h20M8 9h2m4 0h2m-8 4h2m4 0h2m-5 8v-4h3v4"/>',
   heart: '<path d="M20.8 8.8c0 5.1-8.8 11-8.8 11s-8.8-5.9-8.8-11A4.7 4.7 0 0 1 12 6.4a4.7 4.7 0 0 1 8.8 2.4Z"/>',
+  // звезда — отзывы (сердечко — только «Избранное»)
+  star: '<path d="m12 3.2 2.7 5.5 6 .9-4.35 4.25 1 6L12 17l-5.35 2.85 1-6L3.3 9.6l6-.9Z"/>',
   shield: '<path d="m12 3 8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="m8 12 2.5 2.5L16 9"/>',
   search: '<circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
@@ -68,7 +70,7 @@ function meMenu() {
   }
   html += item('#/account', 'org', t('Профиль и организации', 'Profile and organisations'));
   if (o) {
-    html += item('#/reviews', 'heart', t('Отзывы', 'Reviews')) + item('#/analytics', 'grid', t('Аналитика', 'Analytics'));
+    html += item('#/reviews', 'star', t('Отзывы', 'Reviews')) + item('#/analytics', 'grid', t('Аналитика', 'Analytics'));
     if (o.type !== 'PERSON') html += item('#/team', 'org', t('Сотрудники', 'Team'));
   }
   html += `<a href="#" data-onb role="menuitem">${icon('send')}<span>${t('Как пользоваться', 'How it works')}</span></a>
@@ -115,6 +117,34 @@ export function parseHash() {
 }
 export const go = (hash) => { location.hash = hash; };
 
+// ---------- счётчик техники в шапке (v=77, раньше был на баннере главной) ----------
+// Число опубликованной техники; обновляется раз в 5 минут, при первом показе плавно досчитывает от 0.
+let eqCount = null, eqCountAt = 0, countShown = 0;
+const countWord = (n) => (isEn() ? (n === 1 ? 'machine' : 'machines') : plural(n, 'единица техники', 'единицы техники', 'единиц техники'));
+function paintCount() {
+  const el = document.getElementById('topCount');
+  if (!el || eqCount == null) return;
+  const from = countShown, to = eqCount;
+  countShown = to;
+  document.getElementById('topCountWord').textContent = countWord(to);
+  if (from === to || matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = to; return; }
+  const t0 = performance.now(), dur = 1100;
+  const step = (now) => {
+    const k = Math.min(1, (now - t0) / dur);
+    el.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - k, 3)));
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+async function loadEqCount() {
+  if (!configured || Date.now() - eqCountAt < 300000) return;
+  eqCountAt = Date.now();
+  try {
+    const { count, error } = await sb.from('equipment').select('id', { count: 'exact', head: true }).eq('status', 'PUBLISHED');
+    if (!error && typeof count === 'number') { eqCount = count; paintCount(); }
+  } catch {}
+}
+
 // ---------- шапка ----------
 function renderTop() {
   const c = state.counters || {};
@@ -125,6 +155,8 @@ function renderTop() {
       <input name="q" placeholder="${t('Найти технику: экскаватор, автокран, самосвал…', 'Find machinery: excavator, truck crane, dump truck…')}" aria-label="${t('Поиск техники', 'Search machinery')}">
       <button class="btn sm dark">${t('Найти', 'Search')}</button></form>
     <div class="top-actions">
+      <a class="top-count" href="#/catalog" title="${t('Техника в каталоге RUIN — смотреть', 'Machinery in the RUIN catalogue — browse')}"><i class="live-dot" aria-hidden="true"></i>
+        <b id="topCount">${countShown || '…'}</b><span id="topCountWord">${countShown ? countWord(countShown) : t('единиц техники', 'machines')}</span></a>
       <button class="lang-btn" id="langBtn" type="button" title="${t('Switch to English', 'Переключить на русский')}">${t('EN', 'RU')}</button>
       ${themeBtn()}
       ${u ? `
@@ -138,6 +170,7 @@ function renderTop() {
       : `<a class="btn ghost sm" href="#/login">${t('Войти', 'Log in')}</a><a class="btn sm" href="#/register">${t('Регистрация', 'Sign up')}</a>`}
     </div>`;
   if (u) bindMeMenu();
+  loadEqCount();
   document.getElementById('langBtn').onclick = () => setLang(isEn() ? 'ru' : 'en');
   document.getElementById('topSearch').onsubmit = (e) => {
     e.preventDefault();
