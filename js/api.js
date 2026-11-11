@@ -170,7 +170,25 @@ export async function refreshCounters() {
     }
     c.other_orgs = need;
   } catch {}
-  await Promise.all([feedCounter(), crmCounter(), adminCounters()]);
+  await Promise.all([feedCounter(), crmCounter(), adminCounters(), fleetCounter()]);
+}
+
+// «Моя техника»: опубликованная техника, у которой календарь не подтверждали больше CAL_STALE_DAYS дней.
+// Через 7 дней в каталоге появится «Доступность уточняется» — просим подтвердить заранее (v=78).
+export const CAL_STALE_DAYS = 5;
+export const calStale = (e) => e.status === 'PUBLISHED' && !e.is_demo
+  && (!e.availability_confirmed_at || Date.now() - new Date(e.availability_confirmed_at) > CAL_STALE_DAYS * 864e5);
+async function fleetCounter() {
+  const c = state.counters;
+  c.fleet_stale = 0;
+  if (!state.org) return;
+  try {
+    const before = new Date(Date.now() - CAL_STALE_DAYS * 864e5).toISOString();
+    const { count, error } = await sb.from('equipment').select('id', { count: 'exact', head: true })
+      .eq('org_id', state.org.id).eq('status', 'PUBLISHED').eq('is_demo', false)
+      .or(`availability_confirmed_at.is.null,availability_confirmed_at.lt.${before}`);
+    if (!error) c.fleet_stale = count || 0;
+  } catch {}
 }
 
 // Просмотренные заказы ленты — отдельно для каждой организации (в этом браузере)
