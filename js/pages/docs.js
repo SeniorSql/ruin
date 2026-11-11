@@ -3,22 +3,20 @@ import { sb, state, q, rpc } from '../api.js';
 import { esc, money, date, dateTime, period, POLICY, ORG_TYPE, errorState, emptyState, WORDMARK } from '../ui.js';
 
 // Договор и путевые листы с 11.11.2026 — не здесь: форма .docx/zip скачивается и подписанные файлы загружаются в блоке сделки (dealFiles.js)
-const TITLES = { request: 'Заявка-подтверждение', 'handover-START': 'Акт приёма-передачи техники', 'handover-END': 'Акт возврата техники', act: 'Акт выполненных работ (оказанных услуг)' };
+// Акты передачи/возврата техники и учёт смен убраны с сайта (11.11.2026, v=73)
+const TITLES = { request: 'Заявка-подтверждение', act: 'Акт выполненных работ (оказанных услуг)' };
 
 export async function render(app, { id, type }) {
-  if (!TITLES[type]) { app.innerHTML = emptyState('Документ недоступен', 'Договор и путевые листы теперь скачиваются и загружаются в карточке сделки, блок «Документы».'); return; }
-  let d, priv, events, hand, work;
+  if (!TITLES[type]) { app.innerHTML = emptyState('Документ недоступен', 'Документы сделки — в карточке сделки, блок «Документы».'); return; }
+  let d, priv, events;
   try {
     d = await q(sb.from('deals').select('*, equipment(title,brand,model,year,specs,city,price_unit,price_minor,shift_hours,categories(code)), cust:organizations!deals_customer_org_id_fkey(id,name,type,inn,ogrn,city), prov:organizations!deals_provider_org_id_fkey(id,name,type,inn,ogrn,city)').eq('id', id).maybeSingle());
-    if (!d) { app.innerHTML = emptyState('Документ недоступен', 'Сделка не найдена или относится к другой организации — переключите контекст в меню.'); return; }
-    [priv, events, hand, work] = await Promise.all([
+    if (!d) { app.innerHTML = emptyState('Документ недоступен', 'Сделка не найдена или относится к другой организации — переключите организацию в меню под вашим именем.'); return; }
+    [priv, events] = await Promise.all([
       rpc('get_deal_private', { p_deal: id }),
-      q(sb.from('deal_events').select('*').eq('deal_id', id).order('ts')),
-      q(sb.from('handovers').select('*').eq('deal_id', id)),
-      q(sb.from('work_sessions').select('*').eq('deal_id', id))
+      q(sb.from('deal_events').select('*').eq('deal_id', id).order('ts'))
     ]);
   } catch (err) { app.innerHTML = errorState(err); return; }
-  const H = Object.fromEntries(hand.map((h) => [h.type, h]));
   const today = date(new Date().toISOString());
   const party = (o, c) => `<b>${esc(o.type === 'PERSON' ? o.name + ' (физическое лицо)' : o.name)}</b>${o.type !== 'PERSON' ? `, ${ORG_TYPE[o.type]}` : ''}
     ${o.inn ? `, ИНН ${esc(o.inn)}` : ''}${o.ogrn ? `, ОГРН ${esc(o.ogrn)}` : ''}${o.city ? `, ${esc(o.city)}` : ''}
@@ -37,7 +35,6 @@ export async function render(app, { id, type }) {
   const signs = `<table class="doc-sign"><tr><td>Исполнитель<br><br>________________ / ____________</td><td>Заказчик<br><br>________________ / ____________</td></tr></table>`;
   const evText = (t) => ({ deal_confirmed_by_customer: 'Заказчик подтвердил условия', deal_confirmed: 'Исполнитель подтвердил сделку', deal_completed: 'Сделка завершена' }[t]);
   const confirms = events.filter((e) => evText(e.type)).map((e) => `<li>${evText(e.type)} — ${dateTime(e.ts)}</li>`).join('');
-  const workH = work.filter((w) => w.kind === 'WORK' && w.status !== 'DISPUTED').reduce((s, w) => s + Number(w.hours), 0);
 
   let body = '';
   if (type === 'request') {
@@ -45,21 +42,9 @@ export async function render(app, { id, type }) {
       <h3>Условия отмены</h3><p>${esc(POLICY[d.cancel_policy] || '')}.</p>
       ${d.customer_comment ? `<h3>Комментарий заказчика</h3><p>${esc(d.customer_comment)}</p>` : ''}
       <h3>Электронные подтверждения на платформе RUIN</h3><ul>${confirms || '<li>Подтверждений пока нет</li>'}</ul>`;
-  } else if (type.startsWith('handover-')) {
-    const h = H[type.split('-')[1]];
-    if (!h) { body = '<p>Акт ещё не оформлен.</p>'; } else {
-      body = `${sides}${subject}<h3>Состояние техники</h3><table class="doc-t">
-        <tr><td style="width:30%">Моточасы</td><td>${h.hours_meter ?? '—'}</td></tr><tr><td>Уровень топлива</td><td>${h.fuel_level != null ? h.fuel_level + '%' : '—'}</td></tr>
-        <tr><td>Состояние и комплектность</td><td>${esc(h.condition || 'без замечаний')}</td></tr>
-        <tr><td>Замечания заказчика</td><td>${esc(h.remarks || 'нет')}</td></tr>
-        <tr><td>Оформлен</td><td>${dateTime(h.created_at)}</td></tr>
-        <tr><td>Подтверждён заказчиком</td><td>${h.confirmed_at ? dateTime(h.confirmed_at) + ' (электронно на платформе RUIN)' : 'не подтверждён'}</td></tr></table>
-        <h3>Фотофиксация</h3><div class="doc-photos">${(h.photos || []).map((p) => `<img src="${esc(p.url)}" alt="">`).join('')}</div>${signs}`;
-    }
   } else if (type === 'act') {
     body = `<p>Исполнитель оказал, а Заказчик принял услуги (предоставление техники) по сделке ${esc(d.number)}.</p>${sides}${subject}
-      <table class="doc-t"><tr><td style="width:30%">Отработано</td><td>${workH ? workH + ' ч (по подтверждённым записям)' : 'по договорённости сторон'}</td></tr>
-      <tr><td>Фактический период</td><td>${period(d.start_date, d.end_date)}</td></tr></table>
+      <table class="doc-t"><tr><td style="width:30%">Фактический период</td><td>${period(d.start_date, d.end_date)}</td></tr></table>
       <h3>Стоимость</h3>${cost}<p>Услуги оказаны полностью и в срок. Заказчик претензий по объёму, качеству и срокам не имеет${d.completed_at ? ` (завершение подтверждено ${dateTime(d.completed_at)})` : ''}.</p>${signs}`;
   }
 
