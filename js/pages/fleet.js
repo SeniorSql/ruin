@@ -17,7 +17,7 @@ export async function render(app, params, _q, pattern) {
   // Смотреть свою технику можно, если она есть, даже когда галочку «Исполнитель» сняли; добавлять новую — только исполнителю
   if (!(pattern === 'fleet/new' ? o.can_provide : actsAsProvider(o))) {
     app.innerHTML = emptyState('Текущая организация не исполнитель',
-      'Чтобы сдавать технику, создайте организацию исполнителя (ИП, юрлицо или самозанятый) или переключитесь на неё в меню слева.',
+      'Чтобы сдавать технику, создайте организацию исполнителя (ИП, юрлицо или самозанятый) или переключитесь на неё в меню под вашим именем (справа вверху).',
       '<a class="btn" href="#/account?become=provider">Стать исполнителем</a>');
     return;
   }
@@ -53,7 +53,7 @@ async function editor(app, o, id) {
     delivery_minor: 0, deposit_minor: 0, cancel_policy: 'FLEXIBLE', instant_book: false, specs: {}, photos: [], status: 'DRAFT' };
   if (id) {
     const row = await q(sb.from('equipment').select('*').eq('id', id).eq('org_id', o.id).maybeSingle());
-    if (!row) { app.innerHTML = emptyState('Карточка не найдена', 'Возможно, она принадлежит другой организации. Переключите контекст слева.'); return; }
+    if (!row) { app.innerHTML = emptyState('Карточка не найдена', 'Возможно, она принадлежит другой организации. Переключите организацию в меню под вашим именем (справа вверху).'); return; }
     e = row;
   }
   let photos = (e.photos || []).map((p) => (typeof p === 'string' ? { url: p } : p));
