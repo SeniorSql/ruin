@@ -231,12 +231,14 @@ async function adminCounters() {
   const head = { count: 'exact', head: true };
   try {
     // Претензии убраны с сайта (11.11.2026) — в очередь админа не входят
-    const [orgs, equipment, reports] = await Promise.all([
+    // Отзывы на модерации (SQL 24) тоже входят в счётчик «Админка» в меню (v=75)
+    const [orgs, equipment, reports, reviews] = await Promise.all([
       n(sb.from('organizations').select('id', head).eq('verification_status', 'PENDING_REVIEW')),
       n(sb.from('equipment').select('id', head).eq('status', 'PENDING_MODERATION')),
-      n(sb.from('listing_reports').select('id', head).eq('status', 'NEW'))
+      n(sb.from('listing_reports').select('id', head).eq('status', 'NEW')),
+      n(sb.from('reviews').select('id', head).in('status', ['PENDING', 'SUBMITTED']))
     ]);
-    c.admin = { orgs, equipment, reports, total: orgs + equipment + reports };
+    c.admin = { orgs, equipment, reports, reviews, total: orgs + equipment + reports + reviews };
   } catch {}
 }
 
