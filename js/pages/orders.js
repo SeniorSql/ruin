@@ -9,7 +9,7 @@ export async function render(app, params, query, pattern) {
   await loadCategories();
   // Свои заказы видны, если они есть, даже когда галочку «Заказчик» сняли; новый заказ — только заказчику
   if (!(pattern === 'orders/new' ? state.org.can_order : actsAsCustomer(state.org))) {
-    app.innerHTML = emptyState('Текущая организация не заказчик', 'Переключитесь на личный профиль или организацию-заказчика в меню слева, либо включите роль заказчика в настройках организации.',
+    app.innerHTML = emptyState('Текущая организация не заказчик', 'Переключитесь на личный профиль или организацию-заказчика в меню под вашим именем (справа вверху), либо включите роль заказчика в настройках организации.',
       '<a class="btn" href="#/account">Настройки</a>');
     return;
   }
@@ -113,7 +113,7 @@ async function detail(app, id) {
   try {
     o = await q(sb.from('orders').select('*, categories(name,code)').eq('id', id).maybeSingle());
     if (!o || o.customer_org_id !== state.org.id) {
-      app.innerHTML = emptyState('Заказ не найден', 'Возможно, он размещён от имени другой организации — переключите контекст слева.');
+      app.innerHTML = emptyState('Заказ не найден', 'Возможно, он размещён от имени другой организации — переключите организацию в меню под вашим именем (справа вверху).');
       return;
     }
     [offers, priv] = await Promise.all([
