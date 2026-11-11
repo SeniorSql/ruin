@@ -4,7 +4,7 @@ import { esc, money, status, toast, busy, askReason, confirmBox, emptyState, err
   POLICY, ORG_TYPE } from '../ui.js';
 import { breakdownHtml } from './item.js';
 import { renderExtras } from '../dealExtras.js';
-import { renderExtension, renderNotes, extensionTopHtml, bindExtensionButtons, extensionDialog } from '../dealCrm.js';
+import { renderNotes, extensionTopHtml, bindExtensionButtons, extensionDialog } from '../dealCrm.js';
 import { mountChat } from '../chat.js';
 import { isTeam, loadTeam, assignees, memberLabel, assignFilterHtml, mountAssign, names, shortName, ROLE_NAME } from '../assign.js';
 import { route, refreshShell } from '../app.js';
@@ -57,7 +57,7 @@ async function detail(app, id) {
   let d, events, priv, conv, ext;
   try {
     d = await q(sb.from('deals').select('*, equipment(id,title,photos,brand,model,year,city), cust:organizations!deals_customer_org_id_fkey(id,name,type,inn), prov:organizations!deals_provider_org_id_fkey(id,name,type,inn,verification_status)').eq('id', id).maybeSingle());
-    if (!d) { app.innerHTML = emptyState('Сделка не найдена', 'Возможно, она относится к другой организации — переключите контекст слева.'); return; }
+    if (!d) { app.innerHTML = emptyState('Сделка не найдена', 'Возможно, она относится к другой организации — переключите организацию в меню под вашим именем (справа вверху).'); return; }
     [events, priv, conv, ext] = await Promise.all([
       q(sb.from('deal_events').select('*').eq('deal_id', id).order('ts')),
       rpc('get_deal_private', { p_deal: id }),
@@ -69,7 +69,7 @@ async function detail(app, id) {
   const amCust = state.org.id === d.customer_org_id;
   const amProv = state.org.id === d.provider_org_id;
   if (!amCust && !amProv) {
-    app.innerHTML = emptyState('Переключите организацию', 'Эта сделка относится к другой вашей организации. Выберите её в меню слева.');
+    app.innerHTML = emptyState('Переключите организацию', 'Эта сделка относится к другой вашей организации. Выберите её в меню под вашим именем (справа вверху).');
     return;
   }
   const act = canManage();
@@ -110,7 +110,6 @@ async function detail(app, id) {
             ${d.cancel_reason ? `<dt>Причина отмены</dt><dd>${esc(reasonText(d.cancel_reason))}</dd>` : ''}</dl>
           <h3 style="margin-top:16px">Стоимость</h3>${breakdownHtml(d.breakdown)}
         </div>
-        <div id="ext"></div>
         <div id="extras"><div class="skeleton" style="height:120px;margin-top:14px"></div></div>
         <div id="chat" style="margin-top:14px">${conv ? '' : '<p class="muted">Чат недоступен</p>'}</div>
       </div>
@@ -176,7 +175,7 @@ async function detail(app, id) {
   bindExtensionButtons(app.querySelector('.ext-top') || document.createElement('div'), ext, extDone);
   on('#extendBtn', () => extensionDialog(d, extDone));
   mountAssign(app.querySelector('#assign'), 'DEAL', id).catch(() => {});
-  renderExtension(app.querySelector('#ext'), d).catch(() => {});
+  // Панель «Продление аренды» убрана (11.11.2026): предложение и кнопки — в верхнем блоке, «Продлить аренду» — в «Что дальше»
   renderNotes(app.querySelector('#notes'), d).catch(() => {});
   renderExtras(app.querySelector('#extras'), d).catch((err) => { app.querySelector('#extras').innerHTML = `<p class="muted">${esc(err.message)}</p>`; });
   if (conv) return mountChat(app.querySelector('#chat'), conv.id, 'Чат сделки');
