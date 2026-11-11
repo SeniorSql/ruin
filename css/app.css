@@ -222,6 +222,8 @@ textarea.inp{height:auto;min-height:96px;padding:10px 12px;resize:vertical}
 /* ---------- панели ---------- */
 .panel{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);padding:20px;box-shadow:var(--shadow)}
 .panel+.panel{margin-top:14px}
+/* сделка: блок «Документы» (#extras) не прилипает к верхней панели */
+#extras>.panel:first-child{margin-top:14px}
 .panel h2{font-size:18px;margin-bottom:12px}
 .panel h3{font-size:15px;margin-bottom:8px}
 .cols{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:20px;align-items:start}
@@ -280,13 +282,8 @@ textarea.inp{height:auto;min-height:96px;padding:10px 12px;resize:vertical}
 .hero .hero-ghost:hover{background:#ffffff26;border-color:#ffffff66}
 .hero-img{position:absolute;inset:0;background-size:cover;background-position:center;background-repeat:no-repeat}
 .hero-img.day{background-image:url('https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Caterpillar_320.jpg/960px-Caterpillar_320.jpg')}
-.hero-img.night{display:none}
-.hero-img.night:before{content:'';position:absolute;inset:0;background-size:cover;background-position:30% 60%;background-repeat:no-repeat;
-  background-image:url('https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Construction_of_San_Fernando_station_Sindalan_Calulut_Malpitic_30.jpg/960px-Construction_of_San_Fernando_station_Sindalan_Calulut_Malpitic_30.jpg');
-  filter:brightness(.62) saturate(.75) contrast(1.1)}
-/* ночь: тёмно-синее небо сверху (без луны — по просьбе Этибара) */
-.hero-img.night:after{content:'';position:absolute;inset:0;
-  background:linear-gradient(180deg,#071433f0 0%,#0a1c44c4 36%,#0d1f3d55 62%,#05080f8c 100%)}
+/* ночное фото Zoomlion ZE215E — прислал Этибар (img/hero-night.jpg), без затемнения и фильтров */
+.hero-img.night{display:none;background-image:url('../img/hero-night.jpg');background-position:68% 55%}
 /* средние экраны: картинке меньше места, тексту больше — чтобы баннер не вырастал в высоту */
 @media (min-width:761px) and (max-width:1250px){
   .hero{grid-template-columns:1.7fr .8fr}
