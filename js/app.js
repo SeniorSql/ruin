@@ -117,25 +117,29 @@ export function parseHash() {
 }
 export const go = (hash) => { location.hash = hash; };
 
-// ---------- уведомление о cookie (152-ФЗ, v=79) ----------
-// Необходимые (вход, тема, язык, черновики, этот выбор) работают всегда. Аналитика (например, Яндекс Метрика,
-// когда её подключат) включается ТОЛЬКО если analyticsAllowed() === true — то есть после «Принять».
-// Выбор хранится в браузере и пишется в журнал cookie_consents (SQL 29). Изменить — «Настройки cookie» в подвале.
-const COOKIE_KEY = 'ruin.cookieConsent', COOKIE_VER = 1;
+// ---------- уведомление о cookie (152-ФЗ, v=80: тонкая строка) ----------
+// Сейчас аналитики на сайте нет — только необходимые cookie (вход, тема, язык, черновики, этот выбор), поэтому
+// одна кнопка «Понятно». Когда подключат Яндекс Метрику: поставить ANALYTICS_ON = true и COOKIE_VER = 3 —
+// в строке появятся «Принять» / «Только необходимые», и всех спросят заново. Метрику запускать только если analyticsAllowed().
+// Выбор хранится в браузере и пишется в журнал cookie_consents (SQL 29). Показать снова — «Настройки cookie» в подвале.
+const ANALYTICS_ON = false;
+const COOKIE_KEY = 'ruin.cookieConsent', COOKIE_VER = 2;
 export function cookieChoice() { try { return JSON.parse(localStorage.getItem(COOKIE_KEY) || 'null'); } catch { return null; } }
-export const analyticsAllowed = () => cookieChoice()?.analytics === true;
+export const analyticsAllowed = () => ANALYTICS_ON && cookieChoice()?.analytics === true;
 function showCookieBar(force = false) {
   const ch = cookieChoice();
-  if (!force && ch && ch.v === COOKIE_VER) return;
+  // Кто уже ответил на прошлую версию (v=79), того не спрашиваем снова — смысл тот же: аналитики нет
+  if (!force && ch && (ch.v === COOKIE_VER || (!ANALYTICS_ON && ch.v === 1))) return;
   document.getElementById('cookieBar')?.remove();
   const bar = document.createElement('div');
   bar.id = 'cookieBar'; bar.className = 'cookie-bar'; bar.setAttribute('role', 'region'); bar.setAttribute('aria-label', t('Уведомление о cookie', 'Cookie notice'));
-  bar.innerHTML = `<div class="cookie-text"><b>${t('Этот сайт использует cookie', 'This site uses cookies')}</b>
-      <span>${t('Необходимые cookie нужны для входа и настроек и работают всегда. Аналитические (статистика посещений) включаем только с вашего согласия.',
-        'Necessary cookies are required for login and settings and are always on. Analytics cookies (visit statistics) are enabled only with your consent.')}
-      <a href="#/privacy">${t('Политика', 'Policy')}</a> · <a href="#/consent">${t('Согласие', 'Consent')}</a></span></div>
-    <div class="cookie-actions"><button type="button" class="btn ghost sm" data-ck="0">${t('Только необходимые', 'Necessary only')}</button>
-      <button type="button" class="btn sm" data-ck="1">${t('Принять', 'Accept')}</button></div>`;
+  const COOKIE_IC = '<svg class="cookie-ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.5A9 9 0 1 1 11.5 3a3.5 3.5 0 0 0 4.5 4.5 3.5 3.5 0 0 0 5 5Z"/><circle cx="8.5" cy="10.5" r=".8" fill="currentColor"/><circle cx="12" cy="15.5" r=".8" fill="currentColor"/><circle cx="15.5" cy="12.5" r=".8" fill="currentColor"/></svg>';
+  bar.innerHTML = `${COOKIE_IC}<span class="cookie-text">${ANALYTICS_ON
+      ? t('Используем cookie для входа и настроек, а с вашего согласия — для статистики посещений.', 'We use cookies for login and settings and, with your consent, for visit statistics.')
+      : t('Используем cookie для входа и настроек.', 'We use cookies for login and settings.')}
+      <a href="#/privacy">${t('Подробнее', 'Learn more')}</a></span>
+    <span class="cookie-actions">${ANALYTICS_ON ? `<button type="button" class="btn ghost sm" data-ck="0">${t('Только необходимые', 'Necessary only')}</button>` : ''}
+      <button type="button" class="btn sm" data-ck="${ANALYTICS_ON ? 1 : 0}">${ANALYTICS_ON ? t('Принять', 'Accept') : t('Понятно', 'Got it')}</button></span>`;
   bar.addEventListener('click', (e) => {
     const b = e.target.closest('[data-ck]');
     if (!b) return;
