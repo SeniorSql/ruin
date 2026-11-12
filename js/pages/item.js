@@ -182,8 +182,8 @@ export async function render(app, { id }) {
         ? `<button class="btn wide" id="priceBtn" ${blocked ? 'disabled' : ''}>${t('Забронировать', 'Book')}</button>`
         : `<button class="btn wide" id="bookBtn" ${canBook && !blocked ? '' : 'disabled'}>${t('Забронировать', 'Book')}</button>`}
       <p class="small muted" style="margin:4px 0 0">${actingOwner ? t('Это техника организации, от имени которой вы сейчас действуете. Чтобы забронировать её как заказчик, переключитесь на другой профиль в меню под вашим именем (справа вверху).', 'This machine belongs to the organisation you are acting for. To book it as a customer, switch to another profile in the menu under your name (top right).')
-        : negotiable ? t('Отправьте заявку на бронь — исполнитель посчитает итог с доставкой и пришлёт предложение, вы примете его в один клик. Это бесплатно.', 'Send a booking request — the provider will calculate the total with delivery and send an offer you accept in one click. It is free.')
-        : t('Бронь бесплатна. Исполнитель подтвердит её в течение 12 часов. Чат с исполнителем откроется после оформления брони, контакты — после подтверждения.', 'Booking is free. The provider confirms within 12 hours. Chat opens after booking, contacts after confirmation.')}</p>`;
+        : negotiable ? t('Отправьте заявку на бронь — исполнитель ответит в течение 2 рабочих часов (8:00–21:00 МСК): посчитает итог с доставкой и пришлёт предложение, вы примете его в один клик. Это бесплатно.', 'Send a booking request — the provider replies within 2 working hours (8:00–21:00 Moscow time) with a total including delivery; accept it in one click. It is free.')
+        : t('Бронь бесплатна. Исполнитель подтвердит её в течение 2 рабочих часов (8:00–21:00 МСК). Чат с исполнителем откроется после оформления брони, контакты — после подтверждения.', 'Booking is free. The provider confirms within 2 working hours (8:00–21:00 Moscow time). Chat opens after booking, contacts after confirmation.')}</p>`;
     const need = (fn) => () => {
       if (!state.user) return go('#/login?next=' + encodeURIComponent(location.hash));
       if (!state.org?.can_order) return toast(t('Переключитесь на организацию-заказчика в меню под вашим именем (справа вверху)', 'Switch to a customer organisation in the menu under your name (top right)'), true);
@@ -288,7 +288,7 @@ function priceRequestDialog(e, form) {
           p_format: form.op.value === '1' ? 'WITH_OPERATOR' : 'WITHOUT_OPERATOR', p_start: f.start.value, p_end: f.end.value,
           p_city: f.city.value, p_district: f.district.value || null, p_address: f.address.value,
           p_budget: f.budget.value ? Math.round(+f.budget.value * 100) : null, p_budget_visible: !!f.budget.value,
-          p_deadline_hours: 72, p_equipment: e.id });
+          p_deadline_hours: 2, p_equipment: e.id }); // срок считает база: 2 рабочих часа, 8:00–21:00 МСК (SQL 34)
         m.close(); toast(t('Заявка отправлена исполнителю', 'Request sent to the provider')); go('#/orders/' + id);
       } catch (err) { const el = m.el.querySelector('#err'); el.textContent = err.message; el.classList.remove('hidden'); }
     });
