@@ -4,6 +4,16 @@ import { esc, money, status, toast, busy, emptyState, errorState, date, period, 
   statusLabel, qs, photoOf, offerParts, DELIVERY_MODE, modal } from '../ui.js';
 import { go, route, refreshShell } from '../app.js';
 
+// Срок ответа на заявку по Москве (12.11.2026): «до 14:00 сегодня», «до 10:00 завтра», «до 10:00 15.11».
+// Срок — 2 рабочих часа, 8:00–21:00 МСК (SQL 34), поэтому ночью до него может быть 10+ часов.
+function answerBy(iso) {
+  const msk = (d) => new Date(d).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit' });
+  const time = new Date(iso).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', hour: '2-digit', minute: '2-digit' });
+  const day = msk(iso);
+  const when = day === msk(Date.now()) ? 'сегодня' : day === msk(Date.now() + 864e5) ? 'завтра' : day;
+  return `до ${time} ${when}`;
+}
+
 export async function render(app, params, query, pattern) {
   await loadCategories();
   const o = state.org;
@@ -75,7 +85,7 @@ async function feed(app, query) {
         <div class="small muted">${esc(o.categories?.name)} · ${o.qty} шт. · ${esc(o.city)}${o.district ? ', ' + esc(o.district) : ''} · ${FORMAT[o.format].toLowerCase()}</div>
         <div class="small">${period(o.start_date, o.end_date)}${o.budget_visible && o.budget_minor ? ' · бюджет ' + money(o.budget_minor) : ''}
           ${o.visibility === 'DIRECT' ? ' · <b>личный запрос вам</b>' : ''}</div></div>
-      <div style="text-align:right">${myByOrder[o.id] ? status('offer', myByOrder[o.id]) : directDue(o) ? `<span class="small"><b>осталось ${timeLeft(o.deadline_at)}</b></span>` : `<span class="small muted">приём ещё ${timeLeft(o.deadline_at)}</span>`}</div></a>`).join('')}</div>`
+      <div style="text-align:right">${myByOrder[o.id] ? status('offer', myByOrder[o.id]) : directDue(o) ? `<span class="small"><b>ответить ${answerBy(o.deadline_at)}</b><br><span class="muted">осталось ${timeLeft(o.deadline_at)}</span></span>` : `<span class="small muted">приём ещё ${timeLeft(o.deadline_at)}</span>`}</div></a>`).join('')}</div>`
     : emptyState('Подходящих заказов сейчас нет', 'Мы пришлём уведомление, когда появится заказ для вашей техники. Можно снять фильтр «Подходит моей технике».')}`;
   app.querySelector('#seenAll')?.addEventListener('click', async () => {
     rows.forEach((o) => markOrderSeen(o.id));
@@ -115,8 +125,8 @@ async function orderPage(app, id) {
     <div class="page-head"><div><h1>${esc(o.title)}</h1><div style="margin-top:6px">${status('order', o.status)}
       ${o.visibility === 'DIRECT' ? '<span class="st warn">Личный запрос вам</span>' : ''}</div></div>
       <span class="small muted" style="max-width:260px">Чат с заказчиком откроется, когда он выберет ваше предложение и оформится сделка.</span></div>
-    ${directDue ? `<div class="banner warn" style="display:block"><b>Заявка на вашу технику — ждёт ответа (осталось ${timeLeft(o.deadline_at)}).</b>
-      Отправьте предложение с ценой и доставкой или откажитесь, если не можете взять заказ. Пока вы не ответите, заявка остаётся в «Ждут вас».</div>` : ''}
+    ${directDue ? `<div class="banner warn" style="display:block"><b>Заявка на вашу технику — ответьте ${answerBy(o.deadline_at)}</b> (осталось ${timeLeft(o.deadline_at)}).
+      <div class="small" style="margin-top:4px">Срок ответа — 2 рабочих часа, рабочее время 8:00–21:00 МСК. Отправьте предложение с ценой и доставкой или откажитесь, если не можете взять заказ. Пока вы не ответите, заявка остаётся в «Ждут вас».</div></div>` : ''}
     ${o.status === 'DECLINED' && o.invited_org_id === state.org.id ? `<div class="banner info">Вы отказались от этой заявки${o.cancel_reason ? `: ${esc(o.cancel_reason)}` : ''}.</div>` : ''}
     ${active?.status === 'SUBMITTED' && active.dates_pending ? `<div class="banner warn" style="display:block"><b>Заказчик изменил даты: ${period(o.start_date, o.end_date)}.</b>
       Подтвердите, что техника свободна на эти даты, — только после этого заказчик сможет выбрать ваше предложение. Если не подходит — отзовите предложение.
