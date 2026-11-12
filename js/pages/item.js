@@ -172,20 +172,25 @@ export async function render(app, { id }) {
     const blocked = e.is_demo || actingOwner || e.status !== 'PUBLISHED';
     if (state.user && state.org && !canManage()) {
       const roleName = isEn() ? { APPROVER: 'Approver', FINANCE: 'Accountant', VIEWER: 'Viewer' } : { APPROVER: 'Согласующий', FINANCE: 'Бухгалтер', VIEWER: 'Наблюдатель' };
-      cta.innerHTML = `<div class="banner info small">${t('У вас роль', 'Your role is')} «${roleName[state.org.role] || state.org.role}» — ${t('только просмотр. Бронировать и запрашивать цену могут владелец, администратор и менеджер.', 'view only. Only the owner, an administrator or a manager can book or request a price.')}</div>`;
+      cta.innerHTML = `<div class="banner info small">${t('У вас роль', 'Your role is')} «${roleName[state.org.role] || state.org.role}» — ${t('только просмотр. Бронировать могут владелец, администратор и менеджер.', 'view only. Only the owner, an administrator or a manager can book.')}</div>`;
       return;
     }
+    // 12.11.2026 (Этибар): в карточке одна кнопка «Забронировать». Цена и доставка указаны — сразу бронь на выбранные даты;
+    // иначе (доставка по запросу или старая «договорная» цена) та же кнопка открывает «Заявку на бронь» — исполнитель пришлёт цену.
     cta.innerHTML = `
-      ${!negotiable ? `<button class="btn wide" id="bookBtn" ${canBook && !blocked ? '' : 'disabled'}>${t('Забронировать', 'Book')}</button>` : ''}
-      <button class="btn ${negotiable ? '' : 'ghost'} wide" id="priceBtn" ${blocked ? 'disabled' : ''}>${t('Запросить цену', 'Request a price')}</button>
-      <p class="small muted" style="margin:4px 0 0">${actingOwner ? t('Это техника организации, от имени которой вы сейчас действуете. Чтобы запросить цену как заказчик, переключитесь на другой профиль в меню под вашим именем (справа вверху).', 'This machine belongs to the organisation you are acting for. To request a price as a customer, switch to another profile in the menu under your name (top right).') : t('Бронь бесплатна. Исполнитель подтвердит её в течение 12 часов. Чат с исполнителем откроется после оформления брони, контакты — после подтверждения.', 'Booking is free. The provider confirms within 12 hours. Chat opens after booking, contacts after confirmation.')}</p>`;
+      ${negotiable
+        ? `<button class="btn wide" id="priceBtn" ${blocked ? 'disabled' : ''}>${t('Забронировать', 'Book')}</button>`
+        : `<button class="btn wide" id="bookBtn" ${canBook && !blocked ? '' : 'disabled'}>${t('Забронировать', 'Book')}</button>`}
+      <p class="small muted" style="margin:4px 0 0">${actingOwner ? t('Это техника организации, от имени которой вы сейчас действуете. Чтобы забронировать её как заказчик, переключитесь на другой профиль в меню под вашим именем (справа вверху).', 'This machine belongs to the organisation you are acting for. To book it as a customer, switch to another profile in the menu under your name (top right).')
+        : negotiable ? t('Отправьте заявку на бронь — исполнитель посчитает итог с доставкой и пришлёт предложение, вы примете его в один клик. Это бесплатно.', 'Send a booking request — the provider will calculate the total with delivery and send an offer you accept in one click. It is free.')
+        : t('Бронь бесплатна. Исполнитель подтвердит её в течение 12 часов. Чат с исполнителем откроется после оформления брони, контакты — после подтверждения.', 'Booking is free. The provider confirms within 12 hours. Chat opens after booking, contacts after confirmation.')}</p>`;
     const need = (fn) => () => {
       if (!state.user) return go('#/login?next=' + encodeURIComponent(location.hash));
       if (!state.org?.can_order) return toast(t('Переключитесь на организацию-заказчика в меню под вашим именем (справа вверху)', 'Switch to a customer organisation in the menu under your name (top right)'), true);
       fn();
     };
     cta.querySelector('#bookBtn')?.addEventListener('click', need(() => bookDialog(e, calcForm, lastQuote)));
-    cta.querySelector('#priceBtn').addEventListener('click', need(() => priceRequestDialog(e, calcForm)));
+    cta.querySelector('#priceBtn')?.addEventListener('click', need(() => priceRequestDialog(e, calcForm)));
   }
   calcForm.addEventListener('change', recalc);
   recalc();
@@ -253,8 +258,8 @@ function bookDialog(e, form, qt) {
 }
 
 function priceRequestDialog(e, form) {
-  const m = modal(`<h2>${t('Запросить цену', 'Request a price')}</h2>
-    <p class="muted" style="margin-top:-6px">${t('Запрос увидит только этот исполнитель. Он пришлёт предложение, которое можно принять в один клик.', 'Only this provider will see the request. They will send an offer you can accept in one click.')}</p>
+  const m = modal(`<h2>${t('Заявка на бронь', 'Booking request')}</h2>
+    <p class="muted" style="margin-top:-6px">${t('Заявку увидит только этот исполнитель. Он посчитает итог с доставкой и пришлёт предложение, которое можно принять в один клик.', 'Only this provider will see the request. They will calculate the total with delivery and send an offer you can accept in one click.')}</p>
     <form id="pf">
       <label class="f"><span>${t('Что нужно сделать', 'What needs doing')} <i>*</i></span><input class="inp" name="title" required minlength="3" maxlength="150" title="${t('От 3 до 150 символов', '3 to 150 characters')}" value="${esc(e.title)}"></label>
       <div class="grid2">
@@ -271,7 +276,7 @@ function priceRequestDialog(e, form) {
       <label class="f"><span>${t('Бюджет, ₽', 'Budget, ₽')}</span><input class="inp" name="budget" type="number" min="0" step="1" max="1000000000"></label>
       <label class="f"><span>${t('Подробности для исполнителя', 'Details for the provider')}</span><textarea class="inp" name="desc" maxlength="3000" placeholder="${t('Объём работ, график, условия подъезда. Без телефонов и ссылок.', 'Scope, schedule, site access. No phone numbers or links.')}"></textarea></label>
       <div class="form-error hidden" id="err"></div>
-      <button class="btn wide">${t('Отправить запрос', 'Send request')}</button>
+      <button class="btn wide">${t('Отправить заявку', 'Send request')}</button>
     </form>`);
   m.el.querySelector('#pf').onsubmit = (ev) => {
     ev.preventDefault();
@@ -284,7 +289,7 @@ function priceRequestDialog(e, form) {
           p_city: f.city.value, p_district: f.district.value || null, p_address: f.address.value,
           p_budget: f.budget.value ? Math.round(+f.budget.value * 100) : null, p_budget_visible: !!f.budget.value,
           p_deadline_hours: 72, p_equipment: e.id });
-        m.close(); toast(t('Запрос отправлен исполнителю', 'Request sent to the provider')); go('#/orders/' + id);
+        m.close(); toast(t('Заявка отправлена исполнителю', 'Request sent to the provider')); go('#/orders/' + id);
       } catch (err) { const el = m.el.querySelector('#err'); el.textContent = err.message; el.classList.remove('hidden'); }
     });
   };
