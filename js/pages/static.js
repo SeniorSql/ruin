@@ -1,6 +1,7 @@
 // Справочные страницы. Тексты соглашений — черновики, до запуска их должен утвердить юрист (L-01, L-54)
 import { isEn } from '../i18n.js';
 import { contactsHtml, faqHtml } from '../support.js';
+import { sb, q } from '../api.js';
 
 const DRAFT = '<div class="banner warn"><b>Черновик.</b>&nbsp;Текст подготовлен как основа и должен быть проверен и утверждён юристом до открытия сервиса для всех.</div>';
 
@@ -129,7 +130,107 @@ async function dogovorPage(app) {
   }
 }
 
+// ---------- «О компании» (#/about, 12.11.2026) ----------
+// Оформление как у главной: баннер с фото (день/ночь — css .hero-img), карточки с иконками, шаги, живые цифры, контакты.
+// Тот же текст для Яндекса делает сервер: server/seo_gen.py → /o-kompanii/ (ABOUT_*). Меняете текст — поменяйте и там.
+const AI = (d) => `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const AB_IC = {
+  shield: AI('<path d="m12 3 8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="m8 12 2.5 2.5L16 9"/>'),
+  hand: AI('<path d="M7 11V6a2 2 0 0 1 4 0v5M11 10V4a2 2 0 0 1 4 0v6M15 10V6a2 2 0 0 1 4 0v8a7 7 0 0 1-7 7h-1a7 7 0 0 1-6-3.5L3 14a2 2 0 0 1 3.4-2L7 13"/>'),
+  cal: AI('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 14h2M14 14h2M8 17h2"/>'),
+  doc: AI('<path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M8 13h8M8 17h5"/>'),
+  bell: AI('<path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/>'),
+  gauge: AI('<path d="M3.5 17a9 9 0 1 1 17 0"/><path d="m12 13 4-5"/><circle cx="12" cy="13" r="1.4"/><path d="M6 21h12"/>'),
+  map: AI('<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>'),
+  target: AI('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/>'),
+  mail: AI('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>'),
+  phone: AI('<path d="M5 3h4l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2"/>')
+};
+const plural3 = (n, a, b, c) => (n % 10 === 1 && n % 100 !== 11 ? a : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? b : c);
+
+async function aboutPage(app) {
+  const card = (ic, title, text) => `<div class="ab-card"><span class="ab-ic">${AB_IC[ic]}</span><b>${title}</b><p>${text}</p></div>`;
+  const steps = (list) => `<ol class="ab-steps">${list.map(([b, s]) => `<li><b>${b}</b><span>${s}</span></li>`).join('')}</ol>`;
+  app.innerHTML = `
+  <section class="hero ab-hero">
+    <div class="hero-copy">
+      <div class="eyebrow ab-eyebrow">О КОМПАНИИ</div>
+      <h1>RUIN — аренда <em>спецтехники</em></h1>
+      <p>Маркетплейс, на котором заказчики находят технику, а владельцы техники — заказы. Санкт-Петербург, Ленинградская область и вся Россия.</p>
+      <div class="hero-cta"><a class="btn" href="#/catalog">Каталог техники <span class="arr">→</span></a>
+        <a class="btn ghost hero-ghost" href="#/sdat">Разместить технику</a></div>
+    </div>
+    <div class="hero-visual" role="img" aria-label="Спецтехника на объекте"><div class="hero-img day"></div><div class="hero-img night"></div></div>
+  </section>
+
+  <div class="ab-two">
+    <div class="ab-block"><span class="ab-ic big">${AB_IC.target}</span><div>
+      <h2>Кто мы</h2>
+      <p>RUIN — онлайн-площадка аренды спецтехники: экскаваторов, автокранов, автовышек, манипуляторов, самосвалов, погрузчиков, катков и другой техники. Мы начали с Санкт-Петербурга и Ленинградской области и работаем по всей России — техника может приехать в любой город.</p></div></div>
+    <div class="ab-block"><span class="ab-ic big">${AB_IC.hand}</span><div>
+      <h2>Наша миссия</h2>
+      <p>Сделать аренду техники быстрой и честной: без бесконечных звонков, посредников и наценок. Заказчик сразу видит цены и свободные даты, исполнитель получает заказы напрямую и без комиссии — сейчас площадка бесплатна для всех.</p></div></div>
+  </div>
+
+  <div class="ab-stats" id="abStats">
+    <div class="ab-stat"><b data-k="eq">—</b><span>единиц техники в каталоге</span></div>
+    <div class="ab-stat"><b data-k="orgs">—</b><span>исполнителей с техникой</span></div>
+    <div class="ab-stat"><b data-k="cities">—</b><span>городов, где стоит техника</span></div>
+    <div class="ab-stat"><b>0 ₽</b><span>за размещение и заказы</span></div>
+  </div>
+
+  <div class="section-head"><div><div class="eyebrow">КАК ЭТО РАБОТАЕТ</div><h2>Просто для обеих сторон</h2></div></div>
+  <div class="ab-two">
+    <div class="ab-block col"><h3>${AB_IC.cal} Заказчику</h3>${steps([
+      ['Найдите технику', 'в каталоге — по виду, городу, цене и свободным датам'],
+      ['Забронируйте', 'онлайн или разместите заказ — исполнители сами пришлют предложения'],
+      ['Работайте по сделке', 'контакты, договор, путевые листы и акт — в одном месте'],
+      ['Оставьте отзыв', 'и помогите другим выбрать надёжного исполнителя']])}
+      <a class="btn" href="#/catalog">Выбрать технику</a></div>
+    <div class="ab-block col"><h3>${AB_IC.gauge} Исполнителю</h3>${steps([
+      ['Зарегистрируйтесь', 'и создайте организацию — ООО, ИП или самозанятый'],
+      ['Пройдите проверку', 'администратор подтвердит реквизиты — заказчики доверяют больше'],
+      ['Добавьте технику', 'фото, характеристики, цена за час или смену, календарь занятости'],
+      ['Получайте заказы', 'бронь из каталога и задачи с биржи заказов — напрямую, без посредников']])}
+      <a class="btn" href="#/sdat">Разместить технику</a></div>
+  </div>
+
+  <div class="section-head"><div><div class="eyebrow">ПРЕИМУЩЕСТВА</div><h2>Почему RUIN</h2></div></div>
+  <div class="ab-grid">
+    ${card('shield', 'Проверенные исполнители', 'Организации проходят проверку реквизитов до публикации техники.')}
+    ${card('hand', 'Без посредников', 'Договариваетесь и платите напрямую. Контакты открываются после подтверждения сделки.')}
+    ${card('cal', 'Бронь онлайн', 'Свободные даты видны в карточке техники — бронь без лишних звонков.')}
+    ${card('doc', 'Документы в сделке', 'Форма договора, путевые листы ЭСМ, заявка и акт выполненных работ.')}
+    ${card('bell', 'Уведомления', 'О новых заказах и бронях — в Telegram, MAX или на почту.')}
+    ${card('map', 'Вся Россия', 'Основа — Петербург и Ленобласть, но техника может поехать в любой город.')}
+  </div>
+
+  <div class="ab-contacts">
+    <div><div class="eyebrow">КОНТАКТЫ</div><h2>Свяжитесь с нами</h2><p class="muted">Ответим на вопросы о площадке, поможем разместить технику или подобрать исполнителя.</p></div>
+    <div class="ab-contact-list">
+      <a class="ab-contact" href="mailto:${MAIL}"><span class="ab-ic">${AB_IC.mail}</span><span><small>Почта</small><b>${MAIL}</b></span></a>
+      <a class="ab-contact" href="tel:+79161454220"><span class="ab-ic">${AB_IC.phone}</span><span><small>Телефон</small><b>+7 916 145-42-20</b></span></a>
+    </div>
+  </div>`;
+
+  // Живые цифры — из каталога (опубликованная техника)
+  try {
+    const rows = await q(sb.from('equipment').select('org_id,city').eq('status', 'PUBLISHED').limit(5000));
+    const vals = { eq: rows.length, orgs: new Set(rows.map((r) => r.org_id)).size, cities: new Set(rows.map((r) => r.city).filter(Boolean)).size };
+    const box = app.querySelector('#abStats');
+    if (!box) return;
+    box.querySelector('[data-k="eq"]').textContent = vals.eq;
+    box.querySelector('[data-k="orgs"]').textContent = vals.orgs;
+    box.querySelector('[data-k="cities"]').textContent = vals.cities;
+    const lbl = box.querySelectorAll('.ab-stat span');
+    lbl[0].textContent = `${plural3(vals.eq, 'единица', 'единицы', 'единиц')} техники в каталоге`;
+    lbl[1].textContent = `${plural3(vals.orgs, 'исполнитель', 'исполнителя', 'исполнителей')} с техникой`;
+    lbl[2].textContent = `${plural3(vals.cities, 'город', 'города', 'городов')}, где стоит техника`;
+  } catch { app.querySelector('#abStats')?.remove(); }
+}
+
 export async function render(app, _p, _q, pattern) {
+  if (pattern === 'about') { await aboutPage(app); return; }
   if (pattern === 'support') { app.innerHTML = `<div class="panel prose">${supportPage()}</div>`; return; }
   if (pattern === 'dogovor') { await dogovorPage(app); return; }
   if (pattern === 'sdat') { await sdatPage(app); return; }
