@@ -689,7 +689,7 @@ html[data-theme] #app>.prerender{display:none}
 .toast.err{background:#7f1d1de6}
 .skeleton{background:linear-gradient(90deg,var(--sk1) 0,var(--sk2) 50%,var(--sk1) 100%);background-size:200% 100%;animation:sk 1.2s infinite;border-radius:14px}
 @keyframes sk{to{background-position:-200% 0}}
-.foot{border-top:1px solid var(--line);margin-top:40px;padding:22px 0 0;font-size:13px;color:var(--muted);display:flex;gap:18px;flex-wrap:wrap}
+.foot{border-top:1px solid var(--line);margin-top:40px;padding:22px 0 0;font-size:13px;color:var(--muted);display:flex;gap:12px 18px;flex-wrap:wrap;align-items:center}
 .foot a{text-decoration:none}
 .foot a:hover,.foot summary:hover{color:var(--ink)}
 /* Подвал (v=93): «Помощь ▾» и «Документы ▾» — раскрывающиеся группы; открытая группа встаёт отдельной строкой */
@@ -699,6 +699,11 @@ html[data-theme] #app>.prerender{display:none}
 .foot-group[open]{flex-basis:100%}
 .foot-group[open] summary{color:var(--ink);font-weight:600}
 .foot-group[open] summary::after{transform:translateY(1px) rotate(-135deg)}
+/* v=94: заметная кнопка скачивания договора и бланков ЭСМ — последней в подвале */
+.foot a.foot-dl{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 14px;border-radius:999px;font-weight:700;
+  color:var(--ink);background:var(--accent-soft);border:1px solid var(--accent-line);transition:transform .15s,box-shadow .15s}
+.foot a.foot-dl:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
+.foot a.foot-dl svg{color:var(--accent-text,var(--accent))}
 .foot-menu{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:8px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
 .prose{max-width:780px}
 .prose h2{margin:22px 0 8px;font-size:20px}
