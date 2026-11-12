@@ -26,7 +26,8 @@ const ICON = {
   gauge: '<path d="M3.5 17a9 9 0 1 1 17 0"/><path d="m12 13 4-5"/><circle cx="12" cy="13" r="1.4"/><path d="M6 21h12"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/>',
-  auto: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17Z" fill="currentColor"/>'
+  auto: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17Z" fill="currentColor"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/>'
 };
 export const icon = (name, size = 18) =>
   `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[name]}</svg>`;
@@ -90,7 +91,7 @@ const ROUTES = [
   ['company/:id', 'company'], ['team', 'team'], ['crm', 'crm'], ['park', 'park'], ['analytics', 'analytics'], ['reviews', 'reviews'],
   ['messages', 'messages'], ['messages/:id', 'messages'],
   ['notifications', 'notifications'], ['favorites', 'favorites'],
-  ['admin', 'admin'], ['terms', 'static'], ['privacy', 'static'], ['consent', 'static'], ['help', 'static'], ['support', 'static'], ['dogovor', 'static'], ['sdat', 'static']
+  ['admin', 'admin'], ['terms', 'static'], ['privacy', 'static'], ['consent', 'static'], ['help', 'static'], ['support', 'static'], ['dogovor', 'static'], ['sdat', 'static'], ['about', 'static']
 ];
 
 function match(path) {
@@ -307,6 +308,8 @@ function renderSide(active) {
     }
   }
   if (state.user && isAdmin()) html += `<nav class="nav">${link('#/admin', 'shield', t('Админка', 'Admin'), c.admin?.total)}</nav>`;
+  // «О компании» (12.11.2026) — последним пунктом, видят все, включая гостей
+  html += `<nav class="nav nav-about">${link('#/about', 'info', t('О компании', 'About us'))}</nav>`;
   html += `</div>`;
   document.getElementById('sidebar').innerHTML = html;
 }
@@ -321,7 +324,7 @@ export function refreshShell() {
   const dealTab = query.tab || saved || (actsAsCustomer() ? 'customer' : 'provider');
   const activeMap = { '': '#/', catalog: '#/catalog', item: '#/catalog', orders: path === 'orders/new' ? '#/orders/new' : '#/orders',
     deals: '#/deals?tab=' + dealTab, fleet: '#/fleet', feed: '#/feed', offers: '#/offers', messages: '#/messages',
-    notifications: '#/notifications', account: '#/account', admin: '#/admin', team: '#/team', analytics: '#/analytics', company: '#/catalog', reviews: '#/reviews', crm: '#/crm', park: '#/park', support: '#/support', help: '#/support' };
+    notifications: '#/notifications', account: '#/account', admin: '#/admin', team: '#/team', analytics: '#/analytics', company: '#/catalog', reviews: '#/reviews', crm: '#/crm', park: '#/park', support: '#/support', help: '#/support', about: '#/about' };
   renderTop();
   renderSide(activeMap[top] ?? (m ? '#/' + m.name : ''));
 }
@@ -331,7 +334,7 @@ let cleanup = null;
 const PUBLIC = new Set(['home', 'catalog', 'item', 'auth', 'static', 'company']);
 
 const FOOTER = `<footer class="foot"><span>© RUIN, ${new Date().getFullYear()}</span><a href="#" data-onb>${t('Как пользоваться', 'How it works')}</a><a href="#/help">${t('Помощь', 'Help')}</a><a href="#/support">${t('Поддержка', 'Support')}</a>
-  <a href="#/terms">${t('Пользовательское соглашение', 'Terms of use')}</a><a href="#/privacy">${t('Политика обработки ПДн', 'Privacy policy')}</a><a href="#/consent">${t('Согласие на обработку ПДн', 'Personal data consent')}</a><a href="#" data-cookies>${t('Настройки cookie', 'Cookie settings')}</a><a href="/dogovor-arendy-spetstehniki/">${t('Договор аренды спецтехники', 'Machinery rental contract')}</a><a href="/sdat-spetstehniku-v-arendu/">${t('Сдать спецтехнику в аренду', 'Rent out your machinery')}</a>
+  <a href="#/terms">${t('Пользовательское соглашение', 'Terms of use')}</a><a href="#/privacy">${t('Политика обработки ПДн', 'Privacy policy')}</a><a href="#/consent">${t('Согласие на обработку ПДн', 'Personal data consent')}</a><a href="#" data-cookies>${t('Настройки cookie', 'Cookie settings')}</a><a href="/dogovor-arendy-spetstehniki/">${t('Договор аренды спецтехники', 'Machinery rental contract')}</a><a href="/sdat-spetstehniku-v-arendu/">${t('Сдать спецтехнику в аренду', 'Rent out your machinery')}</a><a href="/o-kompanii/">${t('О компании', 'About us')}</a>
   <span>${t('Фото техники — Wikimedia Commons, свободные лицензии, авторы указаны на фото', 'Machinery photos — Wikimedia Commons, free licences, authors credited on photos')}</span></footer>`;
 
 export async function route() {
