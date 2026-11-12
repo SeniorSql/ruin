@@ -289,49 +289,62 @@ function bindMeMenu() {
 function renderSide(active) {
   const c = state.counters || {};
   const o = state.org;
-  // cnt — нужно ваше действие (жёлтый), wait — ждёт другую сторону (серый)
+  // cnt — нужно ваше действие (жёлтый), wait — идёт работа / ждём другую сторону (серый).
+  // С 12.11.2026 серый — всё активное, где действие не нужно: открытые заказы, сделки в работе, предложения на рассмотрении.
+  const rest = (all, need) => Math.max(0, (all || 0) - (need || 0));
+  const G = {
+    orders: c.orders_open || 0,
+    dealsC: rest(c.deals_customer_active, c.deals_customer),
+    dealsP: rest(c.deals_provider_active, c.deals_provider),
+    offers: rest(c.offers_open, c.dates_pending),
+    feed: rest(c.feed_open, c.feed_new)
+  };
   const link = (href, ic, text, cnt, wait) =>
-    `<a href="${href}" class="${active === href ? 'active' : ''}">${icon(ic)}<span>${text}</span>${cnt ? `<span class="cnt" title="${t('Нужно ваше действие', 'Needs your action')}">${cnt}</span>` : ''}${wait ? `<span class="cnt wait" title="${t('Ждёт другую сторону', 'Waiting for the other party')}">${wait}</span>` : ''}</a>`;
+    `<a href="${href}" class="${active === href ? 'active' : ''}">${icon(ic)}<span>${text}</span>${cnt ? `<span class="cnt" title="${t('Нужно ваше действие', 'Needs your action')}">${cnt}</span>` : ''}${wait ? `<span class="cnt wait" title="${t('Идёт работа — ваше действие сейчас не нужно', 'In progress — no action needed now')}">${wait}</span>` : ''}</a>`;
   let html = `<div class="navs"><nav class="nav">
     ${link('#/', 'home', t('Главная', 'Home'))}${link('#/catalog', 'grid', t('Каталог техники', 'Machinery catalogue'))}
     ${state.user && (!o || (canManage(o) && o.can_order)) ? link('#/orders/new', 'plus', t('Разместить заказ', 'Post an order')) : ''}</nav>`;
   if (state.user && o) {
     if (actsAsCustomer(o)) {
       html += `<div class="nav-group customer"><div class="nav-role">${icon('list', 16)}<span>${t('Я заказчик', 'I am a customer')}</span><small>${t('арендую технику', 'I rent machinery')}</small></div><nav class="nav">
-        ${link('#/orders', 'list', t('Мои заказы', 'My orders'), c.orders_offers)}${link('#/deals?tab=customer', 'deal', t('Сделки', 'Deals'), c.deals_customer, c.deals_customer_wait)}</nav></div>`;
+        ${link('#/orders', 'list', t('Мои заказы', 'My orders'), c.orders_offers, G.orders)}${link('#/deals?tab=customer', 'deal', t('Сделки', 'Deals'), c.deals_customer, G.dealsC)}</nav></div>`;
     }
     if (actsAsProvider(o)) {
       html += `<div class="nav-group provider"><div class="nav-role">${icon('truck', 16)}<span>${t('Я исполнитель', 'I am a provider')}</span><small>${t('сдаю технику', 'I rent out machinery')}</small></div><nav class="nav">
         ${!o.can_provide ? `<a href="#/account" class="role-off">${t('Роль исполнителя выключена — техника скрыта из каталога. Включить →', 'Provider role is off — machinery hidden from the catalogue. Turn on →')}</a>` : ''}
-        ${link('#/crm', 'desk', t('Рабочий стол', 'Desk'), c.crm_due)}${link('#/fleet', 'truck', t('Моя техника', 'My machinery'), c.fleet_stale)}${link('#/park', 'gauge', t('Учёт парка', 'Fleet management'))}${o.can_provide ? link('#/feed', 'feed', t('Лента заказов', 'Order feed'), (c.feed_new || 0) + (c.dates_pending || 0)) : ''}
-        ${link('#/offers', 'send', t('Мои предложения', 'My offers'), c.dates_pending)}${link('#/deals?tab=provider', 'deal', t('Сделки', 'Deals'), c.deals_provider, c.deals_provider_wait)}</nav></div>`;
+        ${link('#/crm', 'desk', t('Рабочий стол', 'Desk'), c.crm_due)}${link('#/fleet', 'truck', t('Моя техника', 'My machinery'), c.fleet_stale)}${link('#/park', 'gauge', t('Учёт парка', 'Fleet management'))}${o.can_provide ? link('#/feed', 'feed', t('Лента заказов', 'Order feed'), (c.feed_new || 0) + (c.dates_pending || 0), G.feed) : ''}
+        ${link('#/offers', 'send', t('Мои предложения', 'My offers'), c.dates_pending, G.offers)}${link('#/deals?tab=provider', 'deal', t('Сделки', 'Deals'), c.deals_provider, G.dealsP)}</nav></div>`;
     }
   }
   if (state.user && isAdmin()) html += `<nav class="nav">${link('#/admin', 'shield', t('Админка', 'Admin'), c.admin?.total)}</nav>`;
   // «О компании» (12.11.2026) — последним пунктом, видят все, включая гостей
   html += `<nav class="nav nav-about">${link('#/about', 'info', t('О компании', 'About us'))}</nav>`;
   html += `</div>`;
-  // «Ждут вас» (12.11.2026, только телефон — на компьютере всё видно в боковом меню): пункты, где нужно ваше
-  // действие, отдельной строкой под лентой меню, чтобы не искать их прокруткой (например, новая заявка на бронь в «Ленте заказов»).
+  // «Мои дела» (12.11.2026, только телефон — на компьютере всё видно в боковом меню): все разделы, где у вас
+  // что-то идёт, отдельной строкой под лентой меню, чтобы не искать их прокруткой. Сначала жёлтые (нужно ваше действие),
+  // затем серые (идёт работа). Жёлтый фон строки — только когда есть что-то срочное.
   const attn = [];
   if (state.user && o) {
     if (actsAsCustomer(o)) {
-      attn.push(['#/orders', t('Мои заказы', 'My orders'), c.orders_offers]);
-      attn.push(['#/deals?tab=customer', t('Сделки · заказчик', 'Deals · customer'), c.deals_customer]);
+      attn.push(['#/orders', t('Мои заказы', 'My orders'), c.orders_offers, G.orders]);
+      attn.push(['#/deals?tab=customer', t('Сделки · заказчик', 'Deals · customer'), c.deals_customer, G.dealsC]);
     }
     if (actsAsProvider(o)) {
-      if (o.can_provide) attn.push(['#/feed', t('Лента заказов', 'Order feed'), (c.feed_new || 0) + (c.dates_pending || 0)]);
-      attn.push(['#/deals?tab=provider', t('Сделки · исполнитель', 'Deals · provider'), c.deals_provider]);
-      attn.push(['#/offers', t('Мои предложения', 'My offers'), c.dates_pending]);
-      attn.push(['#/crm', t('Рабочий стол', 'Desk'), c.crm_due]);
-      attn.push(['#/fleet', t('Моя техника', 'My machinery'), c.fleet_stale]);
+      if (o.can_provide) attn.push(['#/feed', t('Лента заказов', 'Order feed'), (c.feed_new || 0) + (c.dates_pending || 0), G.feed]);
+      attn.push(['#/deals?tab=provider', t('Сделки · исполнитель', 'Deals · provider'), c.deals_provider, G.dealsP]);
+      attn.push(['#/offers', t('Мои предложения', 'My offers'), c.dates_pending, G.offers]);
+      attn.push(['#/crm', t('Рабочий стол', 'Desk'), c.crm_due, 0]);
+      attn.push(['#/fleet', t('Моя техника', 'My machinery'), c.fleet_stale, 0]);
     }
   }
-  if (state.user && isAdmin()) attn.push(['#/admin', t('Админка', 'Admin'), c.admin?.total]);
-  const due = attn.filter(([, , n]) => n > 0);
-  if (due.length) {
-    html += `<div class="nav-attn" role="navigation" aria-label="${t('Ждут вашего действия', 'Waiting for your action')}"><span class="nav-attn-t">${t('Ждут вас', 'Waiting for you')}</span>`
-      + due.map(([href, text, n]) => `<a href="${href}" class="${active === href ? 'active' : ''}">${text}<span class="cnt">${n}</span></a>`).join('') + '</div>';
+  if (state.user && isAdmin()) attn.push(['#/admin', t('Админка', 'Admin'), c.admin?.total, 0]);
+  const shown = attn.filter(([, , n, g]) => n > 0 || g > 0).sort((a, b) => (b[2] > 0) - (a[2] > 0));
+  if (shown.length) {
+    const urgent = shown.some(([, , n]) => n > 0);
+    html += `<div class="nav-attn${urgent ? ' urgent' : ''}" role="navigation" aria-label="${t('Мои дела', 'My tasks')}"><span class="nav-attn-t">${t('Мои дела', 'My tasks')}</span>`
+      + shown.map(([href, text, n, g]) => `<a href="${href}" class="${active === href ? 'active' : ''}${n > 0 ? ' need' : ''}">${text}`
+        + (n > 0 ? `<span class="cnt" title="${t('Нужно ваше действие', 'Needs your action')}">${n}</span>` : '')
+        + (g > 0 ? `<span class="cnt wait" title="${t('Идёт работа', 'In progress')}">${g}</span>` : '') + '</a>').join('') + '</div>';
   }
   const side = document.getElementById('sidebar');
   side.innerHTML = html;
