@@ -378,13 +378,13 @@ const PUBLIC = new Set(['home', 'catalog', 'item', 'auth', 'static', 'company'])
 // «Помощь ▾» и «Документы ▾» раскрываются по нажатию (обычный <details>, без скриптов). Строка про Wikimedia убрана —
 // фото с Wikimedia в каталоге нет, у видео авторы подписаны на самом видео.
 const FOOTER = `<footer class="foot"><span>© RUIN, ${new Date().getFullYear()}</span>
-  <a href="/dogovor-arendy-spetstehniki/">${t('Договор аренды спецтехники и бланки ЭСМ', 'Machinery rental contract and ESM forms')}</a>
   <a href="/sdat-spetstehniku-v-arendu/">${t('Сдать спецтехнику в аренду', 'Rent out your machinery')}</a>
   <a href="/o-kompanii/">${t('О компании', 'About us')}</a>
   <details class="foot-group"><summary>${t('Помощь', 'Help')}</summary><div class="foot-menu">
     <a href="#" data-onb>${t('Как пользоваться', 'How it works')}</a><a href="#/help">${t('Помощь', 'Help')}</a><a href="#/support">${t('Поддержка', 'Support')}</a></div></details>
   <details class="foot-group"><summary>${t('Документы', 'Documents')}</summary><div class="foot-menu">
-    <a href="#/terms">${t('Пользовательское соглашение', 'Terms of use')}</a><a href="#/privacy">${t('Политика обработки ПДн', 'Privacy policy')}</a><a href="#/consent">${t('Согласие на обработку ПДн', 'Personal data consent')}</a><a href="#" data-cookies>${t('Настройки cookie', 'Cookie settings')}</a></div></details></footer>`;
+    <a href="#/terms">${t('Пользовательское соглашение', 'Terms of use')}</a><a href="#/privacy">${t('Политика обработки ПДн', 'Privacy policy')}</a><a href="#/consent">${t('Согласие на обработку ПДн', 'Personal data consent')}</a><a href="#" data-cookies>${t('Настройки cookie', 'Cookie settings')}</a></div></details>
+  <a class="foot-dl" href="/dogovor-arendy-spetstehniki/"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>${t('Скачать договор и бланки ЭСМ', 'Download contract and ESM forms')}</a></footer>`;
 
 export async function route() {
   // Ссылки из писем Supabase приходят с токеном в адресе — ждём, пока библиотека его обработает
