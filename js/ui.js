@@ -82,7 +82,7 @@ const S = {
   order: {
     DRAFT: ['gray', 'Черновик'], PUBLISHED: ['work', 'Ждёт предложений'], OFFERS_RECEIVED: ['offers', 'Есть предложения'],
     NEGOTIATION: ['wait', 'Ждёт подтверждения'], CONVERTED_TO_DEAL: ['ok', 'Сделка заключена'],
-    EXPIRED: ['closed', 'Истёк'], CANCELLED: ['closed', 'Отменён']
+    EXPIRED: ['closed', 'Истёк'], CANCELLED: ['closed', 'Отменён'], DECLINED: ['closed', 'Исполнитель отказался']
   },
   offer: {
     SUBMITTED: ['work', 'Отправлено'], SELECTED: ['wait', 'Выбрано, ждёт подтверждения'], ACCEPTED: ['ok', 'Принято'],
@@ -103,7 +103,7 @@ const S = {
 const S_EN = {
   org: { DRAFT: 'Not verified', PENDING_REVIEW: 'Under review', VERIFIED: 'Verified', REQUIRES_UPDATE: 'Needs changes', REJECTED: 'Rejected', SUSPENDED: 'Suspended' },
   equipment: { DRAFT: 'Draft', PENDING_MODERATION: 'In moderation', PUBLISHED: 'Published', REJECTED: 'Rejected', HIDDEN: 'Hidden', ARCHIVED: 'Archived' },
-  order: { DRAFT: 'Draft', PUBLISHED: 'Awaiting offers', OFFERS_RECEIVED: 'Offers received', NEGOTIATION: 'Awaiting confirmation', CONVERTED_TO_DEAL: 'Deal made', EXPIRED: 'Expired', CANCELLED: 'Cancelled' },
+  order: { DRAFT: 'Draft', PUBLISHED: 'Awaiting offers', OFFERS_RECEIVED: 'Offers received', NEGOTIATION: 'Awaiting confirmation', CONVERTED_TO_DEAL: 'Deal made', EXPIRED: 'Expired', CANCELLED: 'Cancelled', DECLINED: 'Provider declined' },
   offer: { SUBMITTED: 'Sent', SELECTED: 'Selected, awaiting confirmation', ACCEPTED: 'Accepted', DECLINED: 'Declined', WITHDRAWN: 'Withdrawn', EXPIRED: 'Expired', UNAVAILABLE: 'Machine busy', LOST: 'Another offer chosen' },
   deal: { AWAITING_CONFIRMATION: 'Awaiting confirmation', CONFIRMED: 'Confirmed', IN_PROGRESS: 'In progress', COMPLETION_PENDING: 'Awaiting completion', COMPLETED: 'Completed', CANCELLED: 'Cancelled' },
   booking: { HOLD: 'Hold (pending)', CONFIRMED: 'Booked', ACTIVE: 'In progress', COMPLETED: 'Completed', RELEASED: 'Released', EXPIRED: 'Expired' }
