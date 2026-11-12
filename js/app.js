@@ -311,7 +311,35 @@ function renderSide(active) {
   // «О компании» (12.11.2026) — последним пунктом, видят все, включая гостей
   html += `<nav class="nav nav-about">${link('#/about', 'info', t('О компании', 'About us'))}</nav>`;
   html += `</div>`;
-  document.getElementById('sidebar').innerHTML = html;
+  // «Ждут вас» (12.11.2026, только телефон — на компьютере всё видно в боковом меню): пункты, где нужно ваше
+  // действие, отдельной строкой под лентой меню, чтобы не искать их прокруткой (например, новая заявка на бронь в «Ленте заказов»).
+  const attn = [];
+  if (state.user && o) {
+    if (actsAsCustomer(o)) {
+      attn.push(['#/orders', t('Мои заказы', 'My orders'), c.orders_offers]);
+      attn.push(['#/deals?tab=customer', t('Сделки · заказчик', 'Deals · customer'), c.deals_customer]);
+    }
+    if (actsAsProvider(o)) {
+      if (o.can_provide) attn.push(['#/feed', t('Лента заказов', 'Order feed'), (c.feed_new || 0) + (c.dates_pending || 0)]);
+      attn.push(['#/deals?tab=provider', t('Сделки · исполнитель', 'Deals · provider'), c.deals_provider]);
+      attn.push(['#/offers', t('Мои предложения', 'My offers'), c.dates_pending]);
+      attn.push(['#/crm', t('Рабочий стол', 'Desk'), c.crm_due]);
+      attn.push(['#/fleet', t('Моя техника', 'My machinery'), c.fleet_stale]);
+    }
+  }
+  if (state.user && isAdmin()) attn.push(['#/admin', t('Админка', 'Admin'), c.admin?.total]);
+  const due = attn.filter(([, , n]) => n > 0);
+  if (due.length) {
+    html += `<div class="nav-attn" role="navigation" aria-label="${t('Ждут вашего действия', 'Waiting for your action')}"><span class="nav-attn-t">${t('Ждут вас', 'Waiting for you')}</span>`
+      + due.map(([href, text, n]) => `<a href="${href}" class="${active === href ? 'active' : ''}">${text}<span class="cnt">${n}</span></a>`).join('') + '</div>';
+  }
+  const side = document.getElementById('sidebar');
+  side.innerHTML = html;
+  // Телефон: лента меню сама прокручивается к открытому пункту (без прокрутки всей страницы)
+  const navs = side.querySelector('.navs'), cur = navs?.querySelector('a.active');
+  if (navs && cur && navs.scrollWidth > navs.clientWidth) {
+    navs.scrollLeft += cur.getBoundingClientRect().left - navs.getBoundingClientRect().left - (navs.clientWidth - cur.offsetWidth) / 2;
+  }
 }
 
 export function refreshShell() {
