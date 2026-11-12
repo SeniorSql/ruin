@@ -691,6 +691,15 @@ html[data-theme] #app>.prerender{display:none}
 @keyframes sk{to{background-position:-200% 0}}
 .foot{border-top:1px solid var(--line);margin-top:40px;padding:22px 0 0;font-size:13px;color:var(--muted);display:flex;gap:18px;flex-wrap:wrap}
 .foot a{text-decoration:none}
+.foot a:hover,.foot summary:hover{color:var(--ink)}
+/* Подвал (v=93): «Помощь ▾» и «Документы ▾» — раскрывающиеся группы; открытая группа встаёт отдельной строкой */
+.foot-group summary{cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:4px}
+.foot-group summary::-webkit-details-marker{display:none}
+.foot-group summary::after{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform .15s}
+.foot-group[open]{flex-basis:100%}
+.foot-group[open] summary{color:var(--ink);font-weight:600}
+.foot-group[open] summary::after{transform:translateY(1px) rotate(-135deg)}
+.foot-menu{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:8px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
 .prose{max-width:780px}
 .prose h2{margin:22px 0 8px;font-size:20px}
 .prose p,.prose li{color:var(--ink2)}
