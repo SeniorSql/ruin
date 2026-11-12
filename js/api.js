@@ -170,7 +170,24 @@ export async function refreshCounters() {
     }
     c.other_orgs = need;
   } catch {}
-  await Promise.all([feedCounter(), crmCounter(), adminCounters(), fleetCounter()]);
+  await Promise.all([feedCounter(), crmCounter(), adminCounters(), fleetCounter(), activeCounters()]);
+}
+
+// «Идёт работа» (12.11.2026, строка «Мои дела» на телефоне и серые счётчики в меню): сколько всего открытых
+// заказов, активных сделок и предложений на рассмотрении — чтобы не искать эти разделы прокруткой.
+async function activeCounters() {
+  const o = state.org, c = state.counters;
+  c.orders_open = 0; c.deals_customer_active = 0; c.deals_provider_active = 0; c.offers_open = 0;
+  if (!o) return;
+  const LIVE_DEALS = ['AWAITING_CONFIRMATION', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETION_PENDING'];
+  const cnt = async (b) => { try { const { count, error } = await b; return error ? 0 : (count || 0); } catch { return 0; } };
+  const head = { count: 'exact', head: true };
+  [c.orders_open, c.deals_customer_active, c.deals_provider_active, c.offers_open] = await Promise.all([
+    cnt(sb.from('orders').select('id', head).eq('customer_org_id', o.id).in('status', ['PUBLISHED', 'OFFERS_RECEIVED', 'NEGOTIATION'])),
+    cnt(sb.from('deals').select('id', head).eq('customer_org_id', o.id).in('status', LIVE_DEALS)),
+    cnt(sb.from('deals').select('id', head).eq('provider_org_id', o.id).in('status', LIVE_DEALS)),
+    cnt(sb.from('offers').select('id', head).eq('provider_org_id', o.id).in('status', ['SUBMITTED', 'SELECTED']))
+  ]);
 }
 
 // «Моя техника»: опубликованная техника, у которой календарь не подтверждали больше CAL_STALE_DAYS дней.
@@ -204,7 +221,7 @@ export function markOrderSeen(id) {
 // «Лента заказов»: новые открытые заказы под мою технику (или личные запросы мне), которые я ещё не открывал и не ответил
 async function feedCounter() {
   const o = state.org, c = state.counters;
-  c.feed_new = 0; c.dates_pending = 0; c.dates_pending_orders = [];
+  c.feed_new = 0; c.feed_open = 0; c.dates_pending = 0; c.dates_pending_orders = [];
   if (!o?.can_provide || o.verification_status !== 'VERIFIED') return;
   // Заказчик изменил даты — мои предложения ждут подтверждения новых дат (SQL 26). Это «нужно ваше действие».
   try {
@@ -227,6 +244,7 @@ async function feedCounter() {
     // или не откажусь (SQL 33) — просмотр её не сбрасывает. Заявки с биржи — как раньше, до просмотра.
     const due = fit.filter((x) => !offered.has(x.id) && (x.visibility === 'DIRECT' || !seen.has(x.id)));
     c.feed_new = due.length;
+    c.feed_open = fit.filter((x) => !offered.has(x.id)).length; // все открытые заказы под мою технику без моего ответа
     c.feed_new_ids = due.map((x) => x.id);
   } catch {}
 }
