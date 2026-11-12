@@ -374,9 +374,17 @@ export function refreshShell() {
 let cleanup = null;
 const PUBLIC = new Set(['home', 'catalog', 'item', 'auth', 'static', 'company']);
 
-const FOOTER = `<footer class="foot"><span>© RUIN, ${new Date().getFullYear()}</span><a href="#" data-onb>${t('Как пользоваться', 'How it works')}</a><a href="#/help">${t('Помощь', 'Help')}</a><a href="#/support">${t('Поддержка', 'Support')}</a>
-  <a href="#/terms">${t('Пользовательское соглашение', 'Terms of use')}</a><a href="#/privacy">${t('Политика обработки ПДн', 'Privacy policy')}</a><a href="#/consent">${t('Согласие на обработку ПДн', 'Personal data consent')}</a><a href="#" data-cookies>${t('Настройки cookie', 'Cookie settings')}</a><a href="/dogovor-arendy-spetstehniki/">${t('Договор аренды спецтехники', 'Machinery rental contract')}</a><a href="/sdat-spetstehniku-v-arendu/">${t('Сдать спецтехнику в аренду', 'Rent out your machinery')}</a><a href="/o-kompanii/">${t('О компании', 'About us')}</a>
-  <span>${t('Фото техники — Wikimedia Commons, свободные лицензии, авторы указаны на фото', 'Machinery photos — Wikimedia Commons, free licences, authors credited on photos')}</span></footer>`;
+// Подвал (12.11.2026): видны сразу — договор и бланки ЭСМ, «Сдать спецтехнику», «О компании»;
+// «Помощь ▾» и «Документы ▾» раскрываются по нажатию (обычный <details>, без скриптов). Строка про Wikimedia убрана —
+// фото с Wikimedia в каталоге нет, у видео авторы подписаны на самом видео.
+const FOOTER = `<footer class="foot"><span>© RUIN, ${new Date().getFullYear()}</span>
+  <a href="/dogovor-arendy-spetstehniki/">${t('Договор аренды спецтехники и бланки ЭСМ', 'Machinery rental contract and ESM forms')}</a>
+  <a href="/sdat-spetstehniku-v-arendu/">${t('Сдать спецтехнику в аренду', 'Rent out your machinery')}</a>
+  <a href="/o-kompanii/">${t('О компании', 'About us')}</a>
+  <details class="foot-group"><summary>${t('Помощь', 'Help')}</summary><div class="foot-menu">
+    <a href="#" data-onb>${t('Как пользоваться', 'How it works')}</a><a href="#/help">${t('Помощь', 'Help')}</a><a href="#/support">${t('Поддержка', 'Support')}</a></div></details>
+  <details class="foot-group"><summary>${t('Документы', 'Documents')}</summary><div class="foot-menu">
+    <a href="#/terms">${t('Пользовательское соглашение', 'Terms of use')}</a><a href="#/privacy">${t('Политика обработки ПДн', 'Privacy policy')}</a><a href="#/consent">${t('Согласие на обработку ПДн', 'Personal data consent')}</a><a href="#" data-cookies>${t('Настройки cookie', 'Cookie settings')}</a></div></details></footer>`;
 
 export async function route() {
   // Ссылки из писем Supabase приходят с токеном в адресе — ждём, пока библиотека его обработает
@@ -623,6 +631,12 @@ async function boot() {
     e.preventDefault();
     showOnboarding();
   });
+  // Подвал: открыта только одна группа («Помощь» или «Документы»)
+  document.addEventListener('toggle', (e) => {
+    const d = e.target;
+    if (!d.matches?.('.foot-group') || !d.open) return;
+    document.querySelectorAll('.foot-group[open]').forEach((x) => { if (x !== d) x.open = false; });
+  }, true);
   // «Настройки cookie» в подвале — показать уведомление снова и выбрать заново
   document.addEventListener('click', (e) => {
     if (!e.target.closest('[data-cookies]')) return;
