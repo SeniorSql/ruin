@@ -90,7 +90,7 @@ const ROUTES = [
   ['company/:id', 'company'], ['team', 'team'], ['crm', 'crm'], ['park', 'park'], ['analytics', 'analytics'], ['reviews', 'reviews'],
   ['messages', 'messages'], ['messages/:id', 'messages'],
   ['notifications', 'notifications'], ['favorites', 'favorites'],
-  ['admin', 'admin'], ['terms', 'static'], ['privacy', 'static'], ['consent', 'static'], ['help', 'static'], ['support', 'static'], ['dogovor', 'static']
+  ['admin', 'admin'], ['terms', 'static'], ['privacy', 'static'], ['consent', 'static'], ['help', 'static'], ['support', 'static'], ['dogovor', 'static'], ['sdat', 'static']
 ];
 
 function match(path) {
@@ -331,7 +331,7 @@ let cleanup = null;
 const PUBLIC = new Set(['home', 'catalog', 'item', 'auth', 'static', 'company']);
 
 const FOOTER = `<footer class="foot"><span>© RUIN, ${new Date().getFullYear()}</span><a href="#" data-onb>${t('Как пользоваться', 'How it works')}</a><a href="#/help">${t('Помощь', 'Help')}</a><a href="#/support">${t('Поддержка', 'Support')}</a>
-  <a href="#/terms">${t('Пользовательское соглашение', 'Terms of use')}</a><a href="#/privacy">${t('Политика обработки ПДн', 'Privacy policy')}</a><a href="#/consent">${t('Согласие на обработку ПДн', 'Personal data consent')}</a><a href="#" data-cookies>${t('Настройки cookie', 'Cookie settings')}</a><a href="/dogovor-arendy-spetstehniki/">${t('Договор аренды спецтехники', 'Machinery rental contract')}</a>
+  <a href="#/terms">${t('Пользовательское соглашение', 'Terms of use')}</a><a href="#/privacy">${t('Политика обработки ПДн', 'Privacy policy')}</a><a href="#/consent">${t('Согласие на обработку ПДн', 'Personal data consent')}</a><a href="#" data-cookies>${t('Настройки cookie', 'Cookie settings')}</a><a href="/dogovor-arendy-spetstehniki/">${t('Договор аренды спецтехники', 'Machinery rental contract')}</a><a href="/sdat-spetstehniku-v-arendu/">${t('Сдать спецтехнику в аренду', 'Rent out your machinery')}</a>
   <span>${t('Фото техники — Wikimedia Commons, свободные лицензии, авторы указаны на фото', 'Machinery photos — Wikimedia Commons, free licences, authors credited on photos')}</span></footer>`;
 
 export async function route() {
@@ -378,7 +378,7 @@ export async function route() {
   }
   app.innerHTML = '<div class="skeleton" style="height:320px"></div>';
   // Главная — полный заголовок для поисковиков (как в index.html), остальные страницы — короткий
-  document.title = m.mod === 'home' ? t('Аренда спецтехники по всей России — экскаваторы, автокраны, манипуляторы, самосвалы | RUIN', 'Construction machinery rental across Russia | RUIN')
+  document.title = m.mod === 'home' ? t('Аренда спецтехники в Санкт-Петербурге и Ленинградской области — экскаваторы, автокраны, манипуляторы | RUIN', 'Construction machinery rental in St Petersburg and across Russia | RUIN')
     : t('RUIN — аренда спецтехники', 'RUIN — construction machinery rental');
   try {
     const page = await import(`./pages/${m.mod}.js`);
