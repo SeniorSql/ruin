@@ -90,7 +90,7 @@ const ROUTES = [
   ['company/:id', 'company'], ['team', 'team'], ['crm', 'crm'], ['park', 'park'], ['analytics', 'analytics'], ['reviews', 'reviews'],
   ['messages', 'messages'], ['messages/:id', 'messages'],
   ['notifications', 'notifications'], ['favorites', 'favorites'],
-  ['admin', 'admin'], ['terms', 'static'], ['privacy', 'static'], ['consent', 'static'], ['help', 'static'], ['support', 'static']
+  ['admin', 'admin'], ['terms', 'static'], ['privacy', 'static'], ['consent', 'static'], ['help', 'static'], ['support', 'static'], ['dogovor', 'static']
 ];
 
 function match(path) {
@@ -118,14 +118,37 @@ export function parseHash() {
 export const go = (hash) => { location.hash = hash; };
 
 // ---------- уведомление о cookie (152-ФЗ, v=80: тонкая строка) ----------
-// Сейчас аналитики на сайте нет — только необходимые cookie (вход, тема, язык, черновики, этот выбор), поэтому
-// одна кнопка «Понятно». Когда подключат Яндекс Метрику: поставить ANALYTICS_ON = true и COOKIE_VER = 3 —
-// в строке появятся «Принять» / «Только необходимые», и всех спросят заново. Метрику запускать только если analyticsAllowed().
+// ANALYTICS_ON = false — только необходимые cookie и одна кнопка «Понятно»; true — «Принять» / «Только необходимые»,
+// при смене COOKIE_VER всех спрашивают заново. Метрика запускается только если analyticsAllowed().
 // Выбор хранится в браузере и пишется в журнал cookie_consents (SQL 29). Показать снова — «Настройки cookie» в подвале.
-const ANALYTICS_ON = false;
-const COOKIE_KEY = 'ruin.cookieConsent', COOKIE_VER = 2;
+// С 12.11.2026 (v=83) Метрика подключена: счётчик 114217588 (аккаунт Этибара), Вебвизор ВЫКЛЮЧЕН (он записывает ввод в формы — ПДн).
+const ANALYTICS_ON = true;
+const COOKIE_KEY = 'ruin.cookieConsent', COOKIE_VER = 3;
 export function cookieChoice() { try { return JSON.parse(localStorage.getItem(COOKIE_KEY) || 'null'); } catch { return null; } }
 export const analyticsAllowed = () => ANALYTICS_ON && cookieChoice()?.analytics === true;
+
+// ---------- Яндекс Метрика — только после «Принять» ----------
+// Код счётчика без inline-скрипта (его блокирует CSP): очередь ym создаём здесь, tag.js грузим с mc.yandex.ru.
+// Сайт одностраничный (адреса #/…), поэтому каждый переход отправляем как просмотр страницы (hit).
+const YM_ID = 114217588;
+let ymOn = false;
+function startMetrika() {
+  if (ymOn || !analyticsAllowed()) return;
+  ymOn = true;
+  window.ym = window.ym || function (...a) { (window.ym.a = window.ym.a || []).push(a); };
+  window.ym.l = Date.now();
+  const s = document.createElement('script');
+  s.async = true; s.src = 'https://mc.yandex.ru/metrika/tag.js';
+  document.head.appendChild(s);
+  window.ym(YM_ID, 'init', { clickmap: true, trackLinks: true, accurateTrackBounce: true, webvisor: false, defer: true });
+  ymHit();
+}
+function ymHit() {
+  if (!ymOn) return;
+  try { window.ym(YM_ID, 'hit', location.href, { title: document.title, referer: document.referrer }); } catch {}
+}
+window.addEventListener('ruin:cookie', startMetrika);
+window.addEventListener('hashchange', () => setTimeout(ymHit, 300));
 function showCookieBar(force = false) {
   const ch = cookieChoice();
   // Кто уже ответил на прошлую версию (v=79), того не спрашиваем снова — смысл тот же: аналитики нет
@@ -308,7 +331,7 @@ let cleanup = null;
 const PUBLIC = new Set(['home', 'catalog', 'item', 'auth', 'static', 'company']);
 
 const FOOTER = `<footer class="foot"><span>© RUIN, ${new Date().getFullYear()}</span><a href="#" data-onb>${t('Как пользоваться', 'How it works')}</a><a href="#/help">${t('Помощь', 'Help')}</a><a href="#/support">${t('Поддержка', 'Support')}</a>
-  <a href="#/terms">${t('Пользовательское соглашение', 'Terms of use')}</a><a href="#/privacy">${t('Политика обработки ПДн', 'Privacy policy')}</a><a href="#/consent">${t('Согласие на обработку ПДн', 'Personal data consent')}</a><a href="#" data-cookies>${t('Настройки cookie', 'Cookie settings')}</a>
+  <a href="#/terms">${t('Пользовательское соглашение', 'Terms of use')}</a><a href="#/privacy">${t('Политика обработки ПДн', 'Privacy policy')}</a><a href="#/consent">${t('Согласие на обработку ПДн', 'Personal data consent')}</a><a href="#" data-cookies>${t('Настройки cookie', 'Cookie settings')}</a><a href="/dogovor-arendy-spetstehniki/">${t('Договор аренды спецтехники', 'Machinery rental contract')}</a>
   <span>${t('Фото техники — Wikimedia Commons, свободные лицензии, авторы указаны на фото', 'Machinery photos — Wikimedia Commons, free licences, authors credited on photos')}</span></footer>`;
 
 export async function route() {
@@ -564,6 +587,7 @@ async function boot() {
   });
   await route();
   showCookieBar();
+  startMetrika(); // только если посетитель раньше нажал «Принять»
   maybeShowOnboarding();
 }
 boot();
