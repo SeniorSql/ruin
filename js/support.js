@@ -14,8 +14,8 @@ export const SUPPORT = {
 export const FAQ = [
   { k: ['заброн', 'бронь', 'аренд', 'арендова', 'взять', 'book', 'rent'],
     q: ['Как забронировать технику?', 'How do I book a machine?'],
-    a: ['Откройте <a href="#/catalog">каталог</a>, выберите технику и даты — калькулятор покажет стоимость. Нажмите «Забронировать», укажите адрес объекта. Исполнитель подтвердит бронь в течение 12 часов, после этого откроются контакты.',
-      'Open the <a href="#/catalog">catalogue</a>, choose a machine and dates — the calculator shows the price. Click “Book” and enter the site address. The provider confirms within 12 hours, then contacts become visible.'] },
+    a: ['Откройте <a href="#/catalog">каталог</a>, выберите технику и даты — калькулятор покажет стоимость. Нажмите «Забронировать», укажите адрес объекта. Исполнитель ответит в течение 2 рабочих часов (8:00–21:00 МСК), после подтверждения откроются контакты.',
+      'Open the <a href="#/catalog">catalogue</a>, choose a machine and dates — the calculator shows the price. Click “Book” and enter the site address. The provider replies within 2 working hours (8:00–21:00 Moscow time), then contacts become visible.'] },
   { k: ['заказ', 'разместить', 'предложени', 'биржа', 'order', 'offer'],
     q: ['Как получить предложения от нескольких исполнителей?', 'How do I get offers from several providers?'],
     a: ['<a href="#/orders/new">Разместите заказ</a>: категория, даты, город. Проверенные исполнители пришлют цены — их можно сравнить и выбрать лучшее.',
