@@ -8,7 +8,7 @@ const DRAFT = '<div class="banner warn"><b>Черновик.</b>&nbsp;Текст
 const OP = 'Индивидуальный предприниматель Исмаилов Этибар Худавердиевич (ИНН 771572170870, ОГРНИП 326774600325074), адрес: г. Москва, Алтуфьевское шоссе, д. 26А, кв. 72';
 const MAIL = 'info@ru-in.ru';
 const EDITION = '<p class="small muted">Редакция от 11.11.2026</p>';
-const EDITION_PRIVACY = '<p class="small muted">Редакция от 12.11.2026 (добавлен раздел 10 о файлах cookie)</p>';
+const EDITION_PRIVACY = '<p class="small muted">Редакция от 12.11.2026 (раздел 10: файлы cookie и Яндекс Метрика)</p>';
 
 const PAGES = {
   terms: `<h1>Пользовательское соглашение</h1>${DRAFT}
@@ -30,7 +30,7 @@ const PAGES = {
     <h2>7. Сроки</h2><p>Данные хранятся, пока действует аккаунт, и удаляются в течение 30 дней после отзыва согласия или удаления аккаунта. Сведения о сделках и документы хранятся в сроки, установленные законом (в том числе 5 лет для первичных документов).</p>
     <h2>8. Защита</h2><p>Доступ к данным разграничен по ролям; соединение защищено (HTTPS); пароли хранятся только в виде хеша; важные действия подтверждаются кодом.</p>
     <h2>9. Ваши права</h2><p>Вы можете узнать, какие данные мы обрабатываем, исправить их, отозвать согласие или удалить аккаунт, написав на <a href="mailto:${MAIL}">${MAIL}</a>. Ответим в течение 10 рабочих дней.</p>
-    <h2>10. Файлы cookie и хранение данных в браузере</h2><p><b>Необходимые</b> — без них сайт не работает: вход в аккаунт и продление сессии, выбранные тема и язык, черновики форм, ваш выбор по cookie. Хранятся в вашем браузере (cookie и localStorage), никому не передаются, для них согласие не требуется. <b>Аналитические</b> cookie (статистика посещений, например Яндекс Метрика) сейчас не используются. Если мы их подключим, они будут включаться только с вашего согласия — в уведомлении о cookie появится выбор «Принять» / «Только необходимые». Уведомление можно открыть снова по ссылке «Настройки cookie» внизу страницы. Cookie также можно удалить в настройках браузера.</p>${EDITION_PRIVACY}`,
+    <h2>10. Файлы cookie и хранение данных в браузере</h2><p><b>Необходимые</b> — без них сайт не работает: вход в аккаунт и продление сессии, выбранные тема и язык, черновики форм, ваш выбор по cookie. Хранятся в вашем браузере (cookie и localStorage), никому не передаются, для них согласие не требуется. <b>Аналитические</b> — сервис Яндекс Метрика (ООО «Яндекс», Россия) для статистики посещений: какие страницы открывают, откуда пришли, тип устройства и браузера, примерный регион по IP-адресу. Включаются <b>только если вы нажали «Принять»</b> в уведомлении о cookie; при выборе «Только необходимые» Метрика не загружается. Запись действий на экране (Вебвизор) не используется, введённые в формы данные в Метрику не передаются. Данные обрабатываются Яндексом по его политике конфиденциальности и используются нами только в обезличенном виде для улучшения сайта. Уведомление можно открыть снова по ссылке «Настройки cookie» внизу страницы. Cookie также можно удалить в настройках браузера.</p>${EDITION_PRIVACY}`,
   consent: `<h1>Согласие на обработку персональных данных</h1>${DRAFT}
     <p>Я, регистрируясь на сайте ru-in.ru (RUIN), свободно, своей волей и в своём интересе даю согласие оператору — ${OP} — на обработку моих персональных данных на следующих условиях.</p>
     <h2>1. Цель</h2><p>Регистрация и использование сервиса RUIN: каталог техники, заказы, сделки, связь со сторонами сделки, уведомления, проверка организаций, разбор обращений.</p>
@@ -51,7 +51,7 @@ const OP_EN = 'Sole proprietor Etibar Khudaverdiyevich Ismailov (INN 77157217087
 const DRAFT_EN = '<div class="banner warn"><b>Draft.</b>&nbsp;This text is a working basis and must be reviewed and approved by a lawyer before the service opens to everyone.</div>';
 const NOTE_EN = '<div class="banner info">English translation for information only. In case of any discrepancy, the Russian version prevails.</div>';
 const EDITION_EN = '<p class="small muted">Version of 11 November 2026</p>';
-const EDITION_PRIVACY_EN = '<p class="small muted">Version of 12 November 2026 (section 10 on cookies added)</p>';
+const EDITION_PRIVACY_EN = '<p class="small muted">Version of 12 November 2026 (section 10: cookies and Yandex Metrica)</p>';
 
 const PAGES_EN = {
   terms: `<h1>Terms of use</h1>${NOTE_EN}${DRAFT_EN}
@@ -73,7 +73,7 @@ const PAGES_EN = {
     <h2>7. Retention</h2><p>Data is kept while the account exists and deleted within 30 days after consent is withdrawn or the account is deleted. Deal records and documents are kept for the periods required by law (including 5 years for primary documents).</p>
     <h2>8. Protection</h2><p>Access to data is role-based; connections are encrypted (HTTPS); passwords are stored only as hashes; important actions are confirmed with a code.</p>
     <h2>9. Your rights</h2><p>You can find out what data we process, correct it, withdraw your consent or delete your account by writing to <a href="mailto:${MAIL}">${MAIL}</a>. We reply within 10 business days.</p>
-    <h2>10. Cookies and browser storage</h2><p><b>Necessary</b> — the site does not work without them: logging in and keeping your session, the chosen theme and language, form drafts, your cookie choice. They are stored in your browser (cookies and localStorage), are not shared with anyone and do not require consent. <b>Analytics</b> cookies (visit statistics, e.g. Yandex Metrica) are not used at the moment. If we add them, they will be enabled only with your consent — the cookie notice will then offer “Accept” / “Necessary only”. You can reopen the notice via the “Cookie settings” link at the bottom of the page, or delete cookies in your browser settings.</p>${EDITION_PRIVACY_EN}`,
+    <h2>10. Cookies and browser storage</h2><p><b>Necessary</b> — the site does not work without them: logging in and keeping your session, the chosen theme and language, form drafts, your cookie choice. They are stored in your browser (cookies and localStorage), are not shared with anyone and do not require consent. <b>Analytics</b> — Yandex Metrica (Yandex LLC, Russia) for visit statistics: pages viewed, traffic source, device and browser type, approximate region by IP address. Enabled <b>only if you click “Accept”</b> in the cookie notice; with “Necessary only” Metrica is not loaded. Session recording (Webvisor) is not used and form input is not sent to Metrica. Data is processed by Yandex under its privacy policy and used by us only in aggregated form to improve the site. You can reopen the notice via the “Cookie settings” link at the bottom of the page, or delete cookies in your browser settings.</p>${EDITION_PRIVACY_EN}`,
   consent: `<h1>Consent to personal data processing</h1>${NOTE_EN}${DRAFT_EN}
     <p>By registering on ru-in.ru (RUIN), I freely, of my own will and in my own interest, give my consent to the operator — ${OP_EN} — to process my personal data on the following terms.</p>
     <h2>1. Purpose</h2><p>Registration and use of the RUIN service: machinery catalogue, orders, deals, communication with deal parties, notifications, verification of organisations, handling requests.</p>
@@ -97,8 +97,27 @@ function supportPage() {
     <h2>${en ? 'Frequently asked questions' : 'Частые вопросы'}</h2>${faqHtml()}`;
 }
 
-export function render(app, _p, _q, pattern) {
+// Статья «Договор аренды спецтехники» (12.11.2026): текст один — его делает сервер для Яндекса
+// (server/seo_gen.py → /dogovor-arendy-spetstehniki/), здесь берём ту же статью с этой страницы.
+async function dogovorPage(app) {
+  app.innerHTML = '<div class="panel"><div class="skeleton" style="height:240px"></div></div>';
+  try {
+    const r = await fetch('/dogovor-arendy-spetstehniki/', { cache: 'no-cache' });
+    const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+    const art = doc.querySelector('.prerender article');
+    if (!r.ok || !art) throw new Error('no article');
+    art.querySelectorAll('script').forEach((s) => s.remove());
+    app.innerHTML = `<div class="crumbs"><a href="#/">RUIN</a> › <b>Договор аренды спецтехники</b></div><div class="panel prose">${art.innerHTML}</div>`;
+  } catch {
+    app.innerHTML = `<div class="panel prose"><h1>Договор аренды спецтехники</h1><p>На RUIN договор формируется автоматически в каждой сделке —
+      с реквизитами сторон, техникой, сроками, ценой и условиями отмены. Акты и путевые листы оформляются там же.</p>
+      <p><a class="btn" href="#/catalog">Выбрать технику</a> <a class="btn ghost" href="#/orders/new">Разместить заказ</a></p></div>`;
+  }
+}
+
+export async function render(app, _p, _q, pattern) {
   if (pattern === 'support') { app.innerHTML = `<div class="panel prose">${supportPage()}</div>`; return; }
+  if (pattern === 'dogovor') { await dogovorPage(app); return; }
   const html = (isEn() && PAGES_EN[pattern]) || PAGES[pattern];
   app.innerHTML = `<div class="panel prose">${html}</div>`;
 }
