@@ -105,8 +105,9 @@ async function editor(app, o, id, query = {}) {
         <div class="grid3">
           <label class="f"><span>Единица цены</span><select class="inp" name="price_unit">
             <option value="SHIFT" ${e.price_unit === 'SHIFT' ? 'selected' : ''}>За смену</option><option value="HOUR" ${e.price_unit === 'HOUR' ? 'selected' : ''}>За час</option>
-            <option value="DAY" ${e.price_unit === 'DAY' ? 'selected' : ''}>За сутки</option><option value="NEGOTIABLE" ${e.price_unit === 'NEGOTIABLE' ? 'selected' : ''}>Договорная</option></select></label>
-          <label class="f"><span>Ставка, ₽</span><input class="inp" name="price" type="number" min="0" step="1" max="1000000000" value="${fromMinor(e.price_minor)}"></label>
+            <option value="DAY" ${e.price_unit === 'DAY' ? 'selected' : ''}>За сутки</option></select></label>
+          <label class="f"><span>Ставка, ₽ <i style="color:var(--red);font-style:normal">*</i></span><input class="inp" name="price" type="number" min="1" step="1" max="1000000000" required value="${fromMinor(e.price_minor)}">
+            ${e.price_unit === 'NEGOTIABLE' ? '<div class="hint">Раньше была «Договорная» — укажите ставку, без неё карточку не сохранить</div>' : ''}</label>
           <label class="f"><span>Часов в смене</span><input class="inp" name="shift_hours" type="number" min="1" max="24" value="${e.shift_hours}"></label>
           <label class="f"><span>Минимальный заказ, единиц</span><input class="inp" name="min_units" type="number" min="1" value="${e.min_units}"></label>
           <label class="f"><span>Доплата за оператора, ₽/ед.</span><input class="inp" name="operator" type="number" min="0" step="1" max="1000000000" value="${fromMinor(e.operator_minor)}">
@@ -183,7 +184,7 @@ async function editor(app, o, id, query = {}) {
       s2: [...app.querySelectorAll('[data-spec]')].some((i) => i.value !== '') ? 'ok' : '',
       s3: photos.length >= 3 ? 'ok' : 'todo',
       s4: filled('city') ? 'ok' : 'todo',
-      s5: (f.with_operator.checked || f.without_operator.checked) && (f.price_unit.value === 'NEGOTIABLE' || filled('price')) ? 'ok' : 'todo',
+      s5: (f.with_operator.checked || f.without_operator.checked) && Number(f.price.value) > 0 ? 'ok' : 'todo',
       s6: id && calStale(e) ? 'attn' : ''
     };
     const tips = { ok: 'Обязательные поля заполнены', todo: 'Есть незаполненные обязательные поля', '': 'Необязательный раздел',
@@ -243,6 +244,11 @@ async function editor(app, o, id, query = {}) {
   async function save() {
     const p = payload();
     if (!p.with_operator && !p.without_operator) throw new Error('Выберите формат аренды: с оператором и/или без');
+    // 12.11.2026 (Этибар): цена обязательна, «Договорная» убрана. То же проверяет база (SQL 32).
+    if (!(p.price_minor > 0)) {
+      f.price.focus();
+      throw new Error('Укажите ставку в разделе «5. Цены и условия» — цена обязательна');
+    }
     if (id) {
       const { error } = await sb.from('equipment').update(p).eq('id', id);
       if (error) throw new Error(error.message);
