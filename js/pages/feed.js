@@ -1,7 +1,7 @@
 // Исполнитель: лента заказов, карточка заказа, форма предложения, мои предложения (SCR-ORD-06..09)
 import { sb, state, q, rpc, loadCategories, seenOrders, markOrderSeen, refreshCounters, canManage, actsAsProvider } from '../api.js';
 import { esc, money, status, toast, busy, emptyState, errorState, date, period, FORMAT, dateTime, timeLeft, toMinor, fromMinor,
-  statusLabel, qs, photoOf, offerParts, DELIVERY_MODE } from '../ui.js';
+  statusLabel, qs, photoOf, offerParts, DELIVERY_MODE, modal } from '../ui.js';
 import { go, route, refreshShell } from '../app.js';
 
 export async function render(app, params, query, pattern) {
@@ -42,7 +42,10 @@ async function feed(app, query) {
   const mine = rows.length ? await q(sb.from('offers').select('order_id,status').eq('provider_org_id', state.org.id).in('order_id', rows.map((r) => r.id))) : [];
   const myByOrder = Object.fromEntries(mine.map((x) => [x.order_id, x.status]));
   const seen = seenOrders();
-  const fresh = rows.filter((o) => !myByOrder[o.id] && !seen.has(o.id)).length;
+  // Прямые заявки на мою технику без ответа (12.11.2026) — первыми, с пометкой; счётчик держат до ответа или отказа
+  const directDue = (o) => o.visibility === 'DIRECT' && o.invited_org_id === state.org.id && !myByOrder[o.id];
+  rows.sort((a, b) => directDue(b) - directDue(a));
+  const fresh = rows.filter((o) => !directDue(o) && !myByOrder[o.id] && !seen.has(o.id)).length;
   // Заказчик изменил даты — эти заказы показываем отдельно сверху: после переноса приём предложений может быть
   // уже закрыт и заказ не попадёт в общий список, а подтвердить даты всё равно нужно
   let pend = [];
@@ -66,12 +69,13 @@ async function feed(app, query) {
       <input class="inp" name="city" placeholder="Город" value="${esc(f.city)}">
       <label class="check" style="margin:0"><input type="checkbox" name="mine" value="1" ${f.mine === '1' ? 'checked' : ''}> Подходит моей технике</label>
       <button class="btn dark">Показать</button></form>
-    ${rows.length ? `<div class="panel">${rows.map((o) => `<a class="row-item" href="#/feed/${o.id}">
-      <div class="grow"><b>${esc(o.title)}</b>${!myByOrder[o.id] && !seen.has(o.id) ? '<span class="badge-new">НОВЫЙ</span>' : ''}${pendSet.has(o.id) ? ' <span class="st warn">Даты изменены — подтвердите</span>' : ''}
+    ${rows.length ? `<div class="panel">${rows.map((o) => `<a class="row-item${directDue(o) ? ' row-attn' : ''}" href="#/feed/${o.id}">
+      <div class="grow"><b>${esc(o.title)}</b>${directDue(o) ? ' <span class="st warn">Заявка на вашу технику — ждёт ответа</span>'
+        : !myByOrder[o.id] && !seen.has(o.id) ? '<span class="badge-new">НОВЫЙ</span>' : ''}${pendSet.has(o.id) ? ' <span class="st warn">Даты изменены — подтвердите</span>' : ''}
         <div class="small muted">${esc(o.categories?.name)} · ${o.qty} шт. · ${esc(o.city)}${o.district ? ', ' + esc(o.district) : ''} · ${FORMAT[o.format].toLowerCase()}</div>
         <div class="small">${period(o.start_date, o.end_date)}${o.budget_visible && o.budget_minor ? ' · бюджет ' + money(o.budget_minor) : ''}
           ${o.visibility === 'DIRECT' ? ' · <b>личный запрос вам</b>' : ''}</div></div>
-      <div style="text-align:right">${myByOrder[o.id] ? status('offer', myByOrder[o.id]) : `<span class="small muted">приём ещё ${timeLeft(o.deadline_at)}</span>`}</div></a>`).join('')}</div>`
+      <div style="text-align:right">${myByOrder[o.id] ? status('offer', myByOrder[o.id]) : directDue(o) ? `<span class="small"><b>осталось ${timeLeft(o.deadline_at)}</b></span>` : `<span class="small muted">приём ещё ${timeLeft(o.deadline_at)}</span>`}</div></a>`).join('')}</div>`
     : emptyState('Подходящих заказов сейчас нет', 'Мы пришлём уведомление, когда появится заказ для вашей техники. Можно снять фильтр «Подходит моей технике».')}`;
   app.querySelector('#seenAll')?.addEventListener('click', async () => {
     rows.forEach((o) => markOrderSeen(o.id));
@@ -103,12 +107,17 @@ async function orderPage(app, id) {
   const active = myOffers.find((f) => ['SUBMITTED', 'SELECTED'].includes(f.status));
   const open = ['PUBLISHED', 'OFFERS_RECEIVED'].includes(o.status) && new Date(o.deadline_at) > Date.now();
   const cust = o.organizations || {};
+  // Прямая заявка на мою технику без ответа: ответить предложением или отказаться (SQL 33)
+  const directDue = open && o.visibility === 'DIRECT' && o.invited_org_id === state.org.id && !active;
 
   app.innerHTML = `
     <div class="crumbs"><a href="#/feed">Лента заказов</a> › <b>${esc(o.title)}</b></div>
     <div class="page-head"><div><h1>${esc(o.title)}</h1><div style="margin-top:6px">${status('order', o.status)}
       ${o.visibility === 'DIRECT' ? '<span class="st warn">Личный запрос вам</span>' : ''}</div></div>
       <span class="small muted" style="max-width:260px">Чат с заказчиком откроется, когда он выберет ваше предложение и оформится сделка.</span></div>
+    ${directDue ? `<div class="banner warn" style="display:block"><b>Заявка на вашу технику — ждёт ответа (осталось ${timeLeft(o.deadline_at)}).</b>
+      Отправьте предложение с ценой и доставкой или откажитесь, если не можете взять заказ. Пока вы не ответите, заявка остаётся в «Ждут вас».</div>` : ''}
+    ${o.status === 'DECLINED' && o.invited_org_id === state.org.id ? `<div class="banner info">Вы отказались от этой заявки${o.cancel_reason ? `: ${esc(o.cancel_reason)}` : ''}.</div>` : ''}
     ${active?.status === 'SUBMITTED' && active.dates_pending ? `<div class="banner warn" style="display:block"><b>Заказчик изменил даты: ${period(o.start_date, o.end_date)}.</b>
       Подтвердите, что техника свободна на эти даты, — только после этого заказчик сможет выбрать ваше предложение. Если не подходит — отзовите предложение.
       ${canManage() ? `<div class="actions" style="margin-top:8px"><button class="btn sm" data-cdates="${active.id}">Подтвердить даты</button>
@@ -158,9 +167,33 @@ async function orderPage(app, id) {
           <button class="btn wide">${active ? 'Отправить новую редакцию' : 'Отправить предложение'}</button>
           <p class="small muted" style="margin:8px 0 0">Предложение не бронирует технику. Бронь создастся, когда заказчик его выберет.</p>
         </form>`}
+        ${directDue && canManage() ? '<button class="btn ghost wide" id="declineBtn" style="margin-top:10px">Отказаться от заявки</button>' : ''}
       </div></aside>
     </div>`;
 
+  app.querySelector('#declineBtn')?.addEventListener('click', () => {
+    const REASONS = ['Техника занята на эти даты', 'Не выезжаем в этот район', 'Не подходит формат или объём работ'];
+    const m = modal(`<h2>Отказаться от заявки</h2>
+      <p class="muted" style="margin-top:-6px">Заказчик получит уведомление и совет разместить заказ на бирже. Заявка уйдёт из «Ждут вас».</p>
+      <form id="dcl">${REASONS.map((r, i) => `<label class="check"><input type="radio" name="r" value="${esc(r)}" ${i === 0 ? 'checked' : ''}> <span>${esc(r)}</span></label>`).join('')}
+        <label class="check"><input type="radio" name="r" value=""> <span>Другое</span></label>
+        <label class="f"><textarea class="inp" name="other" maxlength="300" placeholder="Причина (видна заказчику). Без телефонов и ссылок."></textarea></label>
+        <div class="form-error hidden" id="dErr"></div>
+        <div class="actions"><button class="btn danger">Отказаться</button><button type="button" class="btn ghost" data-c>Отмена</button></div></form>`);
+    const df = m.el.querySelector('#dcl');
+    m.el.querySelector('[data-c]').onclick = () => m.close();
+    df.onsubmit = (ev) => {
+      ev.preventDefault();
+      const reason = df.r.value || df.other.value.trim();
+      busy(df.querySelector('.btn.danger'), async () => {
+        try {
+          await rpc('decline_direct_order', { p_order: id, p_reason: reason || null });
+          m.close(); toast('Вы отказались — заказчик получил уведомление');
+          await refreshCounters(); refreshShell(); go('#/feed');
+        } catch (err) { const el = m.el.querySelector('#dErr'); el.textContent = err.message; el.classList.remove('hidden'); }
+      });
+    };
+  });
   app.querySelectorAll('[data-wd]').forEach((b) => b.onclick = async () => {
     try { await rpc('withdraw_offer', { p_offer: b.dataset.wd }); toast('Предложение отозвано'); await refreshCounters(); refreshShell(); route(); } catch (err) { toast(err.message, true); }
   });
