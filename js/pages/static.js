@@ -97,17 +97,29 @@ function supportPage() {
     <h2>${en ? 'Frequently asked questions' : 'Частые вопросы'}</h2>${faqHtml()}`;
 }
 
-// Статья «Договор аренды спецтехники» (12.11.2026): текст один — его делает сервер для Яндекса
-// (server/seo_gen.py → /dogovor-arendy-spetstehniki/), здесь берём ту же статью с этой страницы.
-async function dogovorPage(app) {
+// Статьи «Договор аренды спецтехники» и «Сдать спецтехнику в аренду» (12.11.2026): текст один — его делает сервер
+// для Яндекса (server/seo_gen.py), здесь берём ту же статью с этой страницы.
+async function serverArticle(app, url, crumb) {
   app.innerHTML = '<div class="panel"><div class="skeleton" style="height:240px"></div></div>';
+  const r = await fetch(url, { cache: 'no-cache' });
+  const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+  const art = doc.querySelector('.prerender article');
+  if (!r.ok || !art) throw new Error('no article');
+  art.querySelectorAll('script').forEach((s) => s.remove());
+  app.innerHTML = `<div class="crumbs"><a href="#/">RUIN</a> › <b>${crumb}</b></div><div class="panel prose">${art.innerHTML}</div>`;
+}
+
+async function sdatPage(app) {
+  try { await serverArticle(app, '/sdat-spetstehniku-v-arendu/', 'Сдать спецтехнику в аренду'); } catch {
+    app.innerHTML = `<div class="panel prose"><h1>Сдать спецтехнику в аренду</h1><p>Разместите технику на RUIN бесплатно и получайте заказы
+      из Санкт-Петербурга, Ленинградской области и всей России — оплата напрямую вам.</p>
+      <p><a class="btn" href="#/register">Разместить технику бесплатно</a> <a class="btn ghost" href="#/catalog">Посмотреть каталог</a></p></div>`;
+  }
+}
+
+async function dogovorPage(app) {
   try {
-    const r = await fetch('/dogovor-arendy-spetstehniki/', { cache: 'no-cache' });
-    const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
-    const art = doc.querySelector('.prerender article');
-    if (!r.ok || !art) throw new Error('no article');
-    art.querySelectorAll('script').forEach((s) => s.remove());
-    app.innerHTML = `<div class="crumbs"><a href="#/">RUIN</a> › <b>Договор аренды спецтехники</b></div><div class="panel prose">${art.innerHTML}</div>`;
+    await serverArticle(app, '/dogovor-arendy-spetstehniki/', 'Договор аренды спецтехники');
   } catch {
     app.innerHTML = `<div class="panel prose"><h1>Договор аренды спецтехники</h1>
       <p><a class="btn" href="files/contract-template.docx" download="Договор аренды спецтехники — форма RUIN.docx">Скачать форму договора</a>
@@ -120,6 +132,7 @@ async function dogovorPage(app) {
 export async function render(app, _p, _q, pattern) {
   if (pattern === 'support') { app.innerHTML = `<div class="panel prose">${supportPage()}</div>`; return; }
   if (pattern === 'dogovor') { await dogovorPage(app); return; }
+  if (pattern === 'sdat') { await sdatPage(app); return; }
   const html = (isEn() && PAGES_EN[pattern]) || PAGES[pattern];
   app.innerHTML = `<div class="panel prose">${html}</div>`;
 }
