@@ -138,6 +138,10 @@ async function detail(app, id) {
       ${o.visibility === 'DIRECT' ? '<span class="st gray">Личный запрос</span>' : ''}</div></div>
       ${canCancel ? '<button class="btn danger" id="cancelBtn">Отменить заказ</button>' : ''}</div>
     ${deal ? `<div class="next"><div><small>ЧТО ДАЛЬШЕ</small><b>Сделка ${esc(deal.number)}: ${deal.status === 'AWAITING_CONFIRMATION' ? 'ждём подтверждения исполнителя' : 'перейдите в сделку'}</b></div><a class="btn" href="#/deals/${deal.id}">Открыть сделку</a></div>` : ''}
+    ${o.status === 'DECLINED' ? `<div class="banner warn" style="display:block"><b>Исполнитель не может взять эту заявку${o.cancel_reason ? `: ${esc(o.cancel_reason)}` : ''}.</b>
+      Разместите заказ на бирже — его увидят все подходящие исполнители и пришлют предложения. Или выберите другую технику в каталоге.
+      <div class="actions" style="margin-top:8px"><a class="btn sm" href="#/orders/new">Разместить заказ на бирже</a>
+        <a class="btn ghost sm" href="#/catalog?cat=${esc(o.categories?.code || '')}">Каталог техники</a></div></div>` : ''}
     <div id="assign"></div>
     ${!canManage() ? `<div class="banner info">У вас роль «${ROLE_NAME[state.org.role] || state.org.role}» — только просмотр. Выбирать предложения и отменять заказ могут владелец, администратор и менеджер.</div>` : ''}
     ${['PUBLISHED', 'OFFERS_RECEIVED'].includes(o.status) ? `<div class="banner info">Приём предложений: ${new Date(o.deadline_at) > Date.now() ? 'ещё ' + timeLeft(o.deadline_at) : 'завершён — выберите предложение'}.</div>` : ''}
@@ -152,7 +156,7 @@ async function detail(app, id) {
           ${active.length ? `${active.length > 1 ? `<div class="actions" style="margin:-4px 0 10px"><label class="small muted">Порядок:
               <select class="inp" id="cmpSort" style="width:auto;display:inline-block">
                 <option value="price">сначала дешевле</option><option value="deals">больше завершённых сделок</option><option value="new">сначала новые</option></select></label></div>` : ''}
-            <div id="cmp"></div>` : `<div class="empty"><b>Пока нет предложений</b>Исполнители получили уведомление. Обычно первые предложения приходят в течение нескольких часов.
+            <div id="cmp"></div>` : o.status === 'DECLINED' ? '<div class="empty"><b>Предложений нет</b>Исполнитель отказался от заявки.</div>' : `<div class="empty"><b>Пока нет предложений</b>Исполнители получили уведомление. Обычно первые предложения приходят в течение нескольких часов.
             <div><a class="btn ghost" href="#/catalog?cat=${o.categories?.code}">Посмотреть технику в каталоге</a></div></div>`}
         </div>
         ${other.length ? `<div class="panel"><h3>Неактивные предложения</h3>${other.map((f) => `<div class="row-item"><div class="grow"><b>${esc(f.organizations?.name)}</b>
