@@ -355,7 +355,7 @@ export async function route() {
   }
   app.innerHTML = '<div class="skeleton" style="height:320px"></div>';
   // Главная — полный заголовок для поисковиков (как в index.html), остальные страницы — короткий
-  document.title = m.mod === 'home' ? t('Аренда спецтехники в Москве и Санкт-Петербурге — экскаваторы, автокраны | RUIN', 'Construction machinery rental in Moscow and St Petersburg | RUIN')
+  document.title = m.mod === 'home' ? t('Аренда спецтехники по всей России — экскаваторы, автокраны, манипуляторы, самосвалы | RUIN', 'Construction machinery rental across Russia | RUIN')
     : t('RUIN — аренда спецтехники', 'RUIN — construction machinery rental');
   try {
     const page = await import(`./pages/${m.mod}.js`);
