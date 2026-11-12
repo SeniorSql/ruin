@@ -6,7 +6,7 @@ import { isTeam, loadTeam, assignees, memberLabel } from '../assign.js';
 import { TRASH, deleteNote } from '../dealCrm.js';
 
 const STAGES = [
-  ['AWAITING_CONFIRMATION', 'Новые брони', 'Подтвердите в течение 12 часов'],
+  ['AWAITING_CONFIRMATION', 'Новые брони', 'Подтвердите в течение 2 рабочих часов'],
   ['CONFIRMED', 'Подтверждены', 'Подготовить технику и подачу'],
   ['IN_PROGRESS', 'В работе', 'Смены, продление, завершение'],
   ['COMPLETION_PENDING', 'Ждут приёмки', 'Заказчик подтверждает завершение'],
