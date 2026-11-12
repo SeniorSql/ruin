@@ -223,8 +223,11 @@ async function feedCounter() {
     if (!fit.length) return;
     const offered = new Set((await q(sb.from('offers').select('order_id').eq('provider_org_id', o.id).in('order_id', fit.map((x) => x.id)))).map((x) => x.order_id));
     const seen = seenOrders();
-    c.feed_new = fit.filter((x) => !offered.has(x.id) && !seen.has(x.id)).length;
-    c.feed_new_ids = fit.filter((x) => !offered.has(x.id) && !seen.has(x.id)).map((x) => x.id);
+    // 12.11.2026 (Этибар): прямая заявка на мою технику (DIRECT) держит счётчик, пока я не отвечу предложением
+    // или не откажусь (SQL 33) — просмотр её не сбрасывает. Заявки с биржи — как раньше, до просмотра.
+    const due = fit.filter((x) => !offered.has(x.id) && (x.visibility === 'DIRECT' || !seen.has(x.id)));
+    c.feed_new = due.length;
+    c.feed_new_ids = due.map((x) => x.id);
   } catch {}
 }
 
