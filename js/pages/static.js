@@ -10,17 +10,18 @@ const OP = 'Индивидуальный предприниматель Исма
 const MAIL = 'info@ru-in.ru';
 const EDITION = '<p class="small muted">Редакция от 11.11.2026</p>';
 const EDITION_PRIVACY = '<p class="small muted">Редакция от 12.11.2026 (раздел 10: файлы cookie и Яндекс Метрика)</p>';
+const EDITION_TERMS = '<p class="small muted">Редакция от 12.11.2026 (п. 3: срок ответа исполнителя — 2 рабочих часа)</p>';
 
 const PAGES = {
   terms: `<h1>Пользовательское соглашение</h1>${DRAFT}
     <h2>1. О сервисе</h2><p>RUIN — онлайн-площадка, на которой заказчики находят спецтехнику, а владельцы техники (исполнители) публикуют предложения. Платформа не является стороной договора аренды или оказания услуг: договор заключается напрямую между заказчиком и исполнителем.</p>
     <h2>2. Регистрация и организации</h2><p>Пользователь указывает достоверные данные. Действия на платформе совершаются от имени организации (в том числе личного профиля частного лица). Исполнители проходят проверку реквизитов до публикации техники.</p>
-    <h2>3. Бронь и сделки</h2><p>Бронь или выбор предложения означает согласие заказчика с условиями, показанными перед подтверждением. Сделка считается подтверждённой после подтверждения исполнителем. Неподтверждённая в течение 12 часов бронь снимается автоматически.</p>
+    <h2>3. Бронь и сделки</h2><p>Бронь или выбор предложения означает согласие заказчика с условиями, показанными перед подтверждением. Сделка считается подтверждённой после подтверждения исполнителем. Исполнитель отвечает на бронь и заявку на бронь в течение 2 рабочих часов (рабочее время — с 8:00 до 21:00 по московскому времени); неподтверждённая в срок бронь снимается автоматически, заявка без ответа закрывается.</p>
     <h2>4. Оплата</h2><p>На текущем этапе расчёты производятся напрямую между сторонами. Платформа не принимает и не хранит денежные средства и данные банковских карт.</p>
     <h2>5. Отмена</h2><p>Условия отмены указываются в карточке техники и фиксируются в сделке: «Бесплатная отмена» (в любое время до начала работ) или «По согласованию сторон» (порядок и стоимость отмены стороны согласуют между собой). Платформа не участвует в урегулировании споров между сторонами. Поздние отмены и неявки учитываются в репутации сторон.</p>
     <h2>6. Контакты и обход площадки</h2><p>Контакты сторон открываются после подтверждения сделки. Телефоны, почта и ссылки в описаниях и сообщениях до подтверждения скрываются автоматически.</p>
     <h2>7. Контент</h2><p>Исполнитель отвечает за достоверность описаний и права на опубликованные фотографии. Платформа вправе скрывать карточки, нарушающие правила.</p>
-    <h2>8. Контакты платформы</h2><p>${OP}. Email: <a href="mailto:${MAIL}">${MAIL}</a>.</p>${EDITION}`,
+    <h2>8. Контакты платформы</h2><p>${OP}. Email: <a href="mailto:${MAIL}">${MAIL}</a>.</p>${EDITION_TERMS}`,
   privacy: `<h1>Политика обработки персональных данных</h1>${DRAFT}
     <h2>1. Оператор</h2><p>${OP}. Email для обращений: <a href="mailto:${MAIL}">${MAIL}</a>.</p>
     <h2>2. Какие данные мы обрабатываем</h2><p>Имя, email, телефон; данные организаций и ИП (наименование, ИНН, ОГРН/ОГРНИП, город, контактное лицо); сведения о технике, заказах и сделках; переписку в чатах сделок; адреса объектов; технические данные входа (дата и время, сведения о браузере).</p>
@@ -40,7 +41,7 @@ const PAGES = {
     <h2>4. Срок и отзыв</h2><p>Согласие действует до его отзыва. Отозвать согласие можно, написав на <a href="mailto:${MAIL}">${MAIL}</a>. После отзыва оператор прекращает обработку и удаляет данные в течение 30 дней, кроме данных, которые нужно хранить по закону.</p>
     <p>Подробнее — в <a href="#/privacy">Политике обработки персональных данных</a>.</p>${EDITION}`,
   help: `<h1>Помощь</h1>
-    <h2>Как арендовать технику</h2><ol><li>Найдите технику в каталоге и выберите даты — калькулятор покажет стоимость.</li><li>Нажмите «Забронировать», укажите адрес объекта и подтвердите условия.</li><li>Исполнитель подтвердит бронь в течение 12 часов. После этого откроются контакты и чат.</li><li>После работ подтвердите завершение сделки.</li></ol>
+    <h2>Как арендовать технику</h2><ol><li>Найдите технику в каталоге и выберите даты — калькулятор покажет стоимость.</li><li>Нажмите «Забронировать», укажите адрес объекта и подтвердите условия.</li><li>Исполнитель подтвердит бронь в течение 2 рабочих часов (8:00–21:00 МСК). После этого откроются контакты и чат.</li><li>После работ подтвердите завершение сделки.</li></ol>
     <h2>Как получить предложения от нескольких исполнителей</h2><p>Разместите заказ: укажите категорию, даты и адрес. Проверенные исполнители пришлют предложения, их можно сравнить в таблице и выбрать лучшее.</p>
     <h2>Как сдавать свою технику</h2><ol><li>В разделе «Профиль и организации» создайте организацию (ИП, юрлицо или самозанятый) и отправьте её на проверку.</li><li>Добавьте технику: характеристики, минимум 3 фото, цены и условия.</li><li>После проверки организации отправьте карточку на модерацию — после публикации её увидят заказчики.</li><li>Отвечайте на брони и заказы из ленты, держите календарь актуальным.</li></ol>
     <h2>Почему скрыты телефоны</h2><p>Чтобы обе стороны были защищены правилами сделки, контакты открываются после её подтверждения.</p>
@@ -58,7 +59,7 @@ const PAGES_EN = {
   terms: `<h1>Terms of use</h1>${NOTE_EN}${DRAFT_EN}
     <h2>1. About the service</h2><p>RUIN is an online marketplace where customers find construction machinery and owners (providers) publish their offers. The platform is not a party to the rental or service agreement: the agreement is made directly between the customer and the provider.</p>
     <h2>2. Registration and organisations</h2><p>Users provide accurate details. Actions on the platform are performed on behalf of an organisation (including an individual's personal profile). Providers have their company details verified before publishing machinery.</p>
-    <h2>3. Bookings and deals</h2><p>Booking or selecting an offer means the customer agrees to the terms shown before confirmation. A deal is confirmed once the provider confirms it. A booking not confirmed within 12 hours is cancelled automatically.</p>
+    <h2>3. Bookings and deals</h2><p>Booking or selecting an offer means the customer agrees to the terms shown before confirmation. A deal is confirmed once the provider confirms it. The provider replies to a booking or booking request within 2 working hours (8:00–21:00 Moscow time); a booking not confirmed in time is cancelled automatically and an unanswered request is closed.</p>
     <h2>4. Payment</h2><p>At this stage payments are made directly between the parties. The platform does not accept or hold money or bank card details.</p>
     <h2>5. Cancellation</h2><p>Cancellation terms are shown on the listing and recorded in the deal: “Free cancellation” (any time before work starts) or “By agreement” (the parties agree on cancellation terms and costs). The platform does not take part in settling disputes between the parties. Late cancellations and no-shows affect the parties' reputation.</p>
     <h2>6. Contacts and bypassing the platform</h2><p>The parties' contacts open after the deal is confirmed. Phone numbers, emails and links in descriptions and messages are hidden automatically before that.</p>
@@ -83,7 +84,7 @@ const PAGES_EN = {
     <h2>4. Term and withdrawal</h2><p>The consent is valid until withdrawn. You can withdraw it by writing to <a href="mailto:${MAIL}">${MAIL}</a>. After withdrawal the operator stops processing and deletes the data within 30 days, except data that must be kept by law.</p>
     <p>More details in the <a href="#/privacy">Personal data processing policy</a>.</p>${EDITION_EN}`,
   help: `<h1>Help</h1>
-    <h2>How to rent machinery</h2><ol><li>Find a machine in the catalogue and choose dates — the calculator shows the price.</li><li>Click “Book”, enter the site address and confirm the terms.</li><li>The provider confirms the booking within 12 hours. Then contacts and chat open.</li><li>After the work is done, confirm completion of the deal.</li></ol>
+    <h2>How to rent machinery</h2><ol><li>Find a machine in the catalogue and choose dates — the calculator shows the price.</li><li>Click “Book”, enter the site address and confirm the terms.</li><li>The provider confirms the booking within 2 working hours (8:00–21:00 Moscow time). Then contacts and chat open.</li><li>After the work is done, confirm completion of the deal.</li></ol>
     <h2>How to get offers from several providers</h2><p>Post an order: category, dates and address. Verified providers will send offers — compare them in a table and choose the best one.</p>
     <h2>How to rent out your machinery</h2><ol><li>In “Profile and organisations” create an organisation (sole proprietor, company or self-employed) and submit it for review.</li><li>Add machinery: specs, at least 3 photos, prices and terms.</li><li>After verification send the listing to moderation — once published, customers will see it.</li><li>Respond to bookings and orders from the feed and keep your calendar up to date.</li></ol>
     <h2>Why phone numbers are hidden</h2><p>Contacts open after the deal is confirmed so both parties are protected by its terms.</p>
