@@ -107,15 +107,22 @@ h1,h2,h3{letter-spacing:-.4px;margin:0}
   color:var(--ink);box-shadow:0 12px 30px -10px #00000059,0 1px 3px #0000001a;animation:cookieIn .25s ease-out}
 @keyframes cookieIn{from{opacity:0;transform:translate(-50%,8px)}}
 .cookie-ic{flex:none;color:var(--accent-text,var(--accent))}
-.cookie-text{font-size:13px;line-height:1.35;color:var(--ink2);min-width:0}
+.cookie-text{font-size:13px;line-height:1.35;color:var(--ink2);min-width:0;flex:1 1 240px}
 .cookie-text a{color:var(--ink);font-weight:600;text-underline-offset:3px;margin-left:4px;white-space:nowrap}
 .cookie-actions{display:flex;gap:6px;flex:none}
 .cookie-actions .btn{height:32px;padding:0 14px;border-radius:999px}
+/* v=83: с двумя кнопками («Только необходимые» / «Принять») на узком экране кнопки уходят на вторую строку,
+   а не сжимают текст в столбик */
+@media (max-width:1100px){
+  .cookie-bar{flex-wrap:wrap;border-radius:18px;row-gap:8px}
+}
 @media (max-width:760px){
-  .cookie-bar{left:10px;right:76px;bottom:14px;transform:none;width:auto;max-width:none;border-radius:16px;padding:8px 8px 8px 12px;gap:10px}
+  .cookie-bar{left:10px;right:76px;bottom:14px;transform:none;width:auto;max-width:none;border-radius:16px;padding:9px 9px 9px 12px;gap:8px}
   @keyframes cookieIn{from{opacity:0;transform:translateY(8px)}}
   .cookie-ic{display:none}
-  .cookie-text{font-size:12.5px}
+  .cookie-text{font-size:12.5px;flex-basis:100%}
+  .cookie-actions{flex:1 1 100%}
+  .cookie-actions .btn{flex:1;padding:0 8px}
 }
 /* Отзывы в сделке (v=77): две карточки «Вы → сторона» и «сторона → Вы» */
 .rv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
