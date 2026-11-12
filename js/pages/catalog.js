@@ -8,7 +8,12 @@ const PAGE = 48;
 const STALE_DAYS = 7;
 
 export async function render(app, _p, query) {
-  const cats = await loadCategories();
+  // В списке категорий — только те, где есть техника, с числом предложений (с 12.11.2026).
+  // Выбранная по ссылке категория остаётся в списке, даже если в ней пока пусто.
+  const [cats, used] = await Promise.all([loadCategories(),
+    q(sb.from('equipment').select('category_id').eq('status', 'PUBLISHED').limit(5000)).catch(() => null)]);
+  const catN = {};
+  (used || []).forEach((e) => { catN[e.category_id] = (catN[e.category_id] || 0) + 1; });
   const f = { q: query.q || '', cat: query.cat || '', city: query.city || '', fmt: query.fmt || '',
     max: query.max || '', sort: query.sort || 'new', from: query.from || '', to: query.to || '', stale: query.stale || '' };
   const cat = cats.find((c) => c.code === f.cat);
@@ -19,7 +24,7 @@ export async function render(app, _p, query) {
     <form class="filters" id="flt">
       <input class="inp" name="q" value="${esc(f.q)}" placeholder="${t('Марка, модель, задача', 'Brand, model, task')}" aria-label="${t('Поиск', 'Search')}">
       <select class="inp" name="cat" aria-label="${t('Категория', 'Category')}"><option value="">${t('Все категории', 'All categories')}</option>
-        ${cats.map((c) => `<option value="${c.code}" ${c.code === f.cat ? 'selected' : ''}>${esc(catName(c))}</option>`).join('')}</select>
+        ${cats.filter((c) => !used || catN[c.id] || c.code === f.cat).map((c) => `<option value="${c.code}" ${c.code === f.cat ? 'selected' : ''}>${esc(catName(c))}${used ? ` (${catN[c.id] || 0})` : ''}</option>`).join('')}</select>
       <input class="inp" name="city" value="${esc(f.city)}" placeholder="${t('Город', 'City')}" aria-label="${t('Город', 'City')}" style="min-width:130px;width:140px">
       <select class="inp" name="fmt" aria-label="${t('Формат', 'Format')}"><option value="">${t('Любой формат', 'Any format')}</option>
         <option value="op" ${f.fmt === 'op' ? 'selected' : ''}>${t('С оператором', 'With operator')}</option><option value="noop" ${f.fmt === 'noop' ? 'selected' : ''}>${t('Без оператора', 'Without operator')}</option></select>
