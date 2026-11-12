@@ -109,8 +109,10 @@ async function dogovorPage(app) {
     art.querySelectorAll('script').forEach((s) => s.remove());
     app.innerHTML = `<div class="crumbs"><a href="#/">RUIN</a> › <b>Договор аренды спецтехники</b></div><div class="panel prose">${art.innerHTML}</div>`;
   } catch {
-    app.innerHTML = `<div class="panel prose"><h1>Договор аренды спецтехники</h1><p>На RUIN договор формируется автоматически в каждой сделке —
-      с реквизитами сторон, техникой, сроками, ценой и условиями отмены. Акты и путевые листы оформляются там же.</p>
+    app.innerHTML = `<div class="panel prose"><h1>Договор аренды спецтехники</h1>
+      <p><a class="btn" href="files/contract-template.docx" download="Договор аренды спецтехники — форма RUIN.docx">Скачать форму договора</a>
+      <a class="btn ghost" href="files/esm-forms.zip" download="Путевые листы ЭСМ-2, ЭСМ-3, ЭСМ-7 (RUIN).zip">Скачать бланки ЭСМ</a></p>
+      <p>Те же формы есть в каждой сделке на RUIN, в блоке «Документы»: скачайте, заполните и загрузите подписанные файлы обратно в сделку.</p>
       <p><a class="btn" href="#/catalog">Выбрать технику</a> <a class="btn ghost" href="#/orders/new">Разместить заказ</a></p></div>`;
   }
 }
