@@ -362,12 +362,28 @@ html[data-theme] #app>.prerender{display:none}
 .eyebrow{font-size:11px;letter-spacing:1.2px;color:var(--faint);font-weight:800}
 .see-all{font-weight:700;font-size:14px;text-decoration:none}
 .see-all span{color:var(--accent-text)}
-.cats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
-.cat{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;text-decoration:none;transition:.18s;display:block}
+/* Категории на главной (с 12.11.2026): только непустые; фото на всю карточку, текст поверх затемнения.
+   Мало категорий (.few) — карточки растягиваются на всю ширину; последняя — приглашение исполнителям. */
+.cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.cats.few{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.cat{position:relative;display:flex;flex-direction:column;justify-content:flex-end;min-height:190px;border-radius:18px;overflow:hidden;text-decoration:none;color:#fff;background:#1d2420;border:1px solid var(--line);transition:transform .2s,box-shadow .2s,border-color .2s;isolation:isolate}
 .cat:hover{transform:translateY(-3px);border-color:var(--accent-line);box-shadow:var(--shadow)}
-.cat-img{height:84px;background:var(--photo-bg) center/cover}
-.cat b{display:block;font-size:13px;padding:9px 11px 0}
-.cat small{display:block;font-size:12px;color:var(--muted);padding:0 11px 10px}
+.cat-img{position:absolute;inset:0;z-index:-2;background:#1d2420 center/cover;transition:transform .5s}
+.cat:hover .cat-img{transform:scale(1.05)}
+.cat::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(10,14,12,0) 25%,rgba(10,14,12,.55) 58%,rgba(10,14,12,.88) 100%)}
+.cat-count{position:absolute;top:10px;left:10px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:800;background:rgba(255,255,255,.88);color:#16201a;backdrop-filter:blur(6px)}
+.cat-go{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:#10170f;font-weight:900;opacity:0;transform:translateX(-4px);transition:.2s}
+.cat:hover .cat-go,.cat:focus-visible .cat-go{opacity:1;transform:none}
+.cat-body{padding:14px 14px 13px;display:grid;gap:3px}
+.cat-body b{font-size:16px;line-height:1.2;text-shadow:0 1px 8px rgba(0,0,0,.35)}
+.cat-price{font-size:13px;font-weight:700;color:#d8ffb8}
+.cat-cities{font-size:12px;color:rgba(255,255,255,.78);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cat-invite{color:var(--ink);background:var(--accent-soft);border:1.5px dashed var(--accent-line);justify-content:center;padding:18px;gap:6px}
+.cat-invite::after{display:none}
+.cat-invite .inv-ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--accent);color:#10170f;font-size:22px;font-weight:800}
+.cat-invite b{font-size:16px}
+.cat-invite small{font-size:13px;color:var(--ink2)}
+.cat-invite .inv-link{font-size:13px;font-weight:800;color:var(--accent-text)}
 .wide-banner{margin-top:20px;border-radius:18px;background:var(--green-soft);display:flex;align-items:center;justify-content:space-between;gap:14px;padding:20px 24px}
 .wide-banner.accent{background:var(--accent-soft)}
 .wide-banner b{font-size:18px;display:block}
@@ -631,7 +647,6 @@ html[data-theme] #app>.prerender{display:none}
   .top{padding:0 20px;gap:16px}
   @media (min-width:761px){.top{grid-template-columns:200px minmax(0,1fr) auto;column-gap:20px}}
   .layout{padding:20px;grid-template-columns:200px minmax(0,1fr);gap:20px}
-  .cats{grid-template-columns:repeat(4,1fr)}
   .cols{grid-template-columns:minmax(0,1fr) 340px}
 }
 @media (max-width:900px){
@@ -668,7 +683,17 @@ html[data-theme] #app>.prerender{display:none}
   .top-actions .btn.sm{padding:0 10px}
   .hero-visual{display:none}
   .benefits{grid-template-columns:1fr;gap:8px}
-  .cats{grid-template-columns:repeat(2,1fr)}
+  .cats,.cats.few{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .cat{min-height:150px;border-radius:15px}
+  .cat-body{padding:10px 10px 9px}
+  .cat-body b{font-size:14px}
+  .cat-price{font-size:12px}
+  .cat-count{top:8px;left:8px;font-size:11px;padding:3px 8px}
+  .cat-go{display:none}
+  .cat-invite{padding:12px}
+  .cat-invite .inv-ic{width:34px;height:34px;font-size:19px}
+  .cat-invite b{font-size:14px}
+  .cat-invite small{font-size:12px}
   .products{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .pv{height:120px}
   .pi{padding:9px}
