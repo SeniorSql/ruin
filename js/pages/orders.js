@@ -263,7 +263,7 @@ function selectDialog(o, f) {
       <dt>Итого к оплате</dt><dd class="num" style="font-size:18px">${money(f.total_minor)}</dd><dt>Условия отмены</dt><dd>${esc(POLICY[f.equipment?.cancel_policy] || '')}</dd>
       <dt>Оплата</dt><dd>напрямую исполнителю</dd></dl>
     ${f.comment ? `<p class="small" style="white-space:pre-wrap"><b>Комментарий исполнителя:</b> ${esc(f.comment)}</p>` : ''}
-    <div class="banner info" style="margin-top:14px">Техника забронируется на ваши даты. Исполнитель подтвердит сделку в течение 12 часов — после этого откроются контакты и адрес.</div>
+    <div class="banner info" style="margin-top:14px">Техника забронируется на ваши даты. Исполнитель подтвердит сделку в течение 2 рабочих часов (8:00–21:00 МСК) — после этого откроются контакты и адрес.</div>
     <label class="check"><input type="checkbox" id="agree"> <span>Подтверждаю условия предложения и <a href="#/terms" target="_blank">правила сервиса</a></span></label>
     <div class="form-error hidden" id="err"></div>
     <button class="btn wide" id="go">Выбрать и забронировать</button>`);
