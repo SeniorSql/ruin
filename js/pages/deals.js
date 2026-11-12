@@ -248,4 +248,4 @@ export function eventText(ev) {
     default: return EVENT[ev.type] || 'Событие по сделке';
   }
 }
-const reasonText = (r) => ({ PROVIDER_NO_RESPONSE: 'исполнитель не ответил за 12 часов' }[r] || r);
+const reasonText = (r) => ({ PROVIDER_NO_RESPONSE: 'исполнитель не подтвердил сделку вовремя' }[r] || r);
