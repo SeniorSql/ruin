@@ -149,6 +149,54 @@ function ymHit() {
   try { window.ym(YM_ID, 'hit', location.href, { title: document.title, referer: document.referrer }); } catch {}
 }
 window.addEventListener('ruin:cookie', startMetrika);
+
+// ---------- свой счётчик посещений (SQL 35, v=96) — для вкладки «Посещаемость» в админке ----------
+// Без cookie, IP и привязки к человеку: визит = случайный номер вкладки (sessionStorage, живёт до её закрытия).
+// Не считаем: администраторов (и браузер, где админ хоть раз входил), роботов и автотесты.
+const BOT_RE = /bot\b|bot\/|crawl|spider|slurp|headless|lighthouse|yandex(?:metrika|direct|bot)|facebookexternalhit/i;
+function visitSource() {
+  try {
+    const saved = sessionStorage.getItem('ruin.src');
+    if (saved) return saved;
+    const utm = new URLSearchParams(location.search).get('utm_source');
+    let src = 'direct';
+    if (utm) src = utm.toLowerCase().replace(/[^a-z0-9_.-]/g, '').slice(0, 30) || 'direct';
+    else if (document.referrer) {
+      const h = new URL(document.referrer).hostname.replace(/^www\./, '');
+      if (h === location.hostname.replace(/^www\./, '')) src = 'direct';
+      else if (/(^|\.)(yandex\.[a-z]+|ya\.ru)$/.test(h)) src = 'yandex';
+      else if (/(^|\.)google\.[a-z.]+$/.test(h)) src = 'google';
+      else if (/(^|\.)(t\.me|telegram\.(org|me))$/.test(h)) src = 'telegram';
+      else if (/(^|\.)(vk\.(com|ru)|vkontakte\.ru)$/.test(h)) src = 'vk';
+      else if (/(^|\.)max\.ru$/.test(h)) src = 'max';
+      else if (/(^|\.)(whatsapp\.com|wa\.me)$/.test(h)) src = 'whatsapp';
+      else if (/(^|\.)mail\.ru$/.test(h)) src = 'mail.ru';
+      else if (/(^|\.)bing\.com$/.test(h)) src = 'bing';
+      else if (/(^|\.)2gis\.(ru|com)$/.test(h)) src = '2gis';
+      else src = 'site:' + h.slice(0, 34);
+    }
+    sessionStorage.setItem('ruin.src', src);
+    return src;
+  } catch { return 'direct'; }
+}
+function visitPath(mod) {
+  // Страницы для поисковиков (/arenda/…/) — по адресу; разделы сайта (#/…) — без параметров, номера и коды заменяем на «*»
+  if (location.pathname !== '/' && !location.hash) return location.pathname.slice(0, 120);
+  const p = (location.hash.split('?')[0] || '#/').replace(/\/[0-9a-f-]{8,}(?=\/|$)/gi, '/*').replace(/\/\d+(?=\/|$)/g, '/*');
+  return p.slice(0, 120) || '#/' + (mod || '');
+}
+function trackView(mod) {
+  try {
+    if (!configured || navigator.webdriver || BOT_RE.test(navigator.userAgent)) return;
+    if (state.profile?.is_platform_admin) { localStorage.setItem('ruin.noStats', '1'); return; }
+    if (localStorage.getItem('ruin.noStats') === '1') return;
+    let sid = sessionStorage.getItem('ruin.sid');
+    if (!sid) { sid = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36)).replace(/-/g, '').slice(0, 24); sessionStorage.setItem('ruin.sid', sid); }
+    const mobile = matchMedia('(max-width: 760px)').matches || /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+    const app = /RUIN-App/.test(navigator.userAgent);
+    sb.rpc('track_visit', { p_sid: sid, p_path: visitPath(mod), p_source: app && visitSource() === 'direct' ? 'app' : visitSource(), p_mobile: mobile, p_app: app }).then(() => {}, () => {});
+  } catch {}
+}
 window.addEventListener('hashchange', () => setTimeout(ymHit, 300));
 function showCookieBar(force = false) {
   const ch = cookieChoice();
@@ -440,6 +488,7 @@ export async function route() {
     if (!app.querySelector('.foot')) app.insertAdjacentHTML('beforeend', FOOTER);
     if (m.mod !== 'static') askConsent();
     if (!['static', 'auth'].includes(m.mod)) tgPrompt(app);
+    trackView(m.mod);
   } catch (err) {
     console.error(err);
     app.innerHTML = `<div class="panel empty"><b>${t('Что-то пошло не так', 'Something went wrong')}</b>${esc(err.message)}<div><button class="btn ghost" data-reload>${t('Обновить', 'Reload')}</button></div></div>`;
