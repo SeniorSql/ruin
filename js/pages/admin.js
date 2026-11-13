@@ -1,6 +1,6 @@
 // Админка: проверка организаций, модерация техники, жалобы (Модуль 12, SCR-ADM)
 import { sb, q, rpc, isAdmin, state, refreshCounters, loadMe } from '../api.js';
-import { esc, status, toast, askReason, emptyState, errorState, dateTime, ORG_TYPE, photoOf, priceText, qs, money, mskToday } from '../ui.js';
+import { esc, status, toast, askReason, emptyState, errorState, dateTime, ORG_TYPE, photoOf, priceText, qs, money, mskToday, plural } from '../ui.js';
 import { route, refreshShell } from '../app.js';
 // Претензии убраны с сайта (11.11.2026, v=73): вкладки нет, счётчик не учитывается
 
@@ -13,8 +13,8 @@ export async function render(app, _p, query) {
   n.total = (n.orgs || 0) + (n.equipment || 0) + (n.reports || 0) + n.reviews;
   // Если ничего не выбрано — открываем первую очередь, где есть работа
   const firstQueue = ['equipment', 'orgs', 'reviews', 'reports'].find((k) => n[k]);
-  const tab = query.tab || firstQueue || 'stats';
-  const tabs = [['stats', 'Статистика'], ['orgs', 'Проверка организаций', n.orgs], ['equipment', 'Модерация техники', n.equipment],
+  const tab = query.tab || firstQueue || 'traffic';
+  const tabs = [['traffic', 'Посещаемость'], ['stats', 'Статистика'], ['orgs', 'Проверка организаций', n.orgs], ['equipment', 'Модерация техники', n.equipment],
     ['reviews', 'Отзывы', n.reviews], ['reports', 'Жалобы', n.reports], ['all', 'Все организации']];
   app.innerHTML = `<div class="page-head"><div><h1>Админка</h1><p>Каждое решение записывается в журнал с автором, временем и причиной.</p></div></div>
     ${n.total ? `<div class="banner warn">Ждут вашего решения: ${[['orgs', 'организаций на проверке'], ['equipment', 'техники на модерации'], ['reviews', 'отзывов на проверке'], ['reports', 'жалоб']]
@@ -27,8 +27,80 @@ export async function render(app, _p, query) {
     if (tab === 'equipment') await equipment(box);
     if (tab === 'reports') await reports(box);
     if (tab === 'stats') await stats(box, query);
+    if (tab === 'traffic') await traffic(box, query);
     if (tab === 'reviews') await reviews(box);
   } catch (err) { box.innerHTML = errorState(err); }
+}
+
+// ---------- Посещаемость (SQL 35, v=96): свой счётчик, без IP и cookie; админы и роботы не считаются ----------
+const SRC_NAMES = { direct: 'Прямые заходы', yandex: 'Яндекс', google: 'Google', telegram: 'Telegram', vk: 'ВКонтакте', max: 'MAX',
+  whatsapp: 'WhatsApp', 'mail.ru': 'Mail.ru', bing: 'Bing', '2gis': '2ГИС', app: 'Приложение RUIN' };
+const srcName = (s) => SRC_NAMES[s] || (s.startsWith('site:') ? 'Сайт ' + s.slice(5) : 'Метка: ' + s);
+const PAGE_NAMES = { '#/': 'Главная', '#/catalog': 'Каталог техники', '#/item/*': 'Карточка техники', '#/about': 'О компании',
+  '#/login': 'Вход', '#/register': 'Регистрация', '#/forgot': 'Забыли пароль', '#/account': 'Профиль и организации',
+  '#/orders': 'Заказы', '#/orders/new': 'Новый заказ', '#/orders/*': 'Страница заказа', '#/feed': 'Биржа заказов', '#/feed/*': 'Заказ на бирже',
+  '#/offers': 'Мои предложения', '#/deals': 'Сделки', '#/deals/*': 'Страница сделки', '#/fleet': 'Моя техника', '#/fleet/new': 'Новая техника',
+  '#/fleet/*': 'Редактирование техники', '#/company/*': 'Страница компании', '#/crm': 'Рабочий стол', '#/park': 'Учёт парка',
+  '#/messages': 'Сообщения', '#/notifications': 'Уведомления', '#/favorites': 'Избранное', '#/help': 'Помощь', '#/support': 'Поддержка',
+  '#/dogovor': 'Договор (страница)', '#/sdat': 'Сдать технику', '#/terms': 'Соглашение', '#/privacy': 'Политика ПДн', '#/consent': 'Согласие ПДн' };
+const pageName = (p) => PAGE_NAMES[p] || (p.startsWith('/') ? 'Страница поиска: ' + p : p);
+const dShort = (d) => `${d.slice(8, 10)}.${d.slice(5, 7)}`;
+const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
+
+function trafficChart(days, width) {
+  if (!days.length) return '';
+  // Ширина рисунка = реальная ширина блока: на телефоне подписи не уменьшаются вместе с графиком
+  const W = Math.max(280, Math.round(width || 640)), H = W < 480 ? 140 : 170;
+  const max = Math.max(1, ...days.map((d) => d.views)), pad = 22, bw = (W - pad) / days.length;
+  const bars = days.map((d, i) => {
+    const x = pad + i * bw, hv = (d.views / max) * (H - 24), hs = (d.visits / max) * (H - 24);
+    return `<g><title>${dShort(d.day)}: ${d.visits} ${plural(d.visits, 'визит', 'визита', 'визитов')}, ${d.views} ${plural(d.views, 'просмотр', 'просмотра', 'просмотров')}</title>
+      <rect x="${x + bw * 0.12}" y="${H - hv}" width="${bw * 0.76}" height="${hv}" rx="2" fill="var(--line2)"/>
+      <rect x="${x + bw * 0.12}" y="${H - hs}" width="${bw * 0.76}" height="${hs}" rx="2" fill="var(--accent, #f2c200)"/></g>`;
+  }).join('');
+  const step = Math.ceil(days.length / Math.max(3, Math.floor(W / 56)));
+  const last = days.length - 1;
+  const labels = days.map((d, i) => ((i % step === 0 && last - i >= step * 0.8) || i === last) ? `<text x="${i === last ? W : pad + i * bw + bw / 2}" y="${H + 14}" text-anchor="${i === last ? 'end' : 'middle'}" font-size="11" fill="currentColor" opacity=".6">${dShort(d.day)}</text>` : '').join('');
+  return `<svg viewBox="0 0 ${W} ${H + 20}" width="100%" role="img" aria-label="График посещений по дням" style="display:block;max-height:240px">
+    <line x1="${pad}" y1="${H}" x2="${W}" y2="${H}" stroke="currentColor" opacity=".15"/>
+    <text x="0" y="12" font-size="11" fill="currentColor" opacity=".6">${max}</text>${bars}${labels}</svg>
+    <p class="small muted" style="margin:6px 0 0"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--accent, #f2c200)"></span> визиты
+      &nbsp; <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--line2)"></span> просмотры страниц · наведите или нажмите на столбик — цифры за день</p>`;
+}
+
+async function traffic(box, query) {
+  const days = Number(query.days) || 30;
+  const to = query.to || mskToday(0), from = query.from || mskToday(-(days - 1));
+  const s = await rpc('site_stats', { p_from: from, p_to: to });
+  const f = s.funnel || {}, dev = s.devices || {};
+  const devTotal = (dev.mobile || 0) + (dev.desktop || 0);
+  const preset = (n, label) => `<a class="btn sm ${!query.from && days === n ? 'dark' : 'ghost'}" href="#/admin${qs({ tab: 'traffic', days: n })}">${label}</a>`;
+  const delta = (a, b) => (b ? `<span class="small ${a >= b ? '' : 'muted'}">${a >= b ? '▲' : '▼'} вчера ${b}</span>` : '<span class="small muted">вчера 0</span>');
+  const row = (label, n, of) => `<tr><td>${label}</td><td class="num"><b>${n}</b></td><td class="num muted">${of != null ? pct(n, of) + '%' : ''}</td></tr>`;
+  box.innerHTML = `<form class="filters" id="tf">${preset(7, '7 дней')}${preset(30, '30 дней')}${preset(90, '90 дней')}
+      <label class="small muted">с <input class="inp" type="date" name="from" value="${from}"></label>
+      <label class="small muted">по <input class="inp" type="date" name="to" value="${to}"></label><button class="btn dark">Показать</button></form>
+    <div class="stat-tiles" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">
+      <div class="panel" style="margin:0"><div class="small muted">Визиты сегодня</div><div style="font-size:28px;font-weight:800">${s.today_visits}</div>${delta(s.today_visits, s.yday_visits)}</div>
+      <div class="panel" style="margin:0"><div class="small muted">Просмотры сегодня</div><div style="font-size:28px;font-weight:800">${s.today_views}</div>${delta(s.today_views, s.yday_views)}</div>
+      <div class="panel" style="margin:0"><div class="small muted">Визиты за период</div><div style="font-size:28px;font-weight:800">${s.visits}</div><span class="small muted">${dShort(from)}–${dShort(to)}</span></div>
+      <div class="panel" style="margin:0"><div class="small muted">Просмотры за период</div><div style="font-size:28px;font-weight:800">${s.views}</div><span class="small muted">${s.visits ? (s.views / s.visits).toFixed(1) : 0} на визит</span></div></div>
+    <div class="panel"><h2>По дням</h2><div id="tchart">${s.visits ? '' : '<p class="muted">За этот период посещений ещё нет. Счётчик работает с 13.11.2026.</p>'}</div></div>
+    <div class="cols"><div>
+      <div class="panel"><h2>Откуда пришли</h2>${s.sources.length ? `<table class="table"><tbody>${s.sources.map((x) => row(esc(srcName(x.source)), x.visits, s.visits)).join('')}</tbody></table>` : '<p class="muted">Пока нет данных.</p>'}
+        <p class="small muted">Источник — по первому заходу визита. Свои метки: ссылка вида <code>https://ru-in.ru/?utm_source=название</code>.</p></div>
+      <div class="panel"><h2>Популярные страницы</h2>${s.pages.length ? `<table class="table resp"><thead><tr><th>Страница</th><th>Просмотры</th><th>Визиты</th></tr></thead><tbody>
+        ${s.pages.map((x) => `<tr><td><b>${esc(pageName(x.path))}</b></td><td class="num" data-l="Просмотры">${x.views}</td><td class="num" data-l="Визиты">${x.visits}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">Пока нет данных.</p>'}</div></div>
+    <aside><div class="panel"><h2>Устройства</h2><table class="table"><tbody>
+        ${row('Телефон', dev.mobile || 0, devTotal)}${row('Компьютер', dev.desktop || 0, devTotal)}${row('Из них в приложении RUIN', s.app_visits, s.visits)}</tbody></table></div>
+      <div class="panel"><h2>Действия за период</h2><table class="table"><tbody>
+        ${row('Визиты', s.visits)}${row('Регистрации', f.registrations, s.visits)}${row('Добавлено техники', f.equipment)}
+        ${row('Заказы на бирже', f.orders, s.visits)}${row('Заявки и сделки', f.deals, s.visits)}${row('Подтверждённые сделки', f.deals_confirmed, f.deals)}</tbody></table>
+        <p class="small muted">Проценты регистраций, заказов и сделок — от числа визитов, подтверждённых — от всех сделок.</p></div>
+      <p class="small muted">Визит — один заход на сайт (вкладка до закрытия). Не считаются администраторы, роботы поисковиков и браузеры, где входил админ. IP и личные данные не сохраняются.</p></aside></div>`;
+  const chart = box.querySelector('#tchart');
+  if (s.visits) chart.innerHTML = trafficChart(s.by_day, chart.clientWidth);
+  box.querySelector('#tf').onsubmit = (e) => { e.preventDefault(); location.hash = '#/admin' + qs({ tab: 'traffic', from: e.target.from.value, to: e.target.to.value }); };
 }
 
 async function stats(box, query) {
