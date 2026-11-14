@@ -5,6 +5,9 @@ import { t, isEn } from './i18n.js';
 
 export const SUPPORT = {
   email: 'info@ru-in.ru',
+  // Официальные каналы RUIN (14.11.2026) — подвал, «Поддержка», «О компании»; для Яндекса — sameAs в server/seo_gen.py
+  telegram: 'https://t.me/ruin_ru',
+  vk: 'https://vk.ru/ruinru',
   address: t('г. Москва, Алтуфьевское шоссе, д. 26А, кв. 72', 'Altufyevskoye Shosse 26A, apt. 72, Moscow, Russia'),
   operator: t('ИП Исмаилов Этибар Худавердиевич', 'Sole proprietor Etibar Khudaverdiyevich Ismailov'),
   hours: t('Отвечаем на письма в будни с 9:00 до 19:00 МСК, обычно в течение рабочего дня.', 'We answer emails on weekdays 9:00–19:00 Moscow time, usually within one business day.')
@@ -77,6 +80,8 @@ export function findAnswers(text) {
 
 export const contactsHtml = () => `<dl class="kv">
   <dt>Email</dt><dd><a href="mailto:${SUPPORT.email}">${SUPPORT.email}</a></dd>
+  <dt>Telegram</dt><dd><a href="${SUPPORT.telegram}" target="_blank" rel="noopener">@ruin_ru</a></dd>
+  <dt>${t('ВКонтакте', 'VK')}</dt><dd><a href="${SUPPORT.vk}" target="_blank" rel="noopener">vk.ru/ruinru</a></dd>
   <dt>${t('Почтовый адрес', 'Postal address')}</dt><dd>${esc(SUPPORT.address)}</dd>
   <dt>${t('Оператор', 'Operator')}</dt><dd>${esc(SUPPORT.operator)}</dd>
   <dt>${t('Часы работы', 'Hours')}</dt><dd>${esc(SUPPORT.hours)}</dd></dl>`;
