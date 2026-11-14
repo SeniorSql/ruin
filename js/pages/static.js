@@ -146,7 +146,9 @@ const AB_IC = {
   map: AI('<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>'),
   target: AI('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/>'),
   mail: AI('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>'),
-  phone: AI('<path d="M5 3h4l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2"/>')
+  phone: AI('<path d="M5 3h4l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2"/>'),
+  tg: AI('<path d="M21 4 3 11l6 2 2 6 3-4 5 4z"/><path d="m9 13 12-9"/>'),
+  vk: AI('<path d="M3 7c.3 6 3.3 10 9 10V12c2 .3 3.8 2 4.5 5H20c-.8-3-2.8-4.6-4-5.2 1.2-.8 3-2.6 3.6-4.8h-3.2c-.6 2-2.4 3.8-4.4 4V7H9v8c-1.8-.5-3-2.8-3.1-8z"/>')
 };
 const plural3 = (n, a, b, c) => (n % 10 === 1 && n % 100 !== 11 ? a : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? b : c);
 
@@ -212,6 +214,8 @@ async function aboutPage(app) {
     <div class="ab-contact-list">
       <a class="ab-contact" href="mailto:${MAIL}"><span class="ab-ic">${AB_IC.mail}</span><span><small>Почта</small><b>${MAIL}</b></span></a>
       <a class="ab-contact" href="tel:+79161454220"><span class="ab-ic">${AB_IC.phone}</span><span><small>Телефон</small><b>+7 916 145-42-20</b></span></a>
+      <a class="ab-contact" href="https://t.me/ruin_ru" target="_blank" rel="noopener"><span class="ab-ic">${AB_IC.tg}</span><span><small>Telegram-канал</small><b>@ruin_ru</b></span></a>
+      <a class="ab-contact" href="https://vk.ru/ruinru" target="_blank" rel="noopener"><span class="ab-ic">${AB_IC.vk}</span><span><small>ВКонтакте</small><b>vk.ru/ruinru</b></span></a>
     </div>
   </div>`;
 
