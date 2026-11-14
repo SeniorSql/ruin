@@ -710,6 +710,10 @@ html[data-theme] #app>.prerender{display:none}
   color:var(--ink);background:var(--accent-soft);border:1px solid var(--accent-line);transition:transform .15s,box-shadow .15s}
 .foot a.foot-dl:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
 .foot a.foot-dl svg{color:var(--accent-text,var(--accent))}
+/* v=98: значки Telegram и ВКонтакте в подвале */
+.foot-soc{display:inline-flex;gap:8px}
+.foot-soc a{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);color:var(--ink2);transition:color .15s,border-color .15s,transform .15s}
+.foot-soc a:hover{color:var(--ink);border-color:var(--accent-line);transform:translateY(-1px)}
 .foot-menu{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:8px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
 .prose{max-width:780px}
 .prose h2{margin:22px 0 8px;font-size:20px}
