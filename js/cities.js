@@ -148,6 +148,18 @@ const labelOf = (inp) => (inp.closest('label')?.querySelector('span')?.textConte
 
 function closeSheet() { if (sheet) { sheet.remove(); sheet = null; document.body.classList.remove('dd-sheet-open'); } }
 
+// Окно занимает только видимую часть экрана: когда открыта клавиатура, оно стоит над ней, а не под ней (21.11.2026)
+function fitSheet() {
+  if (!sheet) return;
+  const vv = window.visualViewport;
+  sheet.style.top = (vv ? vv.offsetTop : 0) + 'px';
+  sheet.style.height = (vv ? vv.height : window.innerHeight) + 'px';
+}
+
+// Чем коснулись в последний раз: палец/стилус — окно выбора, мышь — обычный список под полем
+let lastPtr = '', lastPtrAt = 0;
+const fingerNow = () => (Date.now() - lastPtrAt < 1500 ? lastPtr !== 'mouse' : touch());
+
 function applyValue(inp, v) {
   inp.value = v;
   inp.dispatchEvent(new Event('input', { bubbles: true }));
@@ -168,6 +180,7 @@ function openSheet(inp) {
     <div class="dd-sh-list" role="listbox"></div></div>`;
   document.body.appendChild(sheet);
   document.body.classList.add('dd-sheet-open');
+  fitSheet();
   const q = sheet.querySelector('.dd-sh-q'), list = sheet.querySelector('.dd-sh-list');
   const curVal = inp.value.trim();
   const draw = () => {
@@ -195,15 +208,22 @@ function openSheet(inp) {
 
 // Подключает списки ко всем подходящим полям, в том числе появившимся позже (страницы, окна).
 export function initCityList() {
-  // Телефон: касание поля со списком открывает окно выбора (клавиатура поля не открывается)
+  // Телефон: окно выбора открывается только по НАЖАТИЮ на поле (фокус), а не в момент касания —
+  // иначе прокрутка страницы, начатая пальцем на поле, открывала список (21.11.2026).
+  // При касании только запоминаем, чем коснулись, и выключаем экранную клавиатуру у поля, если для него есть список.
   document.addEventListener('pointerdown', (e) => {
+    lastPtr = e.pointerType || ''; lastPtrAt = Date.now();
     const inp = e.target.closest?.(SEL);
-    if (!inp || !touch() || e.pointerType === 'mouse' || inp.disabled || inp.readOnly || inp.closest('fieldset[disabled]')) return;
+    if (!inp) return;
+    if (e.pointerType === 'mouse') { inp.inputMode = ''; return; }
     prep(inp);
     const src = sourceOf(inp);
-    if (src && (src.get(inp) || []).length) { e.preventDefault(); openSheet(inp); }
+    inp.inputMode = src && (src.get(inp) || []).length ? 'none' : '';
   }, true);
   window.addEventListener('hashchange', closeSheet);
+  window.visualViewport?.addEventListener('resize', fitSheet);
+  window.visualViewport?.addEventListener('scroll', fitSheet);
+  window.addEventListener('resize', fitSheet);
   dd = document.createElement('div');
   dd.className = 'city-dd';
   dd.setAttribute('role', 'listbox');
@@ -219,8 +239,8 @@ export function initCityList() {
 
   document.addEventListener('focusin', (e) => {
     if (!e.target.matches?.(SEL)) return;
-    // телефон (фокус пришёл не от касания, например «Далее» на клавиатуре) — тоже окно выбора
-    if (touch() && openSheet(e.target)) { e.target.blur(); return; }
+    // палец/стилус (или телефон без касания, например «Далее» на клавиатуре) — окно выбора; поле в фокусе не остаётся
+    if (fingerNow() && !e.target.disabled && !e.target.readOnly && openSheet(e.target)) { e.target.blur(); return; }
     cur = e.target; prep(cur); render(true);
   });
   // Телефон после касания досылает click в ту же точку — он попал бы в элемент под закрытым списком. Гасим его.
