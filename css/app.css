@@ -1023,6 +1023,18 @@ body:has(.modal-bg) #helpBot{display:none}
   .row-item>.grow{flex:1 1 180px}
   .row-item>.actions{justify-content:flex-start!important}
 }
+/* 20.11.2026: телефоны 360–400px (самые частые Android) — шапка вошедшего пользователя была на 20px шире экрана,
+   вся страница сдвигалась вбок. Кнопки 34px, меньше промежутки, у аватара без стрелки. Ссылки подвала — выше, под палец. */
+@media (max-width:400px){
+  .top{padding:0 10px;gap:8px}
+  .top-actions{gap:3px}
+  .top .icon-btn,.top .lang-btn{width:34px;height:34px;min-width:34px}
+  .top .me>svg{display:none}
+  button.me{padding:2px}
+}
+@media (max-width:760px){
+  .foot a,.foot summary{display:inline-flex;align-items:center;min-height:36px}
+}
 @media (max-width:359px){
   .top{padding:0 10px}
   .wordmark{height:19px}
