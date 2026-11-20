@@ -1,7 +1,8 @@
 // Админка: проверка организаций, модерация техники, жалобы (Модуль 12, SCR-ADM)
 import { sb, q, rpc, isAdmin, state, refreshCounters, loadMe } from '../api.js';
-import { esc, status, toast, askReason, emptyState, errorState, dateTime, ORG_TYPE, photoOf, priceText, qs, money, mskToday, plural } from '../ui.js';
+import { esc, status, toast, askReason, emptyState, errorState, dateTime, ORG_TYPE, photoOf, priceText, qs, money, mskToday, plural, modal } from '../ui.js';
 import { route, refreshShell } from '../app.js';
+import { manualMask } from '../photoMask.js';
 // Претензии убраны с сайта (11.11.2026, v=73): вкладки нет, счётчик не учитывается
 
 export async function render(app, _p, query) {
@@ -309,9 +310,22 @@ async function equipment(box) {
       <div class="small muted">${esc(e.organizations?.name)} ${status('org', e.organizations?.verification_status)} · фото: ${(e.photos || []).length}</div>
       ${e.description ? `<div class="small" style="margin-top:4px;white-space:pre-wrap">${esc(e.description.slice(0, 400))}</div>` : ''}</div>
       <div class="actions" style="justify-content:flex-end">
+        ${(e.photos || []).length ? `<button class="btn ghost sm" data-pm="${e.id}" title="Закрыть телефон или название компании на фото">Фото: закрыть надпись</button>` : ''}
         <button class="btn sm" data-e="${e.id}" data-d="PUBLISHED">Опубликовать</button>
         <button class="btn danger sm" data-e="${e.id}" data-d="REJECTED">Отклонить</button></div></div>`;
   }).join('')}</div>` : emptyState('Очередь пуста', 'Нет карточек на модерации.');
+  // Модератор закрывает контакты на фото сам (20.11.2026): выбрать фото → выделить надпись → плашка «RUIN»
+  box.querySelectorAll('[data-pm]').forEach((b) => b.onclick = () => {
+    const e = rows.find((x) => x.id === b.dataset.pm);
+    const ph = (e.photos || []).map((p) => (typeof p === 'string' ? { url: p } : p));
+    const m = modal(`<h2>Какое фото поправить?</h2><p class="muted small" style="margin-top:-6px">${esc(e.title)} — нажмите на фото, затем выделите надпись.</p>
+      <div class="photo-grid">${ph.map((p, i) => `<button type="button" class="ph" data-i="${i}" style="border:0;padding:0;cursor:pointer"><img src="${esc(p.url)}" alt="" referrerpolicy="no-referrer"></button>`).join('')}</div>`);
+    m.el.querySelectorAll('[data-i]').forEach((x) => x.onclick = async () => {
+      m.close();
+      const url = await manualMask(ph[+x.dataset.i].url);
+      if (url) route();
+    });
+  });
   box.querySelectorAll('[data-e]').forEach((b) => b.onclick = async () => {
     let comment = null;
     if (b.dataset.d !== 'PUBLISHED') {
