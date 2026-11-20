@@ -35,7 +35,7 @@ export async function render(app, _p, query) {
   const edit = canManage(o);
   let eq, cards, docs, svc, exps, ops, deals;
   try {
-    eq = await q(sb.from('equipment').select('id,title,status').eq('org_id', o.id).neq('status', 'ARCHIVED').order('title'));
+    eq = await q(sb.from('equipment').select('id,title,status,group_id').eq('org_id', o.id).neq('status', 'ARCHIVED').order('title'));
     [cards, docs, svc, exps, ops, deals] = await Promise.all([
       q(sb.from('fleet_cards').select('*').eq('org_id', o.id)),
       q(sb.from('fleet_docs').select('*').eq('org_id', o.id).order('valid_until', { ascending: true, nullsFirst: false })),
@@ -52,6 +52,14 @@ export async function render(app, _p, query) {
     app.innerHTML = errorState(err); return;
   }
   const card = Object.fromEntries(cards.map((c) => [c.equipment_id, c]));
+  // Одинаковые машины группы (SQL 37) различаем по госномеру: «Автокран XCMG · А123ВС78»
+  eq.forEach((e) => { if (e.group_id && card[e.id]?.reg_number) e.title = `${e.title} · ${card[e.id].reg_number}`; });
+  // Сделка на несколько машин (SQL 38): выручка делится поровну между машинами сделки
+  const dealUnits = {};
+  if (deals.length) {
+    const du = await q(sb.from('deal_units').select('deal_id,equipment_id').in('deal_id', deals.map((d) => d.id))).catch(() => []);
+    du.forEach((r) => (dealUnits[r.deal_id] ||= []).push(r.equipment_id));
+  }
   const eqById = Object.fromEntries(eq.map((e) => [e.id, e]));
   const opById = Object.fromEntries(ops.map((x) => [x.id, x]));
   const eqName = (id) => esc(eqById[id]?.title || 'Техника удалена');
@@ -68,7 +76,8 @@ export async function render(app, _p, query) {
   for (const d of deals) {
     const total = Math.round((new Date(d.end_date) - new Date(d.start_date)) / 864e5) + 1;
     const n = overlapDays(d.start_date, d.end_date);
-    if (n && total > 0) P(d.equipment_id).rev += (Number(d.total_minor) * n) / total;
+    const ids = dealUnits[d.id]?.length ? dealUnits[d.id] : [d.equipment_id];
+    if (n && total > 0) ids.forEach((u) => { P(u).rev += (Number(d.total_minor) * n) / total / ids.length; });
   }
   for (const s of svc) if (s.done_on >= mStart && s.done_on <= mEnd) P(s.equipment_id).svc += Number(s.cost_minor);
   for (const x of exps) if (x.spent_on >= mStart && x.spent_on <= mEnd) P(x.equipment_id).exp += Number(x.amount_minor);
