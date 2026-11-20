@@ -38,7 +38,7 @@ export function productCard(e, favs = new Set(), ratings = new Map()) {
     </div>
     <div class="pi">
       <span class="cat-name">${esc(catName(e.categories))}</span>
-      <h3>${esc(e.title)}</h3>
+      <h3>${esc(e.title)}</h3>${e.group_size > 1 ? `<div class="small" style="margin:-2px 0 4px"><span class="st qty">${t(`${e.group_size} шт. в парке`, `${e.group_size} units in fleet`)}</span></div>` : ''}
       <div class="meta">${esc(e.city)}${e.district ? ' · ' + esc(e.district) : ''}${fmt ? ' · ' + fmt : ''}</div>
       <div class="seller"><span class="sa">${esc(initials(org.name))}</span><span><b>${esc(org.name || '')}</b>${rtHtml}</span></div>
       <div class="spec-chips">${specs}</div>
