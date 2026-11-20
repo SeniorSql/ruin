@@ -345,16 +345,17 @@ html[data-theme] #app>.prerender{display:none}
 .unit-row,.unit-labels{justify-content:start}
 .unit-row [data-udel]{width:36px;min-width:36px;height:36px;padding:0;font-size:18px;line-height:1;display:grid;place-items:center}
 .unit-row [data-k=year]{padding-left:10px;padding-right:6px}
-@media (max-width:760px){
-  /* телефон: номер и год — в первой строке во всю ширину, «Убрать» и статус — второй строкой */
-  .unit-row,.unit-labels{grid-template-columns:18px minmax(0,1fr) 84px;gap:6px}
-  .unit-labels>span:last-child{display:none}
-  .unit-row>.btn,.unit-row>span:empty{grid-column:3;grid-row:2;justify-self:end}
-  .unit-row>span:empty{display:none}
-  .unit-row .u-st{grid-column:2;grid-row:2;margin:0}
-}
 .unit-row .u-st{grid-column:2/-1;margin-top:-2px}
 .unit-labels{display:grid;grid-template-columns:26px minmax(0,240px) 104px auto;gap:8px;font-size:12px;font-weight:700;color:var(--muted)}
+.unit-row .u-rm-i{display:none}
+@media (max-width:760px){
+  /* телефон (20.11.2026): номер, год и «×» — одной строкой; «Убрать» у сохранённой машины — тоже квадратным «×» */
+  .unit-row,.unit-labels{grid-template-columns:18px minmax(0,1fr) 72px 36px;gap:6px;justify-content:stretch}
+  .unit-row [data-urm]{width:36px;min-width:36px;height:36px;padding:0;font-size:18px;line-height:1;display:grid;place-items:center}
+  .unit-row .u-rm-t{display:none}
+  .unit-row .u-rm-i{display:inline}
+  .unit-row .u-st{margin:0}
+}
 
 /* ---------- главная ---------- */
 /* v=73: баннер без поиска, ниже на ~3 см; в тёмной теме — Zoomlion ZE215E ночью */
