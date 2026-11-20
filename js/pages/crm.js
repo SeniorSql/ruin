@@ -111,8 +111,15 @@ export async function render(app, _p, query) {
 // Шкала занятости: строки — техника, столбцы — дни. Над таблицей — фильтры, поиск и сортировка
 const TL_PAGE = 15;
 async function timeline(box, o, deals) {
-  const eq = await q(sb.from('equipment').select('id,title,status,categories(name)').eq('org_id', o.id).in('status', ['PUBLISHED', 'HIDDEN']).order('title'));
+  const eq = await q(sb.from('equipment').select('id,title,status,group_id,categories(name)').eq('org_id', o.id).in('status', ['PUBLISHED', 'HIDDEN']).order('title'));
   if (!eq.length) { box.innerHTML = '<h2>Загрузка техники на 30 дней</h2><p class="muted">Нет опубликованной техники.</p>'; return; }
+  // Машины одной группы (SQL 37) — отдельные строки, различаем по госномеру
+  const grouped = eq.filter((e) => e.group_id);
+  if (grouped.length) {
+    const regs = await q(sb.from('fleet_cards').select('equipment_id,reg_number').in('equipment_id', grouped.map((e) => e.id))).catch(() => []);
+    const reg = Object.fromEntries(regs.map((r) => [r.equipment_id, r.reg_number]));
+    grouped.forEach((e) => { if (reg[e.id]) e.title = `${e.title} · ${reg[e.id]}`; });
+  }
   const days = Array.from({ length: 30 }, (_, i) => mskDate(i));
   const from = days[0], to = days[29];
   const bk = await q(sb.from('bookings').select('equipment_id,type,status,period,deal_id').in('equipment_id', eq.map((e) => e.id)).in('status', ['HOLD', 'CONFIRMED', 'ACTIVE']));
