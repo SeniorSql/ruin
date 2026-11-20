@@ -139,8 +139,71 @@ function prep(inp) {
   inp.setAttribute('aria-expanded', 'false');
 }
 
+// ---------- Телефон: окно выбора снизу экрана (20.11.2026) ----------
+// Всплывающий список под полем на телефоне мешал: касание для прокрутки сразу выбирало пункт, список уходил под клавиатуру.
+// Поэтому на сенсорном экране поле открывает окно: поиск сверху, крупные пункты, выбор обычным нажатием (прокрутка не выбирает),
+// «Оставить как ввели» — для своего значения. Если для поля нет списка (например, районы неизвестного города) — обычный ввод.
+let sheet = null;
+const labelOf = (inp) => (inp.closest('label')?.querySelector('span')?.textContent || inp.getAttribute('aria-label') || inp.placeholder || 'Выберите').replace(/\*/g, '').trim();
+
+function closeSheet() { if (sheet) { sheet.remove(); sheet = null; document.body.classList.remove('dd-sheet-open'); } }
+
+function applyValue(inp, v) {
+  inp.value = v;
+  inp.dispatchEvent(new Event('input', { bubbles: true }));
+  inp.dispatchEvent(new Event('change', { bubbles: true }));
+  inp.dispatchEvent(new CustomEvent('dd-pick', { bubbles: true, detail: v }));
+}
+
+function openSheet(inp) {
+  const src = sourceOf(inp);
+  const all = src ? (src.get(inp) || []).map(String) : [];
+  if (!all.length) return false;
+  closeSheet(); hide();
+  sheet = document.createElement('div');
+  sheet.className = 'dd-sheet-bg';
+  sheet.innerHTML = `<div class="dd-sheet" role="dialog" aria-modal="true" aria-label="${escHtml(labelOf(inp))}">
+    <div class="dd-sh-head"><b>${escHtml(labelOf(inp))}</b><button type="button" class="dd-sh-x">Закрыть</button></div>
+    <input class="inp dd-sh-q" type="search" placeholder="Поиск или свой вариант" autocomplete="off" enterkeyhint="done">
+    <div class="dd-sh-list" role="listbox"></div></div>`;
+  document.body.appendChild(sheet);
+  document.body.classList.add('dd-sheet-open');
+  const q = sheet.querySelector('.dd-sh-q'), list = sheet.querySelector('.dd-sh-list');
+  const curVal = inp.value.trim();
+  const draw = () => {
+    const typed = q.value.trim();
+    const items = match(all, typed, 200);
+    const custom = typed && !all.some((c) => norm(c) === norm(typed));
+    list.innerHTML = (custom ? `<button type="button" class="dd-sh-opt dd-sh-custom" data-v="${escHtml(typed)}">Оставить «${escHtml(typed)}»</button>` : '')
+      + items.map((c) => `<button type="button" class="dd-sh-opt ${norm(c) === norm(curVal) ? 'on' : ''}" data-v="${escHtml(c)}">${escHtml(c)}</button>`).join('')
+      + (!items.length && !custom ? '<div class="city-hint">Ничего не нашлось</div>' : '');
+  };
+  draw();
+  q.addEventListener('input', draw);
+  q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); if (q.value.trim()) { applyValue(inp, q.value.trim()); closeSheet(); } } });
+  list.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-v]');
+    if (!b) return;
+    applyValue(inp, b.dataset.v); closeSheet();
+  });
+  sheet.querySelector('.dd-sh-x').onclick = closeSheet;
+  sheet.addEventListener('click', (e) => { if (e.target === sheet) closeSheet(); });
+  // уже выбранное значение — в зоне видимости
+  list.querySelector('.on')?.scrollIntoView({ block: 'center' });
+  return true;
+}
+
 // Подключает списки ко всем подходящим полям, в том числе появившимся позже (страницы, окна).
 export function initCityList() {
+  // Телефон: касание поля со списком открывает окно выбора (клавиатура поля не открывается)
+  document.addEventListener('pointerdown', (e) => {
+    const inp = e.target.closest?.(SEL);
+    if (!inp || !touch() || e.pointerType === 'mouse' || inp.disabled || inp.readOnly || inp.closest('fieldset[disabled]')) return;
+    prep(inp);
+    const src = sourceOf(inp);
+    if (src && (src.get(inp) || []).length) { e.preventDefault(); openSheet(inp); }
+  }, true);
+  window.addEventListener('hashchange', closeSheet);
   dd = document.createElement('div');
   dd.className = 'city-dd';
   dd.setAttribute('role', 'listbox');
@@ -156,6 +219,8 @@ export function initCityList() {
 
   document.addEventListener('focusin', (e) => {
     if (!e.target.matches?.(SEL)) return;
+    // телефон (фокус пришёл не от касания, например «Далее» на клавиатуре) — тоже окно выбора
+    if (touch() && openSheet(e.target)) { e.target.blur(); return; }
     cur = e.target; prep(cur); render(true);
   });
   // Телефон после касания досылает click в ту же точку — он попал бы в элемент под закрытым списком. Гасим его.
