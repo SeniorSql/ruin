@@ -53,8 +53,8 @@ export async function render(app) {
     <a class="btn dark" href="#/orders/new">${t('Разместить заказ →', 'Post an order →')}</a></div>`;
 
   const [all, fresh, favs, openOrders] = await Promise.all([
-    q(sb.from('equipment').select('id,category_id,photos,price_minor,price_unit,city').eq('status', 'PUBLISHED').limit(2000)),
-    q(sb.from('equipment').select(EQ_SELECT).eq('status', 'PUBLISHED').order('is_demo').order('created_at', { ascending: false }).limit(10)),
+    q(sb.from('equipment').select('id,category_id,photos,price_minor,price_unit,city').eq('status', 'PUBLISHED').eq('listed', true).limit(2000)),
+    q(sb.from('equipment').select(EQ_SELECT).eq('status', 'PUBLISHED').eq('listed', true).order('is_demo').order('created_at', { ascending: false }).limit(10)),
     loadFavs(),
     rpc('open_orders_count').catch(() => 0)
   ]);
