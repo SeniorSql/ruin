@@ -186,7 +186,7 @@ async function editor(app, o, id, query = {}) {
       <input class="inp" data-k="reg" maxlength="20" placeholder="А123ВС 78" value="${esc(u.reg)}" aria-label="Госномер машины ${i + 1}" required>
       <input class="inp" data-k="year" type="number" min="1950" max="${YEAR_MAX}" placeholder="2020" value="${esc(u.year)}" aria-label="Год выпуска машины ${i + 1}" required>
       ${!editable ? '<span></span>' : !u.id ? (units.length > 1 ? `<button type="button" class="btn ghost sm" data-udel="${i}" aria-label="Убрать строку">×</button>` : '<span></span>')
-        : units.length > 1 ? `<button type="button" class="btn ghost sm" data-urm="${u.id}" title="Убрать машину из группы в архив">Убрать</button>` : '<span></span>'}
+        : units.length > 1 ? `<button type="button" class="btn ghost sm" data-urm="${u.id}" title="Убрать машину из группы в архив" aria-label="Убрать машину ${i + 1} из группы"><span class="u-rm-t">Убрать</span><span class="u-rm-i" aria-hidden="true">×</span></button>` : '<span></span>'}
       ${u.id && units.length > 1 ? `<span class="u-st small ${u.busy ? 'warn-text' : 'muted'}">${u.busy ? 'занята сегодня' : 'свободна сегодня'}${u.status && u.status !== e.status ? ' · ' + statusLabel('equipment', u.status) : ''}</span>` : ''}</div>`).join('');
     const qty = app.querySelector('#uqty'); if (qty) qty.value = units.length;
     markSteps();
