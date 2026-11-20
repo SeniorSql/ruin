@@ -240,7 +240,7 @@ export async function render(app, _p, query) {
       <label class="f"><span>Техника</span><select class="inp" name="eq" required>${eqOptions(s.equipment_id)}</select></label>
       <div class="grid2"><label class="f"><span>Что это</span><select class="inp" name="kind">${opt(SVC_KIND, s.kind || 'TO')}</select></label>
         <label class="f"><span>Дата</span><input class="inp" name="on" type="date" required value="${s.done_on || today()}"></label></div>
-      <label class="f"><span>Что сделали</span><input class="inp" name="title" required maxlength="200" placeholder="ТО-250: масло, фильтры" value="${esc(s.title || '')}"></label>
+      <label class="f"><span>Что сделали</span><input class="inp" name="title" data-dd="svc" required maxlength="200" placeholder="Выберите или впишите: ТО-250, замена масла…" value="${esc(s.title || '')}"></label>
       <div class="grid2"><label class="f"><span>Моточасы</span><input class="inp" name="hours" type="number" min="0" step="0.1" value="${s.hours ?? ''}"></label>
         <label class="f"><span>Стоимость, ₽</span><input class="inp" name="cost" inputmode="decimal" value="${s.cost_minor ? fromMinor(s.cost_minor) : ''}"></label></div>
       <label class="f"><span>Заметка</span><textarea class="inp" name="note" rows="2" maxlength="2000">${esc(s.note || '')}</textarea></label>
