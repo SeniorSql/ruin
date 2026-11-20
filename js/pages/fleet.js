@@ -11,6 +11,9 @@ const SINGULAR = {
   manipulators: 'Манипулятор', drilling_rigs: 'Буровая установка', concrete: 'Бетононасос', other: ''
 };
 const TEXT_SPECS = new Set(['undercarriage', 'roller_type', 'chassis', 'axle_formula', 'drill_type', 'description_specs']);
+// Сравнение без учёта регистра в ilike: % и _ в марке/модели — обычные символы
+const likeExact = (s) => String(s || '').replace(/[\\%_]/g, (c) => '\\' + c);
+const YEAR_MAX = new Date().getFullYear() + 1;
 
 export async function render(app, params, query, pattern) {
   const o = state.org;
@@ -28,7 +31,8 @@ export async function render(app, params, query, pattern) {
 
 async function list(app, o) {
   let rows;
-  try { rows = await q(sb.from('equipment').select('*, categories(name)').eq('org_id', o.id).neq('status', 'ARCHIVED').order('created_at', { ascending: false })); }
+  // Группы (SQL 37, 20.11.2026): одна строка на группу — ведущая карточка, рядом «× N шт.»; машины группы — внутри карточки
+  try { rows = await q(sb.from('equipment').select('*, categories(name)').eq('org_id', o.id).eq('listed', true).neq('status', 'ARCHIVED').order('created_at', { ascending: false })); }
   catch (err) { app.innerHTML = errorState(err); return; }
   app.innerHTML = `
     <div class="page-head"><div><h1>Моя техника</h1><p>${esc(o.name)}</p></div>
@@ -40,7 +44,7 @@ async function list(app, o) {
       // Календарь давно не подтверждали — строка подсвечена и ведёт сразу к шагу «6. Календарь» (v=78)
       const stale = calStale(e);
       return `<a class="row-item ${stale ? 'row-attn' : ''}" href="#/fleet/${e.id}${stale ? '?go=s6' : ''}">${p ? `<img src="${esc(p.url)}" alt="" referrerpolicy="no-referrer">` : '<img alt="">'}
-        <div class="grow"><b>${esc(e.title)}</b><div class="small muted">${esc(e.categories?.name)} · ${esc(e.city)} · <span class="num">${priceText(e)}</span></div>
+        <div class="grow"><b>${esc(e.title)}</b>${e.group_size > 1 ? ` <span class="st qty">× ${e.group_size} шт.</span>` : ''}<div class="small muted">${esc(e.categories?.name)} · ${esc(e.city)} · <span class="num">${priceText(e)}</span>${e.group_size > 1 ? ' за каждую' : ''}</div>
         ${stale ? '<div class="small warn-text"><span class="attn-link">Подтвердите календарь →</span> иначе в каталоге появится «Доступность уточняется»</div>' : ''}
         ${e.moderation_comment && e.status === 'REJECTED' ? `<div class="small" style="color:var(--red)">Модератор: ${esc(e.moderation_comment)}</div>` : ''}</div>
         ${status('equipment', e.status)}</a>`;
@@ -55,11 +59,27 @@ async function editor(app, o, id, query = {}) {
   if (id) {
     const row = await q(sb.from('equipment').select('*').eq('id', id).eq('org_id', o.id).maybeSingle());
     if (!row) { app.innerHTML = emptyState('Карточка не найдена', 'Возможно, она принадлежит другой организации. Переключите организацию в меню под вашим именем (справа вверху).'); return; }
+    // Машина из группы открывается в карточке группы, её календарь — выбран внизу
+    if (row.group_id && row.group_id !== row.id && row.status !== 'ARCHIVED') { go(`#/fleet/${row.group_id}?unit=${row.id}${query.go ? '&go=' + query.go : ''}`); return; }
     e = row;
   }
   let photos = (e.photos || []).map((p) => (typeof p === 'string' ? { url: p } : p));
   const cats = state.categories;
   const editable = canManage();
+  // Машины карточки (SQL 37): первая — сама карточка. Госномер и год обязательны у каждой (решение Этибара 20.11.2026)
+  let units = [{ id: null, reg: '', year: '' }];
+  if (id) {
+    const gu = await rpc('group_units', { p_eq: id }).catch(() => []);
+    units = gu.length ? gu.map((u) => ({ id: u.id, reg: u.reg_number || '', year: u.year ?? '', busy: u.busy_now, status: u.status }))
+      : [{ id, reg: '', year: e.year ?? '' }];
+  }
+  const groupSize = () => units.length;
+  // Другие такие же одиночные карточки — предложим объединить в группу
+  let twins = [];
+  if (id && editable && e.status !== 'ARCHIVED') {
+    twins = await q(sb.from('equipment').select('id,title,status').eq('org_id', o.id).eq('listed', true).eq('group_size', 1)
+      .neq('status', 'ARCHIVED').neq('id', id).eq('category_id', e.category_id).ilike('brand', likeExact(e.brand)).ilike('model', likeExact(e.model))).catch(() => []);
+  }
 
   app.innerHTML = `
     <div class="crumbs"><a href="#/fleet">Моя техника</a> › <b>${id ? esc(e.title) : 'Новая карточка'}</b></div>
@@ -67,6 +87,10 @@ async function editor(app, o, id, query = {}) {
       ${id && e.status === 'PUBLISHED' ? `<a class="btn ghost" href="#/item/${id}">Открыть в каталоге</a>` : ''}</div>
     ${e.moderation_comment && ['REJECTED', 'HIDDEN'].includes(e.status) ? `<div class="banner err">Комментарий модератора: ${esc(e.moderation_comment)}</div>` : ''}
     ${e.status === 'PENDING_MODERATION' ? '<div class="banner info">Карточка на модерации — обычно это занимает до 1 рабочего дня. Мы пришлём уведомление.</div>' : ''}
+    ${groupSize() > 1 ? `<div class="banner info">Группа из ${groupSize()} одинаковых машин. В каталоге — одна карточка «${groupSize()} шт.». Описание, фото, цены и условия общие: изменения применяются ко всем машинам. Госномер, год и календарь — у каждой машины свои.</div>` : ''}
+    ${twins.length ? `<div class="banner warn" style="display:block">У вас есть ещё ${twins.length} ${twins.length === 1 ? 'такая же карточка' : 'таких же карточки'} (${esc(e.brand)} ${esc(e.model)}): ${twins.map((x) => `<a href="#/fleet/${x.id}">${esc(x.title)}</a>`).join(', ')}.
+      Объедините их с этой — в каталоге будет одна карточка «${groupSize() + twins.length} шт.».
+      <div class="actions" style="margin-top:8px"><button type="button" class="btn sm" id="mergeBtn">Объединить в группу</button></div></div>` : ''}
     <div class="steps" id="steps">${[['s1', '1. Основное'], ['s2', '2. Характеристики'], ['s3', '3. Фото'], ['s4', '4. Место'], ['s5', '5. Цены и условия'], ...(id ? [['s6', '6. Календарь']] : [])]
       .map(([k, t]) => `<button type="button" data-go="${k}"><i></i>${t}</button>`).join('')}
       <span class="steps-legend small muted"><i class="ok"></i>заполнено <i class="todo"></i>нужно заполнить <i></i>необязательно</span></div>
@@ -75,10 +99,17 @@ async function editor(app, o, id, query = {}) {
       <div class="panel" id="s1"><h2>1. Основное</h2>
         <label class="f"><span>Категория <i>*</i></span><select class="inp" name="category_id" required><option value="">Выберите</option>
           ${cats.map((c) => `<option value="${c.id}" ${c.id === e.category_id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
-        <div class="grid3">
+        <div class="grid2">
           <label class="f"><span>Марка <i>*</i></span><input class="inp" name="brand" required value="${esc(e.brand)}" maxlength="60"></label>
           <label class="f"><span>Модель <i>*</i></span><input class="inp" name="model" required value="${esc(e.model)}" maxlength="60"></label>
-          <label class="f"><span>Год выпуска</span><input class="inp" name="year" type="number" min="1950" max="2100" value="${esc(e.year ?? '')}"></label>
+        </div>
+        <div class="units-box" id="unitsBox">
+          <div class="units-head"><b>Сколько у вас таких машин</b>
+            <input class="inp" type="number" id="uqty" min="1" max="100" value="${units.length}" aria-label="Количество одинаковых машин">
+            <span class="hint" style="flex-basis:100%;margin:0">Одинаковые машины заводятся одной карточкой: описание, фото и цены — общие. Госномер и год выпуска — у каждой машины, они обязательны. Госномер заказчик увидит только после подтверждения сделки.</span></div>
+          <div class="unit-labels"><span></span><span>Госномер <i style="color:var(--red);font-style:normal">*</i></span><span>Год выпуска <i style="color:var(--red);font-style:normal">*</i></span><span></span></div>
+          <div id="units"></div>
+          ${editable ? '<button type="button" class="btn ghost sm" id="uadd" style="margin-top:8px">+ Ещё одна такая же машина</button>' : ''}
         </div>
         <label class="f"><span>Название карточки <i>*</i></span><input class="inp" name="title" required maxlength="120" value="${esc(e.title)}">
           <div class="hint">Подставляется автоматически, можно изменить. Например: «Автокран КС-55713 · 25 тонн».</div></label>
@@ -133,9 +164,53 @@ async function editor(app, o, id, query = {}) {
       </div>
       </fieldset>
     </form>
-    ${id ? `<div class="panel" id="s6"><h2>6. Календарь и блокировки</h2><div id="calBox"><div class="skeleton" style="height:120px"></div></div></div>` : ''}`;
+    ${id ? `<div class="panel" id="s6"><h2>6. Календарь и блокировки</h2>
+      ${groupSize() > 1 ? `<label class="f" style="max-width:360px"><span>Машина</span><select class="inp" id="calUnit">${units.filter((u) => u.id).map((u, i) =>
+        `<option value="${u.id}" ${u.id === (query.unit || id) ? 'selected' : ''}>${i + 1}. ${esc(u.reg || 'без госномера')}${u.year ? ' · ' + u.year : ''}${u.busy ? ' · занята сегодня' : ''}</option>`).join('')}</select>
+        <div class="hint">У каждой машины свой календарь: брони, «Занято» и ТО. В каталоге даты закрыты, только когда заняты все машины группы.</div></label>` : ''}
+      <div id="calBox"><div class="skeleton" style="height:120px"></div></div></div>` : ''}`;
 
   const f = app.querySelector('#ef');
+  // --- машины карточки: госномер и год у каждой ---
+  const unitsEl = app.querySelector('#units');
+  const readUnits = () => unitsEl.querySelectorAll('.unit-row').forEach((r, i) => {
+    units[i].reg = r.querySelector('[data-k=reg]').value; units[i].year = r.querySelector('[data-k=year]').value;
+  });
+  const drawUnits = () => {
+    unitsEl.innerHTML = units.map((u, i) => `<div class="unit-row">
+      <span class="n">${i + 1}</span>
+      <input class="inp" data-k="reg" maxlength="20" placeholder="А123ВС 78" value="${esc(u.reg)}" aria-label="Госномер машины ${i + 1}" required>
+      <input class="inp" data-k="year" type="number" min="1950" max="${YEAR_MAX}" placeholder="2020" value="${esc(u.year)}" aria-label="Год выпуска машины ${i + 1}" required>
+      ${!editable ? '<span></span>' : !u.id ? (units.length > 1 ? `<button type="button" class="btn ghost sm" data-udel="${i}" aria-label="Убрать строку">×</button>` : '<span></span>')
+        : units.length > 1 ? `<button type="button" class="btn ghost sm" data-urm="${u.id}" title="Убрать машину из группы в архив">Убрать</button>` : '<span></span>'}
+      ${u.id && units.length > 1 ? `<span class="u-st small ${u.busy ? 'warn-text' : 'muted'}">${u.busy ? 'занята сегодня' : 'свободна сегодня'}${u.status && u.status !== e.status ? ' · ' + statusLabel('equipment', u.status) : ''}</span>` : ''}</div>`).join('');
+    const qty = app.querySelector('#uqty'); if (qty) qty.value = units.length;
+    markSteps();
+  };
+  unitsEl.addEventListener('click', async (ev) => {
+    const del = ev.target.closest('[data-udel]'), rm = ev.target.closest('[data-urm]');
+    if (del) { readUnits(); units.splice(+del.dataset.udel, 1); drawUnits(); }
+    if (rm) {
+      const u = units.find((x) => x.id === rm.dataset.urm);
+      if (!await confirmBox('Убрать машину из группы?', `Машина ${u?.reg || ''} уйдёт в архив и пропадёт из каталога. История её сделок сохранится. В группе останется ${units.length - 1} шт.`, 'Убрать', true)) return;
+      try { const lead = await rpc('remove_group_unit', { p_id: rm.dataset.urm }); toast('Машина убрана в архив'); lead && lead !== id ? go('#/fleet/' + lead) : route(); }
+      catch (err) { toast(err.message, true); }
+    }
+  });
+  app.querySelector('#uadd')?.addEventListener('click', () => {
+    readUnits(); if (units.length >= 100) return toast('В одной группе — не больше 100 машин', true);
+    units.push({ id: null, reg: '', year: units[units.length - 1]?.year || '' }); drawUnits();
+    unitsEl.querySelector('.unit-row:last-child [data-k=reg]')?.focus();
+  });
+  app.querySelector('#uqty').addEventListener('change', (ev) => {
+    readUnits();
+    const want = Math.min(100, Math.max(1, Math.round(+ev.target.value || 1)));
+    while (units.length < want) units.push({ id: null, reg: '', year: units[units.length - 1]?.year || '' });
+    // Уменьшить можно только за счёт новых пустых строк; сохранённые машины убираются кнопкой «Убрать»
+    while (units.length > want && !units[units.length - 1].id) units.pop();
+    if (units.length > want) toast('Сохранённые машины убирайте кнопкой «Убрать» в их строке', true);
+    drawUnits();
+  });
   // --- характеристики по категории ---
   const drawSpecs = () => {
     const cat = categoryById(f.category_id.value);
@@ -180,7 +255,8 @@ async function editor(app, o, id, query = {}) {
   function markSteps() {
     const filled = (n) => !!f[n]?.value.trim();
     const st = {
-      s1: filled('category_id') && filled('brand') && filled('model') && filled('title') ? 'ok' : 'todo',
+      s1: filled('category_id') && filled('brand') && filled('model') && filled('title')
+        && [...app.querySelectorAll('#units [data-k]')].every((i) => i.value.trim()) ? 'ok' : 'todo',
       s2: [...app.querySelectorAll('[data-spec]')].some((i) => i.value !== '') ? 'ok' : '',
       s3: photos.length >= 3 ? 'ok' : 'todo',
       s4: filled('city') ? 'ok' : 'todo',
@@ -212,6 +288,7 @@ async function editor(app, o, id, query = {}) {
   });
   f.addEventListener('input', markSteps);
   f.addEventListener('change', markSteps);
+  drawUnits();
   drawPhotos();
   app.querySelector('#photos').addEventListener('click', (ev) => {
     const d = ev.target.closest('[data-del]'), mn = ev.target.closest('[data-main]');
@@ -230,7 +307,7 @@ async function editor(app, o, id, query = {}) {
   // --- сохранение ---
   const payload = () => ({
     org_id: o.id, category_id: Number(f.category_id.value), brand: f.brand.value.trim(), model: f.model.value.trim(),
-    year: f.year.value ? Number(f.year.value) : null, title: f.title.value.trim(), description: f.description.value.trim() || null,
+    year: units[0]?.year ? Number(units[0].year) : null, title: f.title.value.trim(), description: f.description.value.trim() || null,
     city: f.city.value.trim(), district: f.district.value.trim() || null, service_radius_km: Number(f.service_radius_km.value || 0),
     with_operator: f.with_operator.checked, without_operator: f.without_operator.checked,
     price_unit: f.price_unit.value, price_minor: f.price.value ? toMinor(f.price.value) : null,
@@ -241,7 +318,23 @@ async function editor(app, o, id, query = {}) {
     instant_book: f.instant_book.checked, specs: collectSpecs(), photos
   });
   const showErr = (msg) => { const el = app.querySelector('#err'); el.textContent = msg; el.classList.remove('hidden'); el.scrollIntoView({ block: 'center' }); };
+  // Проверка машин до сохранения: госномер и год у каждой, номера не повторяются
+  const checkUnits = () => {
+    readUnits();
+    const norm = (s) => s.toUpperCase().replace(/[\s-]/g, '');
+    const seen = new Set();
+    for (const [i, u] of units.entries()) {
+      const row = unitsEl.querySelectorAll('.unit-row')[i];
+      if (!u.reg.trim()) { row?.querySelector('[data-k=reg]').focus(); throw new Error(`Укажите госномер машины ${i + 1} (раздел «1. Основное»)`); }
+      const y = Number(u.year);
+      if (!y || y < 1950 || y > YEAR_MAX) { row?.querySelector('[data-k=year]').focus(); throw new Error(`Укажите год выпуска машины ${i + 1}: от 1950 до ${YEAR_MAX}`); }
+      if (seen.has(norm(u.reg))) { row?.querySelector('[data-k=reg]').focus(); throw new Error(`Госномер ${u.reg} указан дважды`); }
+      seen.add(norm(u.reg));
+    }
+  };
+  const unitsPayload = (leadId) => units.map((u, i) => ({ id: i === 0 ? leadId : u.id, reg: u.reg.trim(), year: Number(u.year) }));
   async function save() {
+    checkUnits();
     const p = payload();
     if (!p.with_operator && !p.without_operator) throw new Error('Выберите формат аренды: с оператором и/или без');
     // 12.11.2026 (Этибар): цена обязательна, «Договорная» убрана. То же проверяет база (SQL 32).
@@ -252,26 +345,36 @@ async function editor(app, o, id, query = {}) {
     if (id) {
       const { error } = await sb.from('equipment').update(p).eq('id', id);
       if (error) throw new Error(error.message);
+      await rpc('save_group_units', { p_lead: id, p_units: unitsPayload(id) });
       return id;
     }
     const { data, error } = await sb.from('equipment').insert(p).select('id').single();
     if (error) throw new Error(error.message);
+    try { await rpc('save_group_units', { p_lead: data.id, p_units: unitsPayload(data.id) }); }
+    catch (err) { const e2 = new Error(err.message + ' — карточка сохранена черновиком, исправьте машины и сохраните ещё раз'); e2.newId = data.id; throw e2; }
     return data.id;
   }
   f.onsubmit = (ev) => {
     ev.preventDefault();
     busy(f.querySelector('[name=save]'), async () => {
-      try { const newId = await save(); toast('Сохранено'); if (!id) go('#/fleet/' + newId); else route(); }
-      catch (err) { showErr(err.message); }
+      try { const newId = await save(); toast(units.length > 1 ? `Сохранено: ${units.length} машин` : 'Сохранено'); if (!id) go('#/fleet/' + newId); else route(); }
+      catch (err) { if (err.newId) { toast(err.message, true); go('#/fleet/' + err.newId); } else showErr(err.message); }
     });
   };
+  app.querySelector('#mergeBtn')?.addEventListener('click', (ev) => busy(ev.currentTarget, async () => {
+    if (!await confirmBox('Объединить в группу?', `Карточки (${twins.length + 1} шт.) станут одной группой. Все они получат описание, фото, цены и статус этой карточки. Госномер, год и календарь у каждой машины сохранятся.`, 'Объединить')) return;
+    try { const n = await rpc('merge_into_group', { p_lead: id, p_ids: twins.map((x) => x.id) }); toast(`Готово: в группе ${n} шт.`); route(); }
+    catch (err) { showErr(err.message); }
+  }));
   app.querySelector('#submitBtn')?.addEventListener('click', (ev) => busy(ev.currentTarget, async () => {
     try { await save(); await rpc('submit_equipment', { p_id: id }); toast('Отправлено на модерацию'); route(); }
     catch (err) { showErr(err.message); }
   }));
   app.querySelectorAll('[data-st]').forEach((b) => b.addEventListener('click', async () => {
     const st = b.dataset.st;
-    if (st === 'ARCHIVED' && !await confirmBox('Убрать в архив?', 'Карточка исчезнет из каталога и из списка. История сделок сохранится.', 'В архив', true)) return;
+    if (st === 'ARCHIVED' && !await confirmBox('Убрать в архив?', groupSize() > 1
+      ? `В архив уйдут все ${groupSize()} машин группы — карточка исчезнет из каталога и из списка. История сделок сохранится. Чтобы убрать одну машину, нажмите «Убрать» в её строке.`
+      : 'Карточка исчезнет из каталога и из списка. История сделок сохранится.', 'В архив', true)) return;
     const { error } = await sb.from('equipment').update({ status: st }).eq('id', id);
     if (error) return showErr(error.message);
     toast('Готово'); st === 'ARCHIVED' ? go('#/fleet') : route();
@@ -286,7 +389,11 @@ async function editor(app, o, id, query = {}) {
   if (id) {
     // После «Календарь актуален»: снимаем подсветку шага и обновляем счётчик «Моя техника» в меню
     const onConfirm = async () => { markSteps(); await refreshCounters(); refreshShell(); };
-    await calendar(app.querySelector('#calBox'), e, editable, onConfirm).catch(() => {});
+    // У группы — календарь выбранной машины (по умолчанию — из ссылки ?unit= или первая)
+    const calUnit = app.querySelector('#calUnit');
+    const showCal = () => calendar(app.querySelector('#calBox'), { ...e, id: calUnit?.value || e.id }, editable, onConfirm).catch(() => {});
+    calUnit?.addEventListener('change', showCal);
+    await showCal();
     // Пришли из списка или меню с ?go=s6 — сразу к календарю и кнопке
     if (query.go) setTimeout(() => goTo(query.go), 150);
   }
