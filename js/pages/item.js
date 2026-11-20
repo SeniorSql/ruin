@@ -17,6 +17,12 @@ export async function render(app, { id }) {
     app.innerHTML = `<div class="panel empty"><b>${t('Карточка не найдена', 'Listing not found')}</b>${t('Возможно, техника снята с публикации.', 'The machine may have been unpublished.')}<div><a class="btn" href="#/catalog">${t('В каталог', 'To the catalogue')}</a></div></div>`;
     return;
   }
+  // Машина из группы (старая ссылка, сделка, избранное) — открываем общую карточку группы (SQL 37)
+  if (e.group_id && e.group_id !== e.id) { go('#/item/' + e.group_id); return; }
+  const isGroup = e.group_size > 1;
+  // Годы выпуска машин группы — для строки «Год выпуска: 2019–2022»
+  const gInfo = isGroup ? await rpc('group_free', { p_eq: e.id, p_from: mskToday(1), p_to: mskToday(1) }).catch(() => null) : null;
+  const yearText = isGroup && gInfo?.year_min ? (gInfo.year_min === gInfo.year_max ? String(gInfo.year_min) : `${gInfo.year_min}–${gInfo.year_max}`) : (e.year ? String(e.year) : '');
   const org = e.organizations || {};
   const mine = state.orgs.some((o) => o.id === e.org_id);
   const photos = (e.photos || []).map((p) => (typeof p === 'string' ? { url: p } : p));
@@ -37,8 +43,9 @@ export async function render(app, { id }) {
         ${photos.length > 1 ? `<div class="thumbs">${photos.map((p, i) => `<button data-i="${i}" class="${i ? '' : 'on'}" aria-label="${t('Фото', 'Photo')} ${i + 1}"><img src="${esc(p.url)}" alt="" loading="lazy" referrerpolicy="no-referrer"></button>`).join('')}</div>` : ''}
 
         <div class="panel item-title" style="margin-top:14px">
-          <span class="muted small">${esc(catName(e.categories))} · ${esc(e.brand)} ${esc(e.model)}${e.year ? ' · ' + e.year + t(' г.', '') : ''}</span>
+          <span class="muted small">${esc(catName(e.categories))} · ${esc(e.brand)} ${esc(e.model)}${yearText ? ' · ' + yearText + t(' г.', '') : ''}</span>
           <h1 style="font-size:28px;margin:4px 0 6px">${esc(e.title)}</h1>
+          ${isGroup ? `<div style="margin:0 0 6px"><span class="st qty">${t(`${e.group_size} ${plural(e.group_size, 'одинаковая машина', 'одинаковые машины', 'одинаковых машин')} в парке — можно взять несколько`, `${e.group_size} identical units — you can book several`)}</span></div>` : ''}
           <div class="muted">${esc(e.city)}${e.district ? ', ' + esc(e.district) : ''} · ${t('выезд до', 'travels up to')} ${e.service_radius_km} ${t('км', 'km')}</div>
           <div class="actions" style="margin-top:12px">
             ${state.user ? `<button class="btn ghost sm" id="favBtn">${favs.has(e.id) ? t('♥ В избранном', '♥ In favourites') : t('♡ В избранное', '♡ Add to favourites')}</button>` : ''}
@@ -50,7 +57,8 @@ export async function render(app, { id }) {
         <div class="panel"><h2>${t('Характеристики', 'Specifications')}</h2>
           <table class="spec-table">
             <tr><td>${t('Марка и модель', 'Brand and model')}</td><td>${esc(e.brand)} ${esc(e.model)}</td></tr>
-            ${e.year ? `<tr><td>${t('Год выпуска', 'Year')}</td><td>${e.year}</td></tr>` : ''}
+            ${yearText ? `<tr><td>${t('Год выпуска', 'Year')}</td><td>${yearText}</td></tr>` : ''}
+            ${isGroup ? `<tr><td>${t('Машин в парке', 'Units in fleet')}</td><td>${e.group_size}</td></tr>` : ''}
             ${Object.entries(e.specs || {}).map(([k, v]) => `<tr><td>${esc((SPEC_LABELS[k] || [k])[0])}</td><td>${esc(specValue(k, v))}</td></tr>`).join('')}
           </table>
           ${e.description ? `<h3 style="margin-top:18px">${t('Описание', 'Description')}</h3><p style="white-space:pre-wrap;margin:0">${esc(e.description)}</p>` : ''}
@@ -95,6 +103,9 @@ export async function render(app, { id }) {
             </div>
             <label class="f"><span>${t('Формат', 'Format')}</span><select class="inp" name="op">
               ${e.with_operator ? `<option value="1">${t('С оператором', 'With operator')}</option>` : ''}${e.without_operator ? `<option value="0">${t('Без оператора', 'Without operator')}</option>` : ''}</select></label>
+            ${isGroup ? `<label class="f"><span>${t('Сколько машин нужно', 'How many units')}</span><select class="inp" name="qty">
+              ${Array.from({ length: Math.min(e.group_size, 50) }, (_, i) => `<option value="${i + 1}">${i + 1} ${t('шт.', 'pcs')}</option>`).join('')}</select>
+              <div class="hint" id="freeHint"></div></label>` : ''}
           </form>
           <div id="quote"></div>
           <div class="actions" style="flex-direction:column;align-items:stretch" id="cta"></div>
@@ -156,11 +167,24 @@ export async function render(app, { id }) {
     drawCal();
     if (negotiable) { lastQuote = null; renderCta(); return; }
     quoteEl.innerHTML = '<div class="skeleton" style="height:90px"></div>';
+    const qty = isGroup ? Number(calcForm.qty.value || 1) : 1;
+    let free = null;
     try {
-      lastQuote = await rpc('calc_quote', { p_eq: e.id, p_start: calcForm.start.value, p_end: calcForm.end.value, p_with_operator: calcForm.op.value === '1' });
+      [lastQuote, free] = await Promise.all([
+        rpc('calc_quote', { p_eq: e.id, p_start: calcForm.start.value, p_end: calcForm.end.value, p_with_operator: calcForm.op.value === '1', p_qty: qty }),
+        isGroup ? rpc('group_free', { p_eq: e.id, p_from: calcForm.start.value, p_to: calcForm.end.value }).catch(() => null) : null]);
     } catch (err) { lastQuote = { ok: false, error: err.message }; }
-    const overlap = busyDays.some((b) => !(b.end_date < calcForm.start.value || b.start_date > calcForm.end.value));
-    quoteEl.innerHTML = lastQuote.ok ? breakdownHtml(lastQuote) + (overlap ? `<div class="banner err">${t('На часть выбранных дат техника занята', 'The machine is busy on some of the selected dates')}</div>` : '')
+    // Группа: занято, если свободных машин на весь период меньше, чем нужно; одиночная — если даты пересекают занятость
+    const overlap = isGroup ? (free ? free.free < qty : false) : busyDays.some((b) => !(b.end_date < calcForm.start.value || b.start_date > calcForm.end.value));
+    if (isGroup && free) {
+      const fh = app.querySelector('#freeHint');
+      fh.textContent = t(`На эти даты свободно ${free.free} из ${free.total} шт.`, `Free on these dates: ${free.free} of ${free.total}`);
+      fh.className = 'hint' + (free.free < qty ? ' warn-text' : '');
+    }
+    const busyMsg = isGroup ? (free?.free ? t(`На эти даты свободно только ${free.free} шт. — уменьшите количество или выберите другие даты`, `Only ${free.free} units are free on these dates`)
+      : t('На выбранные даты все машины заняты', 'All units are busy on the selected dates'))
+      : t('На часть выбранных дат техника занята', 'The machine is busy on some of the selected dates');
+    quoteEl.innerHTML = lastQuote.ok ? breakdownHtml(lastQuote) + (overlap ? `<div class="banner err">${busyMsg}</div>` : '')
       : `<div class="banner warn">${esc(lastQuote.error)}</div>`;
     if (overlap) lastQuote = { ...lastQuote, busy: true };
     renderCta();
@@ -196,7 +220,7 @@ export async function render(app, { id }) {
   recalc();
 
   // --- похожие ---
-  const sim = await q(sb.from('equipment').select(EQ_SELECT).eq('status', 'PUBLISHED').eq('category_id', e.category_id).neq('id', e.id).limit(4));
+  const sim = await q(sb.from('equipment').select(EQ_SELECT).eq('status', 'PUBLISHED').eq('listed', true).eq('category_id', e.category_id).neq('id', e.id).limit(4));
   const simEl = app.querySelector('#similar');
   simEl.innerHTML = sim.length ? `<div class="products">${sim.map((x) => productCard(x, favs)).join('')}</div>`
     : `<p class="muted">${t('Других предложений в этой категории пока нет.', 'No other offers in this category yet.')} <a href="#/orders/new?cat=${e.categories?.code}">${t('Разместите заказ', 'Post an order')}</a> ${t('— исполнители откликнутся сами.', '— providers will respond.')}</p>`;
@@ -231,8 +255,9 @@ export function breakdownHtml(qt) {
 
 function bookDialog(e, form, qt) {
   const key = idemKey();
+  const qty = Number(form.qty?.value || 1);
   const m = modal(`<h2>${t('Бронирование', 'Booking')}</h2>
-    <p class="muted" style="margin-top:-6px">${esc(e.title)} · ${date(form.start.value)} — ${date(form.end.value)} · ${form.op.value === '1' ? t('с оператором', 'with operator') : t('без оператора', 'without operator')}</p>
+    <p class="muted" style="margin-top:-6px">${esc(e.title)}${qty > 1 ? ` × ${qty} ${t('шт.', 'pcs')}` : ''} · ${date(form.start.value)} — ${date(form.end.value)} · ${form.op.value === '1' ? t('с оператором', 'with operator') : t('без оператора', 'without operator')}</p>
     <div class="banner info">${t('Бронь от имени:', 'Booking on behalf of:')} <b>&nbsp;${esc(state.org.type === 'PERSON' ? t('вы как частное лицо', 'you as an individual') : state.org.name)}</b></div>
     ${breakdownHtml(qt)}
     <form id="bf">
@@ -250,7 +275,7 @@ function bookDialog(e, form, qt) {
       try {
         const dealId = await rpc('book_equipment', {
           p_org: state.org.id, p_eq: e.id, p_start: form.start.value, p_end: form.end.value,
-          p_with_operator: form.op.value === '1', p_address: f.address.value, p_comment: f.comment.value, p_key: key });
+          p_with_operator: form.op.value === '1', p_address: f.address.value, p_comment: f.comment.value, p_key: key, p_qty: qty });
         m.close(); toast(t('Бронь отправлена исполнителю', 'Booking sent to the provider')); go('#/deals/' + dealId);
       } catch (err) { const el = m.el.querySelector('#err'); el.textContent = err.message; el.classList.remove('hidden'); }
     });
@@ -259,7 +284,7 @@ function bookDialog(e, form, qt) {
 
 function priceRequestDialog(e, form) {
   const m = modal(`<h2>${t('Заявка на бронь', 'Booking request')}</h2>
-    <p class="muted" style="margin-top:-6px">${t('Заявку увидит только этот исполнитель. Он посчитает итог с доставкой и пришлёт предложение, которое можно принять в один клик.', 'Only this provider will see the request. They will calculate the total with delivery and send an offer you can accept in one click.')}</p>
+    <p class="muted" style="margin-top:-6px">${t('Заявку увидит только этот исполнитель. Он посчитает итог с доставкой и пришлёт предложение, которое можно принять в один клик.', 'Only this provider will see the request. They will calculate the total with delivery and send an offer you can accept in one click.')}${Number(form.qty?.value || 1) > 1 ? ` <b>${t('Количество', 'Quantity')}: ${form.qty.value} ${t('шт.', 'pcs')}</b>` : ''}</p>
     <form id="pf">
       <label class="f"><span>${t('Что нужно сделать', 'What needs doing')} <i>*</i></span><input class="inp" name="title" required minlength="3" maxlength="150" title="${t('От 3 до 150 символов', '3 to 150 characters')}" value="${esc(e.title)}"></label>
       <div class="grid2">
@@ -284,7 +309,7 @@ function priceRequestDialog(e, form) {
     busy(f.querySelector('button'), async () => {
       try {
         const id = await rpc('create_order', {
-          p_org: state.org.id, p_title: f.title.value, p_description: f.desc.value, p_category: e.category_id, p_qty: 1,
+          p_org: state.org.id, p_title: f.title.value, p_description: f.desc.value, p_category: e.category_id, p_qty: Number(form.qty?.value || 1),
           p_format: form.op.value === '1' ? 'WITH_OPERATOR' : 'WITHOUT_OPERATOR', p_start: f.start.value, p_end: f.end.value,
           p_city: f.city.value, p_district: f.district.value || null, p_address: f.address.value,
           p_budget: f.budget.value ? Math.round(+f.budget.value * 100) : null, p_budget_visible: !!f.budget.value,
