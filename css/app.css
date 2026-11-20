@@ -965,8 +965,8 @@ details.faq p{margin:10px 0 0}
 .city-opt:hover,.city-opt.on{background:var(--accent-soft)}
 .city-hint{padding:11px 12px;font-size:14px;color:var(--muted)}
 /* Телефон: окно выбора снизу экрана для полей со списком (20.11.2026) */
-.dd-sheet-bg{position:fixed;inset:0;z-index:80;background:#0008;display:flex;align-items:flex-end}
-.dd-sheet{width:100%;max-height:78dvh;display:flex;flex-direction:column;background:var(--surface);border-radius:18px 18px 0 0;padding:12px 12px calc(12px + env(safe-area-inset-bottom));box-shadow:0 -10px 30px #0006}
+.dd-sheet-bg{position:fixed;left:0;right:0;top:0;height:100dvh;z-index:80;background:#0008;display:flex;align-items:flex-end} /* top/height — видимая часть экрана, ставит cities.js */
+.dd-sheet{width:100%;max-height:min(85dvh, calc(100% - 16px));display:flex;flex-direction:column;background:var(--surface);border-radius:18px 18px 0 0;padding:12px 12px calc(12px + env(safe-area-inset-bottom));box-shadow:0 -10px 30px #0006}
 .dd-sh-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
 .dd-sh-head b{font-size:17px}
 .dd-sh-x{border:0;background:var(--fill);color:var(--ink);border-radius:999px;padding:8px 14px;font:inherit;font-weight:700}
