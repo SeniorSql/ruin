@@ -42,7 +42,7 @@ async function list(app, query) {
       const p = photoOf(d.equipment || {});
       const other = tab === 'customer' ? d.prov?.name : (d.cust?.type === 'PERSON' ? 'Частное лицо' : d.cust?.name);
       return `<a class="row-item" href="#/deals/${d.id}">${p ? `<img src="${esc(p.url)}" alt="" referrerpolicy="no-referrer">` : '<img alt="">'}
-        <div class="grow"><b>${esc(d.number)} · ${esc(d.equipment?.title)}</b><div class="small muted">${esc(other || '')} · ${period(d.start_date, d.end_date)}</div>
+        <div class="grow"><b>${esc(d.number)} · ${esc(d.equipment?.title)}${d.qty > 1 ? ` × ${d.qty} шт.` : ''}</b><div class="small muted">${esc(other || '')} · ${period(d.start_date, d.end_date)}</div>
         <div class="small num">${money(d.total_minor)}</div>
         ${team ? `<div class="small">${asg[d.id] ? `<span class="chip ${asg[d.id] === state.user.id ? 'me' : ''}">Ответственный: ${esc(memberLabel(team, asg[d.id]))}</span>` : live(d) ? '<span class="chip warn">Без ответственного</span>' : ''}</div>` : ''}
         ${extWait[d.id] ? '<div class="small warn-text" style="font-weight:700">Ждёт вашего ответа: продление аренды</div>'
@@ -53,16 +53,27 @@ async function list(app, query) {
       tab === 'customer' ? '<a class="btn" href="#/catalog">В каталог</a>' : (o.can_provide ? '<a class="btn" href="#/feed">Лента заказов</a>' : ''))}`;
 }
 
+// Машины сделки (SQL 38): госномер и год. Заказчик видит госномер после подтверждения сделки — для пропуска на объект
+function unitsHtml(units, d, amProv) {
+  if (!units?.length) return '';
+  const hidden = units.some((u) => !u.reg);
+  if (units.length === 1 && hidden && !amProv) return '';
+  return `<div style="margin:10px 0 4px"><b class="small">${units.length > 1 ? `Машины по сделке (${units.length})` : 'Машина'}</b>
+    <ol class="small" style="margin:4px 0 0;padding-left:20px">${units.map((u) => `<li>${u.reg ? `Госномер <b>${esc(u.reg)}</b>` : '<span class="muted">госномер — после подтверждения сделки</span>'}${u.year ? ` · ${u.year} г.` : ''}</li>`).join('')}</ol>
+    ${hidden && !amProv ? '' : units.length > 1 && amProv ? '<div class="small muted">Путевой лист — на каждую машину отдельно (блок «Документы»).</div>' : ''}</div>`;
+}
+
 async function detail(app, id) {
-  let d, events, priv, conv, ext;
+  let d, events, priv, conv, ext, units;
   try {
     d = await q(sb.from('deals').select('*, equipment(id,title,photos,brand,model,year,city), cust:organizations!deals_customer_org_id_fkey(id,name,type,inn), prov:organizations!deals_provider_org_id_fkey(id,name,type,inn,verification_status)').eq('id', id).maybeSingle());
     if (!d) { app.innerHTML = emptyState('Сделка не найдена', 'Возможно, она относится к другой организации — переключите организацию в меню под вашим именем (справа вверху).'); return; }
-    [events, priv, conv, ext] = await Promise.all([
+    [events, priv, conv, ext, units] = await Promise.all([
       q(sb.from('deal_events').select('*').eq('deal_id', id).order('ts')),
       rpc('get_deal_private', { p_deal: id }),
       q(sb.from('conversations').select('id').eq('deal_id', id).eq('type', 'DEAL').maybeSingle()),
-      q(sb.from('deal_extensions').select('*').eq('deal_id', id).eq('status', 'REQUESTED').maybeSingle()).catch(() => null)
+      q(sb.from('deal_extensions').select('*').eq('deal_id', id).eq('status', 'REQUESTED').maybeSingle()).catch(() => null),
+      rpc('deal_units_info', { p_deal: id }).catch(() => [])
     ]);
   } catch (err) { app.innerHTML = errorState(err); return; }
 
@@ -100,8 +111,9 @@ async function detail(app, id) {
     <div class="cols">
       <div>
         <div class="panel"><div class="row-item" style="padding-top:0">${p ? `<img src="${esc(p.url)}" alt="" referrerpolicy="no-referrer">` : ''}
-          <div class="grow"><b><a href="#/item/${d.equipment_id}">${esc(d.equipment?.title)}</a></b>
-          <div class="small muted">${esc(d.equipment?.brand)} ${esc(d.equipment?.model)}${d.equipment?.year ? ', ' + d.equipment.year : ''}</div></div></div>
+          <div class="grow"><b><a href="#/item/${d.equipment_id}">${esc(d.equipment?.title)}</a>${d.qty > 1 ? ` <span class="st qty">× ${d.qty} шт.</span>` : ''}</b>
+          <div class="small muted">${esc(d.equipment?.brand)} ${esc(d.equipment?.model)}${d.qty > 1 ? '' : d.equipment?.year ? ', ' + d.equipment.year : ''}</div></div></div>
+          ${unitsHtml(units, d, amProv)}
           <dl class="kv"><dt>Период</dt><dd>${period(d.start_date, d.end_date)}</dd><dt>Формат</dt><dd>${d.with_operator ? 'с оператором' : 'без оператора'}</dd>
             <dt>Источник</dt><dd>${d.source === 'CATALOG' ? 'бронь из каталога' : `<a href="#/${amCust ? 'orders' : 'feed'}/${d.order_id}">заказ на бирже</a>`}</dd>
             <dt>Условия отмены</dt><dd>${esc(POLICY[d.cancel_policy] || '')}</dd>
