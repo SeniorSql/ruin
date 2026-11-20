@@ -1,7 +1,11 @@
-// Выпадающий список городов для всех полей «Город» (input[name=city]).
-// Свой список (не <datalist>): одинаково работает на телефоне (iPhone, Android) и на компьютере.
-// При вводе показывает подходящие города; любой другой город или посёлок можно ввести вручную.
-// Порядок — примерно по численности населения (крупные сверху).
+// Выпадающие списки для полей с ручным вводом (не <datalist>): одинаково работают на телефоне (iPhone, Android) и на компьютере.
+// При вводе показывают подходящие варианты; любое другое значение можно вписать вручную.
+// Поля: input[name="city"] — города; input[data-dd="…"] — другой справочник (20.11.2026):
+//   district — районы по городу из той же формы; svc — виды работ ТО; opt:<код> — варианты характеристики;
+//   свои источники страницы регистрируют через registerSource (например, марки и модели в карточке техники).
+import { LO_TOWNS, SPB_TOWNS, districtsFor, SERVICE_TITLES, SPEC_OPTIONS } from './catalog-data.js';
+
+// Порядок — примерно по численности населения (крупные сверху); после Москвы и Петербурга — пригороды СПб и города Ленобласти
 export const CITIES = [
   'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань', 'Красноярск', 'Нижний Новгород',
   'Челябинск', 'Уфа', 'Самара', 'Ростов-на-Дону', 'Краснодар', 'Омск', 'Воронеж', 'Пермь', 'Волгоград',
@@ -21,26 +25,39 @@ export const CITIES = [
   'Березники', 'Коломна', 'Майкоп', 'Ковров', 'Уссурийск', 'Новый Уренгой', 'Ноябрьск', 'Нефтеюганск',
   'Ханты-Мансийск', 'Тобольск', 'Магадан'
 ];
+const ALL_CITIES = [...CITIES.slice(0, 2), ...SPB_TOWNS, ...LO_TOWNS, ...CITIES.slice(2)];
 
-const MAX = 8;
-const norm = (s) => s.toLowerCase().replace(/ё/g, 'е').trim();
-const NORM = CITIES.map(norm);
-const SEL = 'input[name="city"]';
+const norm = (s) => String(s ?? '').toLowerCase().replace(/ё/g, 'е').trim();
+const SEL = 'input[name="city"], input[data-dd]';
+
+// Источники: функция (поле) → массив вариантов; limit — сколько показывать без ввода
+const SOURCES = {
+  city: { get: () => ALL_CITIES, limit: 8 },
+  district: { get: (inp) => districtsFor(inp.form?.querySelector('[name="city"]')?.value) },
+  svc: { get: () => SERVICE_TITLES },
+};
+export function registerSource(name, get, limit) { SOURCES[name] = { get, limit }; }
+const sourceOf = (inp) => {
+  const k = inp.dataset.dd || (inp.name === 'city' ? 'city' : '');
+  if (k.startsWith('opt:')) return { get: () => SPEC_OPTIONS[k.slice(4)] || [] };
+  return SOURCES[k] || null;
+};
 
 let dd = null;      // сам список (один на страницу)
 let cur = null;     // поле, для которого он открыт
-let items = [];     // показанные города
+let items = [];     // показанные варианты
 let active = -1;    // выделенный стрелками
 
-function match(q) {
+function match(all, q, limit) {
   const n = norm(q);
-  if (!n) return CITIES.slice(0, MAX);
+  if (!n) return all.slice(0, limit || 80);
   const starts = [], inside = [];
-  NORM.forEach((c, i) => {
-    if (c.startsWith(n) || c.split(/[\s-]/).some((w) => w.startsWith(n))) starts.push(CITIES[i]);
-    else if (c.includes(n)) inside.push(CITIES[i]);
+  all.forEach((c) => {
+    const s = norm(c);
+    if (s.startsWith(n) || s.split(/[\s\-()]/).some((w) => w.startsWith(n))) starts.push(c);
+    else if (s.includes(n)) inside.push(c);
   });
-  return starts.concat(inside).filter((c) => norm(c) !== n).slice(0, MAX);
+  return starts.concat(inside).slice(0, 80);
 }
 
 function place() {
@@ -60,11 +77,24 @@ function place() {
   dd.style.bottom = up ? (window.innerHeight - r.top + 4) + 'px' : '';
 }
 
-function render() {
-  items = match(cur.value);
-  if (!items.length) return hide();
+const escHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// showAll — при открытии поля, где уже выбрано значение из списка, показываем весь список, а не только совпадения
+function render(showAll) {
+  const src = sourceOf(cur);
+  const all = src ? (src.get(cur) || []).map(String) : [];
+  if (!all.length) return hide();
+  const exact = all.some((c) => norm(c) === norm(cur.value));
+  items = match(all, showAll && exact ? '' : cur.value, src.limit);
   active = -1;
-  dd.innerHTML = items.map((c, i) => `<button type="button" class="city-opt" data-i="${i}" tabindex="-1">${c}</button>`).join('');
+  const typed = cur.value.trim();
+  if (!items.length) {
+    // ничего не нашлось — подсказка, что своё значение можно оставить
+    if (!typed) return hide();
+    dd.innerHTML = `<div class="city-hint">Нет в списке — оставьте «${escHtml(typed)}» как ввели</div>`;
+  } else {
+    dd.innerHTML = items.map((c, i) => `<button type="button" class="city-opt ${norm(c) === norm(typed) ? 'on' : ''}" data-i="${i}" tabindex="-1">${escHtml(c)}</button>`).join('');
+  }
   dd.hidden = false;
   cur.setAttribute('aria-expanded', 'true');
   place();
@@ -81,6 +111,7 @@ function pick(i) {
   cur.value = items[i];
   cur.dispatchEvent(new Event('input', { bubbles: true }));
   cur.dispatchEvent(new Event('change', { bubbles: true }));
+  cur.dispatchEvent(new CustomEvent('dd-pick', { bubbles: true, detail: items[i] }));
   hide();
 }
 
@@ -101,7 +132,7 @@ function prep(inp) {
   inp.setAttribute('aria-expanded', 'false');
 }
 
-// Подключает список ко всем полям «Город», в том числе появившимся позже (страницы, окна).
+// Подключает списки ко всем подходящим полям, в том числе появившимся позже (страницы, окна).
 export function initCityList() {
   dd = document.createElement('div');
   dd.className = 'city-dd';
@@ -118,9 +149,11 @@ export function initCityList() {
 
   document.addEventListener('focusin', (e) => {
     if (!e.target.matches?.(SEL)) return;
-    cur = e.target; prep(cur); render();
+    cur = e.target; prep(cur); render(true);
   });
-  document.addEventListener('input', (e) => { if (e.target === cur) render(); });
+  // повторное нажатие на поле в фокусе (телефон) — снова открыть список
+  document.addEventListener('click', (e) => { if (e.target === cur && dd.hidden) render(true); });
+  document.addEventListener('input', (e) => { if (e.target === cur) render(false); });
   document.addEventListener('focusout', (e) => { if (e.target === cur) setTimeout(() => { if (document.activeElement !== cur) hide(); }, 120); });
   document.addEventListener('keydown', (e) => {
     if (e.target !== cur || dd.hidden) return;
