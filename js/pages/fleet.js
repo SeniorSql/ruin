@@ -5,6 +5,7 @@ import { esc, money, priceText, photoOf, status, toast, busy, confirmBox, emptyS
 import { go, route, refreshShell } from '../app.js';
 import { brandsFor, modelsFor, specsFor, SPEC_OPTIONS } from '../catalog-data.js';
 import { registerSource } from '../cities.js';
+import { autoMask, manualMask } from '../photoMask.js';
 
 const SINGULAR = {
   excavators: 'Экскаватор', mini_excavators: 'Мини-экскаватор', backhoe_loaders: 'Экскаватор-погрузчик', wheel_loaders: 'Фронтальный погрузчик',
@@ -280,7 +281,9 @@ async function editor(app, o, id, query = {}) {
   const drawPhotos = () => {
     app.querySelector('#photos').innerHTML = photos.map((p, i) => `<div class="ph"><img src="${esc(p.url)}" alt="" referrerpolicy="no-referrer">
       ${editable ? `<button type="button" data-del="${i}" aria-label="Удалить фото">×</button>` : ''}
-      ${i === 0 ? '<span class="st ok" style="position:absolute;left:5px;bottom:5px">Главное</span>' : editable ? `<button type="button" data-main="${i}" style="left:5px;right:auto;width:auto;padding:0 6px;font-size:11px">Главное</button>` : ''}</div>`).join('')
+      ${editable && !p.checking ? `<button type="button" class="ph-mask" data-mask="${i}" title="Закрыть телефон или название компании на фото">Закрыть надпись</button>` : ''}
+      ${p.checking ? '<span class="ph-check">Проверяем на контакты…</span>' : ''}
+      ${i === 0 ? '<span class="st ok" style="position:absolute;left:5px;bottom:5px">Главное</span>' : editable ? `<button type="button" data-main="${i}" style="left:5px;right:auto;top:auto;bottom:5px;width:auto;padding:0 6px;font-size:11px">Главное</button>` : ''}</div>`).join('')
       + (editable && photos.length < 20 ? `<label class="photo-add" for="file"><span>+ Добавить фото<br><small>${photos.length}/20</small></span></label>` : '');
     markSteps();
   };
@@ -323,16 +326,28 @@ async function editor(app, o, id, query = {}) {
   f.addEventListener('change', markSteps);
   drawUnits();
   drawPhotos();
-  app.querySelector('#photos').addEventListener('click', (ev) => {
-    const d = ev.target.closest('[data-del]'), mn = ev.target.closest('[data-main]');
+  app.querySelector('#photos').addEventListener('click', async (ev) => {
+    const d = ev.target.closest('[data-del]'), mn = ev.target.closest('[data-main]'), mk = ev.target.closest('[data-mask]');
     if (d) { photos.splice(+d.dataset.del, 1); drawPhotos(); }
     if (mn) { const [p] = photos.splice(+mn.dataset.main, 1); photos.unshift(p); drawPhotos(); }
+    // Закрыть надпись вручную: файл заменяется на сервере по тому же адресу, в карточке — новая ссылка (без старой копии в кэше)
+    if (mk) { const p = photos[+mk.dataset.mask]; const url = p && await manualMask(p.url); if (url) { p.url = url; drawPhotos(); } }
   });
+  // Новое фото сразу проверяется на телефоны, сайты и названия компаний (служба на нашем сервере, 20.11.2026)
+  const checkPhoto = (ph) => {
+    ph.checking = true; drawPhotos();
+    autoMask(ph.url).then((r) => {
+      if (r.masked && r.url) {
+        ph.url = r.url;
+        toast(`На фото закрыто: ${(r.kinds || []).join(', ')}. Контакты на сайте показываются только после подтверждения сделки.`);
+      }
+    }).catch(() => {}).finally(() => { delete ph.checking; drawPhotos(); });
+  };
   app.querySelector('#file').addEventListener('change', async (ev) => {
     const files = [...ev.target.files].slice(0, 20 - photos.length);
     ev.target.value = '';
     for (const file of files) {
-      try { toast('Загружаем фото…'); photos.push({ url: await uploadPhoto(o.id, file) }); drawPhotos(); }
+      try { toast('Загружаем фото…'); const ph = { url: await uploadPhoto(o.id, file) }; photos.push(ph); checkPhoto(ph); }
       catch (err) { toast(err.message, true); }
     }
   });
@@ -348,7 +363,7 @@ async function editor(app, o, id, query = {}) {
     operator_minor: f.operator.value ? toMinor(f.operator.value) : 0,
     delivery_minor: f.delivery_request.checked ? null : (f.delivery.value ? toMinor(f.delivery.value) : 0),
     deposit_minor: f.deposit.value ? toMinor(f.deposit.value) : 0, cancel_policy: f.cancel_policy.value,
-    instant_book: f.instant_book.checked, specs: collectSpecs(), photos
+    instant_book: f.instant_book.checked, specs: collectSpecs(), photos: photos.map(({ checking, ...p }) => p)
   });
   const showErr = (msg) => { const el = app.querySelector('#err'); el.textContent = msg; el.classList.remove('hidden'); el.scrollIntoView({ block: 'center' }); };
   // Проверка машин до сохранения: госномер и год у каждой, номера не повторяются
