@@ -11,7 +11,7 @@ export async function render(app, _p, query) {
   // В списке категорий — только те, где есть техника, с числом предложений (с 12.11.2026).
   // Выбранная по ссылке категория остаётся в списке, даже если в ней пока пусто.
   const [cats, used] = await Promise.all([loadCategories(),
-    q(sb.from('equipment').select('category_id').eq('status', 'PUBLISHED').limit(5000)).catch(() => null)]);
+    q(sb.from('equipment').select('category_id').eq('status', 'PUBLISHED').eq('listed', true).limit(5000)).catch(() => null)]);
   const catN = {};
   (used || []).forEach((e) => { catN[e.category_id] = (catN[e.category_id] || 0) + 1; });
   const f = { q: query.q || '', cat: query.cat || '', city: query.city || '', fmt: query.fmt || '',
@@ -60,7 +60,8 @@ export async function render(app, _p, query) {
   bindFavs(res);
 
   async function load() {
-    let b = sb.from('equipment').select(EQ_SELECT, { count: 'exact' }).eq('status', 'PUBLISHED');
+    // Группа одинаковой техники — одна карточка «N шт.» (SQL 37): машины группы, кроме ведущей, не показываем
+    let b = sb.from('equipment').select(EQ_SELECT, { count: 'exact' }).eq('status', 'PUBLISHED').eq('listed', true);
     if (cat) b = b.eq('category_id', cat.id);
     if (f.city) b = b.ilike('city', `%${f.city}%`);
     if (f.fmt === 'op') b = b.eq('with_operator', true);
