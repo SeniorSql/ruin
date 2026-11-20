@@ -10,7 +10,7 @@ export async function render(app, { id }) {
     o = await q(sb.from('organizations').select('*').eq('id', id).maybeSingle());
     if (!o || o.type === 'PERSON') { app.innerHTML = emptyState('Компания не найдена', 'Возможно, ссылка устарела.'); return; }
     [eq, revs, stats, rating, favs] = await Promise.all([
-      q(sb.from('equipment').select(EQ_SELECT).eq('org_id', id).eq('status', 'PUBLISHED').order('created_at', { ascending: false })),
+      q(sb.from('equipment').select(EQ_SELECT).eq('org_id', id).eq('status', 'PUBLISHED').eq('listed', true).order('created_at', { ascending: false })),
       q(sb.from('reviews').select('*').eq('subject_org_id', id).eq('subject_role', 'PROVIDER').in('status', ['PUBLISHED', 'TEXT_HIDDEN']).order('published_at', { ascending: false }).limit(50)),
       rpc('public_org_stats', { p_org: id }), rpc('org_rating', { p_org: id, p_role: 'PROVIDER' }), loadFavs()
     ]);
