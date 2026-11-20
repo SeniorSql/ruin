@@ -74,7 +74,7 @@ function create(app, query) {
             <label class="f"><span>Начало <i>*</i></span><input class="inp" type="date" name="start" required min="${mskToday(1)}" value="${mskToday(1)}"></label>
             <label class="f"><span>Окончание <i>*</i></span><input class="inp" type="date" name="end" required min="${mskToday(1)}" value="${mskToday(1)}"></label>
             <label class="f"><span>Город или посёлок <i>*</i></span><input class="inp" name="city" required maxlength="100" placeholder="Например: Подольск" value="${esc(state.org.city || '')}"></label>
-            <label class="f"><span>Район</span><input class="inp" name="district" maxlength="100" placeholder="Необязательно"></label>
+            <label class="f"><span>Район</span><input class="inp" name="district" data-dd="district" maxlength="100" placeholder="Необязательно"></label>
           </div>
           <label class="f"><span>Точный адрес <i>*</i></span><input class="inp" name="address" required maxlength="300">
             <div class="hint">Увидит только исполнитель, с которым будет подтверждена сделка.</div></label>
