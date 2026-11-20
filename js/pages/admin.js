@@ -14,7 +14,8 @@ export async function render(app, _p, query) {
   // Если ничего не выбрано — открываем первую очередь, где есть работа
   const firstQueue = ['equipment', 'orgs', 'reviews', 'reports'].find((k) => n[k]);
   const tab = query.tab || firstQueue || 'traffic';
-  const tabs = [['traffic', 'Посещаемость'], ['stats', 'Статистика'], ['orgs', 'Проверка организаций', n.orgs], ['equipment', 'Модерация техники', n.equipment],
+  const tabs = [['traffic', 'Посещаемость'], ['stats', 'Статистика'], ...(canSeeUsers() ? [['users', 'Пользователи']] : []),
+    ['orgs', 'Проверка организаций', n.orgs], ['equipment', 'Модерация техники', n.equipment],
     ['reviews', 'Отзывы', n.reviews], ['reports', 'Жалобы', n.reports], ['all', 'Все организации']];
   app.innerHTML = `<div class="page-head"><div><h1>Админка</h1><p>Каждое решение записывается в журнал с автором, временем и причиной.</p></div></div>
     ${n.total ? `<div class="banner warn">Ждут вашего решения: ${[['orgs', 'организаций на проверке'], ['equipment', 'техники на модерации'], ['reviews', 'отзывов на проверке'], ['reports', 'жалоб']]
@@ -29,7 +30,81 @@ export async function render(app, _p, query) {
     if (tab === 'stats') await stats(box, query);
     if (tab === 'traffic') await traffic(box, query);
     if (tab === 'reviews') await reviews(box);
+    if (tab === 'users') await users(box, query);
   } catch (err) { box.innerHTML = errorState(err); }
+}
+
+// ---------- Пользователи (SQL 36, 20.11.2026): только для двух почт; сервер проверяет сам (can_see_users) ----------
+const USERS_EMAILS = ['etibarvtb@gmail.com', 'artur-geydarov@mail.ru'];
+const canSeeUsers = () => USERS_EMAILS.includes((state.user?.email || '').toLowerCase());
+const ORG_SHORT = { PERSON: 'Частное лицо', SOLE_PROP: 'ИП', LEGAL: 'Юрлицо', SELF_EMPLOYED: 'Самозанятый' };
+const VER = { DRAFT: ['', 'не на проверке'], PENDING_REVIEW: ['warn', 'на проверке'], VERIFIED: ['ok', 'проверена'],
+  REQUIRES_UPDATE: ['warn', 'нужны правки'], REJECTED: ['err', 'отклонена'], SUSPENDED: ['err', 'заблокирована'] };
+const MSGR = { TG: 'Telegram', MAX: 'MAX' };
+
+function regChart(days, width) {
+  const W = Math.max(280, Math.round(width || 640)), H = 90, pad = 18;
+  const max = Math.max(1, ...days.map((d) => d.n)), bw = (W - pad) / days.length;
+  const bars = days.map((d, i) => {
+    const h = (d.n / max) * (H - 16), x = pad + i * bw;
+    return `<g><title>${dShort(d.day)}: ${d.n} ${plural(d.n, 'регистрация', 'регистрации', 'регистраций')}</title>
+      <rect x="${x}" y="0" width="${bw}" height="${H}" fill="transparent"/>
+      ${d.n ? `<rect x="${x + bw * 0.15}" y="${H - h}" width="${bw * 0.7}" height="${h}" rx="2" fill="var(--accent, #f2c200)"/>` : ''}</g>`;
+  }).join('');
+  const last = days.length - 1, step = Math.ceil(days.length / Math.max(3, Math.floor(W / 56)));
+  const labels = days.map((d, i) => ((i % step === 0 && last - i >= step * 0.8) || i === last) ? `<text x="${i === last ? W : pad + i * bw + bw / 2}" y="${H + 14}" text-anchor="${i === last ? 'end' : 'middle'}" font-size="11" fill="currentColor" opacity=".6">${dShort(d.day)}</text>` : '').join('');
+  return `<svg viewBox="0 0 ${W} ${H + 20}" width="100%" role="img" aria-label="Регистрации по дням" style="display:block">
+    <line x1="${pad}" y1="${H}" x2="${W}" y2="${H}" stroke="currentColor" opacity=".15"/>
+    <text x="0" y="11" font-size="11" fill="currentColor" opacity=".6">${max}</text>${bars}${labels}</svg>`;
+}
+
+async function users(box, query) {
+  if (!canSeeUsers()) { box.innerHTML = emptyState('Нет доступа', 'Этот раздел открыт только двум администраторам.'); return; }
+  const d = await rpc('admin_users');
+  const s = d.summary || {};
+  const sort = query.sort || 'new', text = (query.s || '').trim().toLowerCase();
+  const digits = text.replace(/\D/g, '');
+  let list = (d.users || []).filter((u) => !text || [u.name, u.email, ...(u.orgs || []).map((o) => o.name)].some((v) => (v || '').toLowerCase().includes(text))
+    || (digits.length >= 3 && (u.phone || '').replace(/\D/g, '').includes(digits)));
+  const act = (u) => (u.orders || 0) + (u.offers || 0) + (u.deals_all || 0) * 2 + (u.equipment || 0);
+  if (sort === 'login') list = [...list].sort((a, b) => (b.last_sign_in_at || '').localeCompare(a.last_sign_in_at || ''));
+  if (sort === 'active') list = [...list].sort((a, b) => act(b) - act(a) || (b.created_at || '').localeCompare(a.created_at || ''));
+  const kpi = (label, v, sub) => `<div class="kpi"><b>${v ?? 0}</b><span>${label}</span>${sub ? `<div class="small muted">${sub}</div>` : ''}</div>`;
+  const sortBtn = (k, label) => `<a class="btn sm ${sort === k ? 'dark' : 'ghost'}" href="#/admin${qs({ tab: 'users', sort: k, s: query.s || undefined })}">${label}</a>`;
+  // Короткая дата по Москве: «20.11.26» и время ниже — чтобы колонка не расползалась
+  const short = (v) => { const p = Object.fromEntries(new Intl.DateTimeFormat('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(new Date(v)).map((x) => [x.type, x.value]));
+    return `<span style="white-space:nowrap">${p.day}.${p.month}.${p.year}</span> <span class="small muted">${p.hour}:${p.minute}</span>`; };
+  const when = (v) => (v ? short(v) : '<span class="muted">не входил</span>');
+  const orgLine = (o) => `<div class="small">${esc(o.type === 'PERSON' ? 'Частное лицо' : o.name)}${o.type !== 'PERSON' ? ` <span class="muted">· ${ORG_SHORT[o.type] || o.type}</span>` : ''}
+    <span class="muted">· ${[o.can_order ? 'заказчик' : '', o.can_provide ? 'исполнитель' : ''].filter(Boolean).join(' и ') || 'роль не выбрана'}</span>
+    ${o.type !== 'PERSON' ? `<span class="st ${(VER[o.status] || [''])[0]}">${(VER[o.status] || ['', o.status])[1]}</span>` : ''}${o.city ? ` <span class="muted">· ${esc(o.city)}</span>` : ''}</div>`;
+  const num = (n, sub) => (n ? `<b>${n}</b>${sub ? ` <span class="small muted">${sub}</span>` : ''}` : '<span class="muted">0</span>');
+  box.innerHTML = `<div class="kpis">
+      ${kpi('Всего пользователей', s.total)}${kpi('Новых за 7 дней', s.new7, `за 30 дней — ${s.new30 || 0}`)}
+      ${kpi('Заходили за 7 дней', s.active7)}${kpi('Подтвердили почту', s.confirmed)}
+      ${kpi('Создали организацию', s.with_org, 'ИП, ООО, самозанятый')}${kpi('Заказчики / исполнители', `${s.customers || 0} / ${s.providers || 0}`)}
+      ${kpi('Подключили мессенджер', s.messengers, 'Telegram или MAX')}</div>
+    <div class="panel"><h2>Регистрации за 30 дней</h2><div id="uchart"></div></div>
+    <div class="panel"><form class="filters" id="uf"><input class="inp" name="s" type="search" placeholder="Имя, почта, телефон, организация" value="${esc(query.s || '')}">
+        <button class="btn dark">Найти</button>${query.s ? `<a class="btn ghost" href="#/admin${qs({ tab: 'users', sort })}">Сбросить</a>` : ''}</form>
+      <div class="filters" style="margin-top:-4px">${sortBtn('new', 'Новые первыми')}${sortBtn('login', 'По последнему входу')}${sortBtn('active', 'Самые активные')}</div>
+      <p class="small muted">${list.length} ${plural(list.length, 'пользователь', 'пользователя', 'пользователей')}${text ? ' по запросу' : ''}</p>
+      ${list.length ? `<div style="overflow-x:auto"><table class="table resp users-t"><thead><tr><th>Пользователь</th><th>Регистрация</th><th>Последний вход</th><th>Организации</th><th>Техника</th><th>Заказы / предложения</th><th>Сделки</th></tr></thead><tbody>
+        ${list.map((u) => `<tr><td><b>${esc(u.name || 'Без имени')}</b>${u.is_admin ? ' <span class="st warn">админ</span>' : ''}
+            <div class="small"><a href="mailto:${esc(u.email)}">${esc(u.email)}</a>${u.confirmed ? '' : ' <span class="st err">почта не подтверждена</span>'}</div>
+            ${u.phone ? `<div class="small"><a href="tel:${esc(u.phone.replace(/[^\d+]/g, ''))}">${esc(u.phone)}</a></div>` : ''}
+            ${(u.messengers || []).length ? `<div class="small muted">Уведомления: ${u.messengers.map((m) => MSGR[m] || m).join(', ')}</div>` : ''}</td>
+          <td data-l="Регистрация">${short(u.created_at)}</td>
+          <td data-l="Последний вход">${when(u.last_sign_in_at)}</td>
+          <td data-l="Организации">${(u.orgs || []).length ? u.orgs.map(orgLine).join('') : '<span class="muted">нет</span>'}</td>
+          <td class="num" data-l="Техника">${num(u.equipment, u.equipment ? `в каталоге ${u.equipment_published}` : '')}</td>
+          <td class="num" data-l="Заказы / предложения">${u.orders || u.offers ? `<b>${u.orders}</b> / <b>${u.offers}</b>` : '<span class="muted">0</span>'}</td>
+          <td class="num" data-l="Сделки">${num(u.deals_all, u.deals_all ? `в работе ${u.deals_active} · завершено ${u.deals_done}` : '')}</td></tr>`).join('')}</tbody></table></div>`
+        : '<p class="muted">Никого не нашлось.</p>'}
+      <p class="small muted">Техника и сделки считаются по организациям пользователя (без демо-карточек). Заказы и предложения — те, что он создал сам.</p></div>`;
+  const ch = box.querySelector('#uchart');
+  ch.innerHTML = regChart(d.by_day || [], ch.clientWidth);
+  box.querySelector('#uf').onsubmit = (e) => { e.preventDefault(); location.hash = '#/admin' + qs({ tab: 'users', sort, s: e.target.s.value.trim() || undefined }); };
 }
 
 // ---------- Посещаемость (SQL 35, v=96): свой счётчик, без IP и cookie; админы и роботы не считаются ----------
