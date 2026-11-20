@@ -321,6 +321,26 @@ html[data-theme] #app>.prerender{display:none}
 .st.warn{background:var(--hot-soft);color:var(--warn-ink)}.st.warn:before{content:'⚠'}
 .st.err{background:var(--red-soft);color:var(--err-ink)}.st.err:before{content:'✕'}
 .st.closed{background:var(--surface3);color:var(--muted)}.st.closed:before{content:'▣'}
+.st.qty{background:var(--blue-soft);color:var(--info-ink)} /* «× 10 шт.» — группа одинаковой техники (20.11.2026) */
+/* Машины группы в карточке техники: госномер и год у каждой (SQL 37) */
+.units-box{border:1px solid var(--line);border-radius:14px;padding:12px;margin:4px 0 14px;background:var(--surface)}
+.units-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:10px}
+.units-head .inp{width:90px}
+.unit-row{display:grid;grid-template-columns:26px minmax(0,240px) 104px auto;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
+.unit-row:first-of-type{border-top:0}
+.unit-row .n{color:var(--muted);font-size:13px;text-align:right}
+.unit-row .inp{margin:0;min-width:0;width:100%}
+.unit-row [data-k=year]{padding-left:10px;padding-right:6px}
+@media (max-width:760px){
+  /* телефон: номер и год — в первой строке во всю ширину, «Убрать» и статус — второй строкой */
+  .unit-row,.unit-labels{grid-template-columns:18px minmax(0,1fr) 84px;gap:6px}
+  .unit-labels>span:last-child{display:none}
+  .unit-row>.btn,.unit-row>span:empty{grid-column:3;grid-row:2;justify-self:end}
+  .unit-row>span:empty{display:none}
+  .unit-row .u-st{grid-column:2;grid-row:2;margin:0}
+}
+.unit-row .u-st{grid-column:2/-1;margin-top:-2px}
+.unit-labels{display:grid;grid-template-columns:26px minmax(0,240px) 104px auto;gap:8px;font-size:12px;font-weight:700;color:var(--muted)}
 
 /* ---------- главная ---------- */
 /* v=73: баннер без поиска, ниже на ~3 см; в тёмной теме — Zoomlion ZE215E ночью */
