@@ -8,13 +8,14 @@ const TITLES = { request: 'Заявка-подтверждение', act: 'Ак�
 
 export async function render(app, { id, type }) {
   if (!TITLES[type]) { app.innerHTML = emptyState('Документ недоступен', 'Документы сделки — в карточке сделки, блок «Документы».'); return; }
-  let d, priv, events;
+  let d, priv, events, units;
   try {
     d = await q(sb.from('deals').select('*, equipment(title,brand,model,year,specs,city,price_unit,price_minor,shift_hours,categories(code)), cust:organizations!deals_customer_org_id_fkey(id,name,type,inn,ogrn,city), prov:organizations!deals_provider_org_id_fkey(id,name,type,inn,ogrn,city)').eq('id', id).maybeSingle());
     if (!d) { app.innerHTML = emptyState('Документ недоступен', 'Сделка не найдена или относится к другой организации — переключите организацию в меню под вашим именем.'); return; }
-    [priv, events] = await Promise.all([
+    [priv, events, units] = await Promise.all([
       rpc('get_deal_private', { p_deal: id }),
-      q(sb.from('deal_events').select('*').eq('deal_id', id).order('ts'))
+      q(sb.from('deal_events').select('*').eq('deal_id', id).order('ts')),
+      rpc('deal_units_info', { p_deal: id }).catch(() => [])
     ]);
   } catch (err) { app.innerHTML = errorState(err); return; }
   const today = date(new Date().toISOString());
@@ -24,7 +25,8 @@ export async function render(app, { id, type }) {
   const sides = `<table class="doc-t"><tr><td style="width:30%">Исполнитель</td><td>${party(d.prov, priv?.provider)}</td></tr>
     <tr><td>Заказчик</td><td>${party(d.cust, priv?.customer)}</td></tr></table>`;
   const subject = `<table class="doc-t">
-    <tr><td style="width:30%">Техника</td><td>${esc(d.equipment?.title)} (${esc(d.equipment?.brand)} ${esc(d.equipment?.model)}${d.equipment?.year ? ', ' + d.equipment.year + ' г.' : ''})</td></tr>
+    <tr><td style="width:30%">Техника</td><td>${esc(d.equipment?.title)} (${esc(d.equipment?.brand)} ${esc(d.equipment?.model)}${d.qty > 1 ? '' : d.equipment?.year ? ', ' + d.equipment.year + ' г.' : ''})${d.qty > 1 ? ` — <b>${d.qty} шт.</b>` : ''}</td></tr>
+    ${(units || []).length && (d.qty > 1 || units[0]?.reg) ? `<tr><td>${d.qty > 1 ? 'Машины' : 'Госномер'}</td><td>${units.map((u, i) => `${d.qty > 1 ? `${i + 1}. ` : ''}${u.reg ? 'госномер ' + esc(u.reg) : 'госномер — после подтверждения сделки'}${u.year ? ', ' + u.year + ' г.' : ''}`).join('<br>')}</td></tr>` : ''}
     <tr><td>Формат</td><td>${d.with_operator ? 'с экипажем (оператором) — услуги спецтехники' : 'без экипажа — аренда'}</td></tr>
     <tr><td>Период</td><td>${period(d.start_date, d.end_date)}</td></tr>
     <tr><td>Адрес объекта</td><td>${esc(priv?.address || 'раскрывается после подтверждения сделки')}</td></tr></table>`;
