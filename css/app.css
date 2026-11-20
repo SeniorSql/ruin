@@ -599,6 +599,7 @@ html[data-theme] #app>.prerender{display:none}
 .ext-top b{font-size:16px}
 .ext-top.mine{background:var(--customer-bg);border-color:var(--customer-line)}.ext-top.mine small{color:var(--customer-ink)}
 /* ---------- Рабочий стол (CRM) ---------- */
+.users-t td{vertical-align:top}.users-t td .st{margin-left:4px} /* админка → Пользователи (20.11.2026) */
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
 .kpi{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px 14px}
 .kpi b{display:block;font-size:26px;line-height:1.1}.kpi span{font-size:13px;color:var(--muted)}
@@ -744,6 +745,7 @@ html[data-theme] #app>.prerender{display:none}
   .layout{display:block;padding:14px 16px 48px}
   .sidebar{position:static;margin-bottom:14px;max-height:none;overflow:visible;padding:0;margin-left:0;margin-right:0}
   .side-note,.nav-caption,.theme-seg{display:none}
+  .navs>.nav-admin>a{order:-1} /* 20.11.2026: «Админка» первой в ленте меню на телефоне (.nav здесь display:contents) */
   .navs{display:flex;overflow-x:auto;gap:6px;margin:0 -16px;padding:0 44px 4px 16px;scrollbar-width:none;scroll-behavior:smooth;
     -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 44px),transparent)}
   /* «Ждут вас» (v=88): пункты меню, где нужно ваше действие, — отдельной строкой, всегда видна целиком */
