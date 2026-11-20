@@ -293,7 +293,7 @@ function priceRequestDialog(e, form) {
       </div>
       <div class="grid2">
         <label class="f"><span>${t('Город или посёлок объекта', 'Site city or town')} <i>*</i></span><input class="inp" name="city" required maxlength="100" placeholder="${t('Например: Подольск', 'E.g. Podolsk')}"></label>
-        <label class="f"><span>${t('Район', 'District')}</span><input class="inp" name="district" maxlength="100" placeholder="${t('Необязательно', 'Optional')}"></label>
+        <label class="f"><span>${t('Район', 'District')}</span><input class="inp" name="district" data-dd="district" maxlength="100" placeholder="${t('Необязательно', 'Optional')}"></label>
       </div>
       <div class="hint" style="margin:-8px 0 12px">${t('Город и район исполнитель увидит сразу — по ним он посчитает доставку.', 'The provider sees the city and district right away to calculate delivery.')}</div>
       <label class="f"><span>${t('Точный адрес объекта', 'Exact site address')} <i>*</i></span><input class="inp" name="address" required maxlength="300" placeholder="${t('Улица, дом или ориентир', 'Street, building or landmark')}">
