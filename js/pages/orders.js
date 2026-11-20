@@ -160,7 +160,7 @@ async function detail(app, id) {
             <div><a class="btn ghost" href="#/catalog?cat=${o.categories?.code}">Посмотреть технику в каталоге</a></div></div>`}
         </div>
         ${other.length ? `<div class="panel"><h3>Неактивные предложения</h3>${other.map((f) => `<div class="row-item"><div class="grow"><b>${esc(f.organizations?.name)}</b>
-          <span class="small muted">${esc(f.equipment?.title)} · ${money(f.total_minor)}</span></div>${status('offer', f.status)}</div>`).join('')}</div>` : ''}
+          <span class="small muted">${esc(f.equipment?.title)}${f.qty > 1 ? ` × ${f.qty} шт.` : ''} · ${money(f.total_minor)}</span></div>${status('offer', f.status)}</div>`).join('')}</div>` : ''}
       </div>
       <aside class="sticky"><div class="panel"><h2>Детали заказа</h2>
         <dl class="kv"><dt>Техника</dt><dd>${esc(o.categories?.name)}, ${o.qty} шт.</dd><dt>Формат</dt><dd>${FORMAT[o.format]}</dd>
@@ -236,6 +236,7 @@ function compareTable(list, stats, cheapest, startPassed) {
       ${row('Завершённых сделок', (f) => String(stats[f.provider_org_id]?.completed ?? 0))}
       ${row('Формат', (f) => f.with_operator ? 'С оператором' : 'Без оператора')}
       ${row('Техника', (f) => `${esc(f.equipment?.brand)} ${esc(f.equipment?.model)}${f.equipment?.year ? ', ' + f.equipment.year : ''}`)}
+      ${row('Количество', (f) => `<b>${f.qty || 1} шт.</b>`)}
       ${row('Условия отмены', (f) => esc(POLICY[f.equipment?.cancel_policy] || '—'))}
       ${row('Комментарий', (f) => `<span class="small">${esc(f.comment || '—')}</span>`)}
       ${row('Действует до', (f) => `<span class="small">${dateTime(f.expires_at)}</span>`)}
@@ -256,7 +257,7 @@ function selectDialog(o, f) {
   const p = offerParts(f);
   // Даты заказа уже согласованы с исполнителем (SQL 26): перенос — через «Изменить даты» и подтверждение исполнителя
   const m = modal(`<h2>Выбрать предложение</h2>
-    <p class="muted" style="margin-top:-6px">${esc(f.organizations?.name)} · ${esc(f.equipment?.title)}</p>
+    <p class="muted" style="margin-top:-6px">${esc(f.organizations?.name)} · ${esc(f.equipment?.title)}${f.qty > 1 ? ` × ${f.qty} шт.` : ''}</p>
     <dl class="kv"><dt>Даты</dt><dd>${period(o.start_date, o.end_date)}</dd><dt>Формат</dt><dd>${f.with_operator ? 'с оператором' : 'без оператора'}</dd>
       ${p.mode ? `<dt>Аренда</dt><dd class="num">${money(p.rent)}</dd>` : ''}
       <dt>Доставка</dt><dd>${esc(p.text)}</dd>
