@@ -341,6 +341,9 @@ html[data-theme] #app>.prerender{display:none}
 .unit-row:first-of-type{border-top:0}
 .unit-row .n{color:var(--muted);font-size:13px;text-align:right}
 .unit-row .inp{margin:0;min-width:0;width:100%}
+/* колонки не растягиваются на всю ширину; «×» у новой строки — маленькая квадратная кнопка (20.11.2026) */
+.unit-row,.unit-labels{justify-content:start}
+.unit-row [data-udel]{width:36px;min-width:36px;height:36px;padding:0;font-size:18px;line-height:1;display:grid;place-items:center}
 .unit-row [data-k=year]{padding-left:10px;padding-right:6px}
 @media (max-width:760px){
   /* телефон: номер и год — в первой строке во всю ширину, «Убрать» и статус — второй строкой */
