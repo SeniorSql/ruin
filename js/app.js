@@ -364,7 +364,8 @@ function renderSide(active) {
         ${link('#/offers', 'send', t('Мои предложения', 'My offers'), c.dates_pending, G.offers)}${link('#/deals?tab=provider', 'deal', t('Сделки', 'Deals'), c.deals_provider, G.dealsP)}</nav></div>`;
     }
   }
-  if (state.user && isAdmin()) html += `<nav class="nav">${link('#/admin', 'shield', t('Админка', 'Admin'), c.admin?.total)}</nav>`;
+  // На телефоне «Админка» — первой в ленте меню (20.11.2026, css .nav-admin>a{order:-1}); на компьютере — внизу, как раньше
+  if (state.user && isAdmin()) html += `<nav class="nav nav-admin">${link('#/admin', 'shield', t('Админка', 'Admin'), c.admin?.total)}</nav>`;
   // «О компании» (12.11.2026) — последним пунктом, видят все, включая гостей
   html += `<nav class="nav nav-about">${link('#/about', 'info', t('О компании', 'About us'))}</nav>`;
   html += `</div>`;
@@ -386,7 +387,8 @@ function renderSide(active) {
     }
   }
   if (state.user && isAdmin()) attn.push(['#/admin', t('Админка', 'Admin'), c.admin?.total, 0]);
-  const shown = attn.filter(([, , n, g]) => n > 0 || g > 0).sort((a, b) => (b[2] > 0) - (a[2] > 0));
+  // «Админка» всегда первой (20.11.2026), дальше — сначала жёлтые
+  const shown = attn.filter(([, , n, g]) => n > 0 || g > 0).sort((a, b) => (b[0] === '#/admin') - (a[0] === '#/admin') || (b[2] > 0) - (a[2] > 0));
   if (shown.length) {
     const urgent = shown.some(([, , n]) => n > 0);
     html += `<div class="nav-attn${urgent ? ' urgent' : ''}" role="navigation" aria-label="${t('Мои дела', 'My tasks')}"><span class="nav-attn-t">${t('Мои дела', 'My tasks')}</span>`
