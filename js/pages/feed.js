@@ -107,13 +107,14 @@ async function orderPage(app, id) {
   // Заказ открыт — он больше не «новый», счётчик ленты уменьшается
   if (!seenOrders().has(id)) { markOrderSeen(id); refreshCounters().then(refreshShell); }
   const [myEq, myOffers, offerCount] = await Promise.all([
-    q(sb.from('equipment').select('*').eq('org_id', state.org.id).eq('status', 'PUBLISHED').eq('category_id', o.category_id)),
+    q(sb.from('equipment').select('*').eq('org_id', state.org.id).eq('status', 'PUBLISHED').eq('listed', true).eq('category_id', o.category_id)),
     q(sb.from('offers').select('*').eq('order_id', id).eq('provider_org_id', state.org.id).order('created_at', { ascending: false })),
     rpc('order_offer_count', { p_order: id }).catch(() => 0)
   ]);
-  // Проверяем занятость своей техники на даты заказа
-  const busyMap = Object.fromEntries(await Promise.all(myEq.map(async (e) =>
-    [e.id, (await rpc('get_busy', { p_eq: e.id, p_from: o.start_date, p_to: o.end_date }).catch(() => [])).length > 0])));
+  // Сколько машин каждой карточки (группы) свободно на все даты заказа (SQL 37)
+  const freeMap = Object.fromEntries(await Promise.all(myEq.map(async (e) =>
+    [e.id, (await rpc('group_free', { p_eq: e.id, p_from: o.start_date, p_to: o.end_date }).catch(() => null))?.free ?? 1])));
+  const busyMap = Object.fromEntries(myEq.map((e) => [e.id, !freeMap[e.id]]));
   const active = myOffers.find((f) => ['SUBMITTED', 'SELECTED'].includes(f.status));
   const open = ['PUBLISHED', 'OFFERS_RECEIVED'].includes(o.status) && new Date(o.deadline_at) > Date.now();
   const cust = o.organizations || {};
@@ -145,7 +146,7 @@ async function orderPage(app, id) {
           ${o.description ? `<div class="divider"></div><p style="white-space:pre-wrap;margin:0">${esc(o.description)}</p>` : ''}
         </div>
         ${myOffers.length ? `<div class="panel"><h2>Мои предложения по заказу</h2>${myOffers.map((f) => `<div class="row-item"><div class="grow">
-          <b class="num">${money(f.total_minor)}</b> <span class="small muted">редакция №${f.rev} · ${dateTime(f.created_at)}</span>
+          <b class="num">${money(f.total_minor)}</b>${f.qty > 1 ? ` <span class="st qty">${f.qty} шт.</span>` : ''} <span class="small muted">редакция №${f.rev} · ${dateTime(f.created_at)}</span>
           <div class="small muted">Доставка: ${esc(offerParts(f).text)}</div>
           ${f.comment ? `<div class="small">${esc(f.comment)}</div>` : ''}</div>${status('offer', f.status)}
           ${f.status === 'SUBMITTED' && canManage() ? `<button class="btn ghost sm" data-wd="${f.id}">Отозвать</button>` : ''}</div>`).join('')}</div>` : ''}
@@ -153,7 +154,7 @@ async function orderPage(app, id) {
       <aside class="sticky"><div class="panel"><h2>${active ? 'Ваше предложение отправлено' : 'Ваше предложение'}</h2>
         ${active?.status === 'SUBMITTED' ? `<div class="banner ok" style="display:block">
             <div class="price-big num" style="font-size:22px">${money(active.total_minor)}</div>
-            <div class="small">${esc(myEq.find((e) => e.id === active.equipment_id)?.title || '')} · ${active.with_operator ? 'с оператором' : 'без оператора'} · редакция №${active.rev}</div>
+            <div class="small">${esc(myEq.find((e) => e.id === active.equipment_id)?.title || '')}${active.qty > 1 ? ` × ${active.qty} шт.` : ''} · ${active.with_operator ? 'с оператором' : 'без оператора'} · редакция №${active.rev}</div>
             ${offerParts(active).mode ? `<div class="small">Аренда ${money(offerParts(active).rent)} · доставка: ${esc(offerParts(active).text)}</div>` : `<div class="small">Доставка: ${esc(offerParts(active).text)}</div>`}
             ${active.comment ? `<p class="small" style="margin:6px 0 0;white-space:pre-wrap">${esc(active.comment)}</p>` : ''}
             <div class="small muted" style="margin-top:6px">Заказчик получил уведомление. Ждём его решения.</div></div>
@@ -164,9 +165,11 @@ async function orderPage(app, id) {
         : active?.status === 'SELECTED' ? '<div class="banner ok">Заказчик выбрал ваше предложение — подтвердите сделку в разделе «Сделки».</div>'
         : `<form id="of" class="${active ? 'hidden' : ''}" ${active ? 'data-nodraft' : ''}>
           <label class="f"><span>Техника <i>*</i></span><select class="inp" name="eq" required>
-            ${myEq.map((e) => `<option value="${e.id}" ${busyMap[e.id] ? 'disabled' : ''}>${esc(e.title)}${busyMap[e.id] ? ' — занята' : ''}</option>`).join('')}</select></label>
+            ${myEq.map((e) => `<option value="${e.id}" ${busyMap[e.id] ? 'disabled' : ''}>${esc(e.title)}${e.group_size > 1 ? ` (${e.group_size} шт., свободно ${freeMap[e.id]})` : ''}${busyMap[e.id] ? ' — занята' : ''}</option>`).join('')}</select></label>
+          <label class="f hidden" id="qtyWrap"><span>Сколько машин предлагаете <i>*</i></span><select class="inp" name="qty"></select>
+            <div class="hint">В заказе нужно ${o.qty} шт. Машины подберутся из свободных, когда заказчик выберет предложение.</div></label>
           <label class="f"><span>Формат</span><select class="inp" name="op"></select></label>
-          <label class="f"><span>Аренда за весь период, ₽ <i>*</i></span><input class="inp" name="total" type="number" min="1" step="1" max="1000000000" required>
+          <label class="f"><span><span id="totalLbl">Аренда за весь период, ₽</span> <i>*</i></span><input class="inp" name="total" type="number" min="1" step="1" max="1000000000" required>
             <div class="hint" id="sugg"></div></label>
           <label class="f"><span>Доставка — привоз и вывоз техники <i>*</i></span><select class="inp" name="dmode" required>
             <option value="">Выберите…</option>${Object.entries(DELIVERY_MODE).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
@@ -212,9 +215,19 @@ async function orderPage(app, id) {
   }));
   const f = app.querySelector('#of');
   if (!f) return;
+  // Количество машин: у группы — от 1 до min(нужно в заказе, свободно); у одиночной карточки — 1
+  const fillQty = () => {
+    const e = myEq.find((x) => x.id === f.eq.value);
+    const max = e && e.group_size > 1 ? Math.max(1, Math.min(o.qty, freeMap[e.id] || 1)) : 1;
+    const prev = Number(f.qty.value) || Math.min(o.qty, max);
+    f.qty.innerHTML = Array.from({ length: max }, (_, i) => `<option value="${i + 1}" ${i + 1 === Math.min(prev, max) ? 'selected' : ''}>${i + 1} шт.</option>`).join('');
+    app.querySelector('#qtyWrap').classList.toggle('hidden', !(e && e.group_size > 1));
+    app.querySelector('#totalLbl').textContent = Number(f.qty.value) > 1 ? `Аренда за весь период за все ${f.qty.value} шт., ₽` : 'Аренда за весь период, ₽';
+  };
   const fillFormats = async () => {
     const e = myEq.find((x) => x.id === f.eq.value);
     if (!e) return;
+    fillQty();
     const opts = [];
     if (e.with_operator && o.format !== 'WITHOUT_OPERATOR') opts.push(['1', 'С оператором']);
     if (e.without_operator && o.format !== 'WITH_OPERATOR') opts.push(['0', 'Без оператора']);
@@ -236,12 +249,12 @@ async function orderPage(app, id) {
     const e = myEq.find((x) => x.id === f.eq.value);
     // Доставка из тарифа техники подставляется, пока исполнитель сам её не менял
     if (e && e.delivery_minor > 0 && (!f.dsum.value || f.dsum.dataset.auto === '1')) {
-      f.dsum.value = fromMinor(e.delivery_minor); f.dsum.dataset.auto = '1';
+      f.dsum.value = fromMinor(e.delivery_minor * Number(f.qty.value || 1)); f.dsum.dataset.auto = '1';
       if (!f.dmode.value) f.dmode.value = 'PAID';
     }
     if (f.op.value === '') { sg.textContent = ''; showSum(); return; }
     try {
-      const qt = await rpc('calc_quote', { p_eq: f.eq.value, p_start: o.start_date, p_end: o.end_date, p_with_operator: f.op.value === '1' });
+      const qt = await rpc('calc_quote', { p_eq: f.eq.value, p_start: o.start_date, p_end: o.end_date, p_with_operator: f.op.value === '1', p_qty: Number(f.qty.value || 1) });
       if (qt.ok) {
         const dl = (qt.lines || []).find((l) => l.code === 'delivery')?.amount || 0;
         sg.textContent = `По вашим тарифам: аренда ${money(qt.total - dl)}${dl ? `, доставка ${money(dl)}` : ''}`;
@@ -257,12 +270,15 @@ async function orderPage(app, id) {
   if (active) {
     const pr = offerParts(active);
     f.eq.value = active.equipment_id; f.comment.value = active.comment || '';
+    f.qty.innerHTML = `<option value="${active.qty || 1}">${active.qty || 1} шт.</option>`;
     f.total.value = fromMinor(pr.mode ? pr.rent : active.total_minor); f.total.dataset.auto = '0';
     if (pr.mode) { f.dmode.value = pr.mode; if (pr.mode === 'PAID') { f.dsum.value = fromMinor(pr.delivery); f.dsum.dataset.auto = '0'; } }
   }
   app.querySelector('#editOffer')?.addEventListener('click', (ev) => { f.classList.remove('hidden'); ev.currentTarget.remove(); f.total.focus(); });
-  f.eq.addEventListener('change', fillFormats);
+  f.eq.addEventListener('change', () => { f.qty.innerHTML = ''; fillFormats(); });
   f.op.addEventListener('change', suggest);
+  // Другое количество — пересчитываем подсказку по тарифу (сумма, введённая вручную, не меняется)
+  f.qty.addEventListener('change', () => { fillQty(); if (f.dsum.dataset.auto === '1') f.dsum.value = ''; suggest(); });
   fillFormats();
   f.onsubmit = (ev) => {
     ev.preventDefault();
@@ -270,7 +286,7 @@ async function orderPage(app, id) {
       try {
         await rpc('submit_offer', { p_org: state.org.id, p_order: id, p_eq: f.eq.value, p_with_operator: f.op.value === '1',
           p_total: toMinor(f.total.value), p_comment: f.comment.value,
-          p_delivery_mode: f.dmode.value, p_delivery: f.dmode.value === 'PAID' ? toMinor(f.dsum.value) : null });
+          p_delivery_mode: f.dmode.value, p_delivery: f.dmode.value === 'PAID' ? toMinor(f.dsum.value) : null, p_qty: Number(f.qty.value || 1) });
         toast('Предложение отправлено заказчику'); route();
       } catch (err) { const el = app.querySelector('#err'); el.textContent = err.message; el.classList.remove('hidden'); }
     });
@@ -284,7 +300,7 @@ async function myOffers(app) {
   app.innerHTML = `<div class="page-head"><div><h1>Мои предложения</h1><p>История ответов на заказы и их результат.</p></div>${state.org.can_provide ? '<a class="btn" href="#/feed">Лента заказов</a>' : ''}</div>
     ${rows.length ? `<div class="panel">${rows.map((f) => { const p = photoOf(f.equipment || {}); return `<a class="row-item" href="#/feed/${f.order_id}">
       ${p ? `<img src="${esc(p.url)}" alt="" referrerpolicy="no-referrer">` : '<img alt="">'}
-      <div class="grow"><b>${esc(f.orders?.title)}</b><div class="small muted">${esc(f.equipment?.title)} · ${esc(f.orders?.city)} · ${date(f.orders?.start_date)} — ${date(f.orders?.end_date)}</div>
+      <div class="grow"><b>${esc(f.orders?.title)}</b><div class="small muted">${esc(f.equipment?.title)}${f.qty > 1 ? ` × ${f.qty} шт.` : ''} · ${esc(f.orders?.city)} · ${date(f.orders?.start_date)} — ${date(f.orders?.end_date)}</div>
       <div class="small num">${money(f.total_minor)} · редакция №${f.rev}</div></div>${f.status === 'SUBMITTED' && f.dates_pending ? '<span class="st warn">Подтвердите новые даты</span>' : status('offer', f.status)}</a>`; }).join('')}</div>`
     : emptyState('Предложений пока нет', 'Откройте ленту заказов и ответьте на подходящий заказ.', state.org.can_provide ? '<a class="btn" href="#/feed">Лента заказов</a>' : '')}`;
 }
