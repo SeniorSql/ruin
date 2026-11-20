@@ -106,13 +106,20 @@ function hide() {
   items = []; active = -1;
 }
 
+let pickedAt = 0;    // время выбора: гасим «досланное» телефоном нажатие и не открываем список заново
+const touch = () => window.matchMedia?.('(pointer: coarse)').matches;
+
 function pick(i) {
   if (!cur || !items[i]) return;
-  cur.value = items[i];
-  cur.dispatchEvent(new Event('input', { bubbles: true }));
-  cur.dispatchEvent(new Event('change', { bubbles: true }));
-  cur.dispatchEvent(new CustomEvent('dd-pick', { bubbles: true, detail: items[i] }));
+  const inp = cur;
+  pickedAt = Date.now();
+  inp.value = items[i];
+  inp.dispatchEvent(new Event('input', { bubbles: true }));
+  inp.dispatchEvent(new Event('change', { bubbles: true }));
+  inp.dispatchEvent(new CustomEvent('dd-pick', { bubbles: true, detail: items[i] }));
   hide();
+  // Телефон: после выбора поле «сворачивается» — снимаем фокус, экранная клавиатура закрывается (20.11.2026)
+  if (touch()) inp.blur();
 }
 
 function highlight(i) {
@@ -151,9 +158,14 @@ export function initCityList() {
     if (!e.target.matches?.(SEL)) return;
     cur = e.target; prep(cur); render(true);
   });
+  // Телефон после касания досылает click в ту же точку — он попал бы в элемент под закрытым списком. Гасим его.
+  document.addEventListener('click', (e) => {
+    if (Date.now() - pickedAt < 450) { e.preventDefault(); e.stopPropagation(); pickedAt = 0; }
+  }, true);
   // повторное нажатие на поле в фокусе (телефон) — снова открыть список
   document.addEventListener('click', (e) => { if (e.target === cur && dd.hidden) render(true); });
-  document.addEventListener('input', (e) => { if (e.target === cur) render(false); });
+  document.addEventListener('input', (e) => { if (e.target === cur && Date.now() - pickedAt > 50) render(false); });
+  document.addEventListener('focusin', (e) => { if (Date.now() - pickedAt < 450 && e.target !== cur && e.target.matches?.('input,select,textarea')) e.target.blur(); });
   document.addEventListener('focusout', (e) => { if (e.target === cur) setTimeout(() => { if (document.activeElement !== cur) hide(); }, 120); });
   document.addEventListener('keydown', (e) => {
     if (e.target !== cur || dd.hidden) return;
