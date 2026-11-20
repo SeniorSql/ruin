@@ -949,6 +949,8 @@ details.faq p{margin:10px 0 0}
 .city-dd[hidden]{display:none}
 .city-opt{display:block;width:100%;text-align:left;border:0;background:none;color:var(--ink);font:inherit;font-size:15px;padding:11px 12px;border-radius:10px;cursor:pointer;min-height:44px}
 .city-opt:hover,.city-opt.on{background:var(--accent-soft)}
+.city-hint{padding:11px 12px;font-size:14px;color:var(--muted)} /* «Нет в списке — оставьте как ввели» (20.11.2026) */
+.spec-auto{margin:-4px 0 10px;font-size:13px;color:var(--info-ink)} /* «Характеристики подставлены по справочнику — проверьте» */
 /* ---- Мобильная версия (обновление 45) ---- */
 /* Кнопка помощника не закрывает открытое окно */
 body:has(.modal-bg) #helpBot{display:none}
