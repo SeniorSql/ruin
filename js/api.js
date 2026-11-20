@@ -202,7 +202,7 @@ async function fleetCounter() {
   try {
     const before = new Date(Date.now() - CAL_STALE_DAYS * 864e5).toISOString();
     const { count, error } = await sb.from('equipment').select('id', { count: 'exact', head: true })
-      .eq('org_id', state.org.id).eq('status', 'PUBLISHED').eq('is_demo', false)
+      .eq('org_id', state.org.id).eq('status', 'PUBLISHED').eq('is_demo', false).eq('listed', true)
       .or(`availability_confirmed_at.is.null,availability_confirmed_at.lt.${before}`);
     if (!error) c.fleet_stale = count || 0;
   } catch {}
@@ -273,7 +273,7 @@ async function adminCounters() {
     // Отзывы на модерации (SQL 24) тоже входят в счётчик «Админка» в меню (v=75)
     const [orgs, equipment, reports, reviews] = await Promise.all([
       n(sb.from('organizations').select('id', head).eq('verification_status', 'PENDING_REVIEW')),
-      n(sb.from('equipment').select('id', head).eq('status', 'PENDING_MODERATION')),
+      n(sb.from('equipment').select('id', head).eq('status', 'PENDING_MODERATION').eq('listed', true)),
       n(sb.from('listing_reports').select('id', head).eq('status', 'NEW')),
       n(sb.from('reviews').select('id', head).in('status', ['PENDING', 'SUBMITTED']))
     ]);
