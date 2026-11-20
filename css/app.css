@@ -698,6 +698,16 @@ html[data-theme] #app>.prerender{display:none}
 .photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
 .photo-grid .ph{position:relative;border-radius:12px;overflow:hidden;aspect-ratio:4/3;background:var(--photo-bg)}
 .photo-grid .ph img{width:100%;height:100%;object-fit:cover}
+/* Маскировка контактов на фото (20.11.2026): кнопка «Закрыть надпись», пометка «Проверяем…», окно выделения области */
+.photo-grid .ph .ph-mask{left:5px;right:auto;top:5px;bottom:auto;width:auto;border-radius:999px;padding:0 9px;font-size:11px;font-weight:700}
+.photo-grid .ph .ph-check{position:absolute;left:0;right:0;bottom:0;padding:4px 6px;font-size:11px;font-weight:700;color:#fff;background:#000a;text-align:center}
+.pm-wrap{position:relative;max-height:62vh;overflow:hidden;border-radius:12px;background:#000;display:flex;justify-content:center}
+.pm-img{display:block;max-width:100%;max-height:62vh;user-select:none;-webkit-user-drag:none;pointer-events:none}
+.pm-box{position:relative;line-height:0;max-width:100%}
+.pm-layer{position:absolute;inset:0;touch-action:none;cursor:crosshair}
+.pm-rect{position:absolute;background:#14171ae6;border:2px solid #f2c200;border-radius:6px;display:grid;place-items:center;overflow:hidden}
+.pm-rect span{color:#f2c200;font-weight:800;font-size:12px;letter-spacing:.5px}
+.pm-rect.pm-new{background:#f2c20033}
 .photo-grid .ph button{position:absolute;right:5px;top:5px;border:0;border-radius:50%;background:#000a;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff;width:26px;height:26px}
 .photo-add{border:2px dashed var(--line2);border-radius:12px;aspect-ratio:4/3;display:grid;place-items:center;text-align:center;color:var(--muted);font-size:13px;cursor:pointer;background:var(--surface)}
 .photo-add:hover{border-color:var(--accent-line)}
