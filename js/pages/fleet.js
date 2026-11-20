@@ -237,7 +237,21 @@ async function editor(app, o, id, query = {}) {
   };
   if (!id) f.title.dataset.auto = '1';
   f.title.addEventListener('input', () => { f.title.dataset.auto = '0'; });
-  f.category_id.addEventListener('change', () => { e.specs = collectSpecs(); drawSpecs(); autoTitle(); });
+  // Смена категории (20.11.2026, Этибар): экскаватор → самосвал — марка, модель, название, описание и характеристики
+  // от прежней техники не подходят, поэтому форма очищается (с подтверждением, если что-то уже заполнено).
+  let prevCat = f.category_id.value;
+  f.category_id.addEventListener('change', async () => {
+    const filled = f.brand.value.trim() || f.model.value.trim() || f.description.value.trim() || Object.keys(collectSpecs()).length;
+    if (filled && prevCat && !await confirmBox('Сменить категорию?', 'Марка, модель, название, описание и характеристики очистятся — для другой техники они не подходят. Фото, госномера, место и цены останутся.', 'Сменить и очистить')) {
+      f.category_id.value = prevCat; return;
+    }
+    prevCat = f.category_id.value;
+    f.brand.value = ''; f.model.value = ''; f.description.value = '';
+    f.title.value = ''; f.title.dataset.auto = '1';
+    e.specs = {}; drawSpecs();
+    app.querySelector('#specAuto')?.classList.add('hidden');
+    autoTitle(); markSteps();
+  });
   f.brand.addEventListener('input', autoTitle); f.model.addEventListener('input', autoTitle);
   // Марки — по выбранной категории, модели — по выбранной марке (справочник catalog-data.js, 20.11.2026)
   const catCode = () => categoryById(f.category_id.value)?.code || '';
