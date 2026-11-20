@@ -3,6 +3,8 @@ import { sb, state, q, rpc, loadCategories, categoryById, uploadPhoto, canManage
 import { esc, money, priceText, photoOf, status, toast, busy, confirmBox, emptyState, errorState, SPEC_LABELS, CATEGORY_SPECS,
   toMinor, fromMinor, mskToday, date, statusLabel, POLICY, POLICY_CHOICES, policyChoice } from '../ui.js';
 import { go, route, refreshShell } from '../app.js';
+import { brandsFor, modelsFor, specsFor, SPEC_OPTIONS } from '../catalog-data.js';
+import { registerSource } from '../cities.js';
 
 const SINGULAR = {
   excavators: 'Экскаватор', mini_excavators: 'Мини-экскаватор', backhoe_loaders: 'Экскаватор-погрузчик', wheel_loaders: 'Фронтальный погрузчик',
@@ -100,8 +102,10 @@ async function editor(app, o, id, query = {}) {
         <label class="f"><span>Категория <i>*</i></span><select class="inp" name="category_id" required><option value="">Выберите</option>
           ${cats.map((c) => `<option value="${c.id}" ${c.id === e.category_id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
         <div class="grid2">
-          <label class="f"><span>Марка <i>*</i></span><input class="inp" name="brand" required value="${esc(e.brand)}" maxlength="60"></label>
-          <label class="f"><span>Модель <i>*</i></span><input class="inp" name="model" required value="${esc(e.model)}" maxlength="60"></label>
+          <label class="f"><span>Марка <i>*</i></span><input class="inp" name="brand" data-dd="brand" required value="${esc(e.brand)}" maxlength="60" placeholder="Выберите или впишите">
+            <div class="hint">Список — по выбранной категории. Нет нужной марки — впишите.</div></label>
+          <label class="f"><span>Модель <i>*</i></span><input class="inp" name="model" data-dd="model" required value="${esc(e.model)}" maxlength="60" placeholder="Выберите или впишите">
+            <div class="hint">Выберите модель — характеристики подставятся сами.</div></label>
         </div>
         <div class="units-box" id="unitsBox">
           <div class="units-head"><b>Сколько у вас таких машин</b>
@@ -116,7 +120,7 @@ async function editor(app, o, id, query = {}) {
         <label class="f"><span>Описание</span><textarea class="inp" name="description" maxlength="3000" rows="5">${esc(e.description || '')}</textarea>
           <div class="hint">Без телефонов, почты и ссылок — контакты откроются после подтверждения сделки.</div></label>
       </div>
-      <div class="panel" id="s2"><h2>2. Характеристики</h2><div class="grid3" id="specs"></div></div>
+      <div class="panel" id="s2"><h2>2. Характеристики</h2><div class="spec-auto hidden" id="specAuto"></div><div class="grid3" id="specs"></div></div>
       <div class="panel" id="s3"><h2>3. Фото</h2>
         <p class="muted small" style="margin-top:-6px">Минимум 3 фото: общий вид, рабочий орган, кабина или табличка. JPEG/PNG/WebP до 10 МБ. Первое фото — главное.</p>
         <div class="photo-grid" id="photos"></div>
@@ -125,7 +129,7 @@ async function editor(app, o, id, query = {}) {
       <div class="panel" id="s4"><h2>4. Место и зона работы</h2>
         <div class="grid3">
           <label class="f"><span>Город базирования <i>*</i></span><input class="inp" name="city" required value="${esc(e.city)}"></label>
-          <label class="f"><span>Район</span><input class="inp" name="district" value="${esc(e.district || '')}"></label>
+          <label class="f"><span>Район</span><input class="inp" name="district" data-dd="district" value="${esc(e.district || '')}"></label>
           <label class="f"><span>Выезд, км</span><input class="inp" name="service_radius_km" type="number" min="0" max="2000" value="${e.service_radius_km}"></label>
         </div>
       </div>
@@ -218,8 +222,9 @@ async function editor(app, o, id, query = {}) {
     app.querySelector('#specs').innerHTML = codes.length ? codes.map((code) => {
       const [label, unit] = SPEC_LABELS[code] || [code, ''];
       const v = e.specs?.[code] ?? '';
+      // Характеристики с типовыми значениями (ходовая, тип катка, колёсная формула…) — выпадающий список, можно вписать своё
       return `<label class="f"><span>${esc(label)}${unit ? ', ' + unit : ''}</span>
-        <input class="inp" data-spec="${code}" ${TEXT_SPECS.has(code) ? '' : 'type="number" step="any" min="0"'} value="${esc(v)}"></label>`;
+        <input class="inp" data-spec="${code}" ${SPEC_OPTIONS[code] ? `data-dd="opt:${code}"` : ''} ${TEXT_SPECS.has(code) ? '' : 'type="number" step="any" min="0"'} value="${esc(v)}"></label>`;
     }).join('') : '<p class="muted">Сначала выберите категорию.</p>';
   };
   drawSpecs();
@@ -233,6 +238,34 @@ async function editor(app, o, id, query = {}) {
   f.title.addEventListener('input', () => { f.title.dataset.auto = '0'; });
   f.category_id.addEventListener('change', () => { e.specs = collectSpecs(); drawSpecs(); autoTitle(); });
   f.brand.addEventListener('input', autoTitle); f.model.addEventListener('input', autoTitle);
+  // Марки — по выбранной категории, модели — по выбранной марке (справочник catalog-data.js, 20.11.2026)
+  const catCode = () => categoryById(f.category_id.value)?.code || '';
+  registerSource('brand', () => brandsFor(catCode()));
+  registerSource('model', () => modelsFor(catCode(), f.brand.value));
+  // Выбрана модель из справочника — подставляем типовые характеристики в пустые поля и просим проверить
+  const fillSpecs = () => {
+    const cat = categoryById(f.category_id.value);
+    const codes = cat ? (CATEGORY_SPECS[cat.code] || CATEGORY_SPECS.other) : [];
+    const sp = specsFor(cat?.code, f.brand.value, f.model.value, codes);
+    const note = app.querySelector('#specAuto');
+    if (!sp) return;
+    let n = 0;
+    app.querySelectorAll('[data-spec]').forEach((i) => {
+      if (i.value === '' && sp[i.dataset.spec] != null) { i.value = sp[i.dataset.spec]; n++; }
+    });
+    if (n) {
+      note.textContent = `Характеристики подставлены по справочнику для ${f.brand.value} ${f.model.value} (${n}) — проверьте и поправьте под вашу машину.`;
+      note.classList.remove('hidden');
+      markSteps();
+    }
+  };
+  f.model.addEventListener('dd-pick', fillSpecs);
+  f.model.addEventListener('change', fillSpecs);
+  // Сменили марку — модель другой марки очищаем, чтобы не осталось «Komatsu ZX200»
+  f.brand.addEventListener('change', () => {
+    const list = modelsFor(catCode(), f.brand.value);
+    if (f.model.value && list.length && !list.some((m) => m.toLowerCase() === f.model.value.trim().toLowerCase())) { f.model.value = ''; autoTitle(); }
+  });
   f.delivery_request.addEventListener('change', () => { f.delivery.disabled = f.delivery_request.checked; });
   const collectSpecs = () => {
     const s = {};
