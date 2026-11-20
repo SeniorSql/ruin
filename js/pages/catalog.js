@@ -3,6 +3,7 @@ import { sb, state, q, rpc, loadCategories } from '../api.js';
 import { esc, skeleton, qs, toMinor, mskToday, plural } from '../ui.js';
 import { EQ_SELECT, productCard, loadFavs, bindFavs, loadRatings } from '../cards.js';
 import { t, catName } from '../i18n.js';
+import { registerSource } from '../cities.js';
 
 const PAGE = 48;
 const STALE_DAYS = 7;
@@ -11,10 +12,10 @@ export async function render(app, _p, query) {
   // В списке категорий — только те, где есть техника, с числом предложений (с 12.11.2026).
   // Выбранная по ссылке категория остаётся в списке, даже если в ней пока пусто.
   const [cats, used] = await Promise.all([loadCategories(),
-    q(sb.from('equipment').select('category_id').eq('status', 'PUBLISHED').eq('listed', true).limit(5000)).catch(() => null)]);
+    q(sb.from('equipment').select('category_id,brand').eq('status', 'PUBLISHED').eq('listed', true).limit(5000)).catch(() => null)]);
   const catN = {};
   (used || []).forEach((e) => { catN[e.category_id] = (catN[e.category_id] || 0) + 1; });
-  const f = { q: query.q || '', cat: query.cat || '', city: query.city || '', fmt: query.fmt || '',
+  const f = { q: query.q || '', cat: query.cat || '', brand: query.brand || '', city: query.city || '', fmt: query.fmt || '',
     max: query.max || '', sort: query.sort || 'new', from: query.from || '', to: query.to || '', stale: query.stale || '' };
   const cat = cats.find((c) => c.code === f.cat);
 
@@ -25,6 +26,7 @@ export async function render(app, _p, query) {
       <input class="inp" name="q" value="${esc(f.q)}" placeholder="${t('Марка, модель, задача', 'Brand, model, task')}" aria-label="${t('Поиск', 'Search')}">
       <select class="inp" name="cat" aria-label="${t('Категория', 'Category')}"><option value="">${t('Все категории', 'All categories')}</option>
         ${cats.filter((c) => !used || catN[c.id] || c.code === f.cat).map((c) => `<option value="${c.code}" ${c.code === f.cat ? 'selected' : ''}>${esc(catName(c))}${used ? ` (${catN[c.id] || 0})` : ''}</option>`).join('')}</select>
+      <input class="inp" name="brand" data-dd="catbrand" value="${esc(f.brand)}" placeholder="${t('Марка', 'Brand')}" aria-label="${t('Марка', 'Brand')}" style="min-width:130px;width:140px">
       <input class="inp" name="city" value="${esc(f.city)}" placeholder="${t('Город', 'City')}" aria-label="${t('Город', 'City')}" style="min-width:130px;width:140px">
       <select class="inp" name="fmt" aria-label="${t('Формат', 'Format')}"><option value="">${t('Любой формат', 'Any format')}</option>
         <option value="op" ${f.fmt === 'op' ? 'selected' : ''}>${t('С оператором', 'With operator')}</option><option value="noop" ${f.fmt === 'noop' ? 'selected' : ''}>${t('Без оператора', 'Without operator')}</option></select>
@@ -43,6 +45,15 @@ export async function render(app, _p, query) {
     <div id="res">${skeleton(8)}</div>
     <div style="text-align:center;margin-top:16px"><button class="btn ghost hidden" id="more">${t('Показать ещё', 'Show more')}</button></div>`;
 
+  // Фильтр «Марка» (20.11.2026): в списке — марки, которые есть в каталоге (в выбранной категории)
+  const flt = app.querySelector('#flt');
+  registerSource('catbrand', () => {
+    const c = cats.find((x) => x.code === flt.cat.value);
+    return [...new Set((used || []).filter((r) => !c || r.category_id === c.id).map((r) => (r.brand || '').trim()).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'ru'));
+  });
+  // Выбрали марку из списка — сразу показываем
+  flt.brand.addEventListener('dd-pick', () => flt.requestSubmit());
   app.querySelector('#flt').onsubmit = (e) => {
     e.preventDefault();
     const d = Object.fromEntries(new FormData(e.target));
@@ -63,6 +74,7 @@ export async function render(app, _p, query) {
     // Группа одинаковой техники — одна карточка «N шт.» (SQL 37): машины группы, кроме ведущей, не показываем
     let b = sb.from('equipment').select(EQ_SELECT, { count: 'exact' }).eq('status', 'PUBLISHED').eq('listed', true);
     if (cat) b = b.eq('category_id', cat.id);
+    if (f.brand) b = b.ilike('brand', f.brand.trim().replace(/[\\%_]/g, (c) => '\\' + c));
     if (f.city) b = b.ilike('city', `%${f.city}%`);
     if (f.fmt === 'op') b = b.eq('with_operator', true);
     if (f.fmt === 'noop') b = b.eq('without_operator', true);
