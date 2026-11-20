@@ -299,11 +299,12 @@ async function orgs(box, { status: st, search }) {
 }
 
 async function equipment(box) {
-  const rows = await q(sb.from('equipment').select('*, organizations(name,verification_status), categories(name)').eq('status', 'PENDING_MODERATION').order('updated_at').limit(200));
+  // Группа одинаковой техники (SQL 37) — одна строка «× N шт.», решение применяется ко всем машинам группы
+  const rows = await q(sb.from('equipment').select('*, organizations(name,verification_status), categories(name)').eq('status', 'PENDING_MODERATION').eq('listed', true).order('updated_at').limit(200));
   box.innerHTML = rows.length ? `<div class="panel">${rows.map((e) => {
     const p = photoOf(e);
     return `<div class="row-item" style="align-items:flex-start">${p ? `<img src="${esc(p.url)}" alt="" referrerpolicy="no-referrer">` : '<img alt="">'}
-      <div class="grow"><b><a href="#/item/${e.id}" target="_blank">${esc(e.title)}</a></b>
+      <div class="grow"><b><a href="#/item/${e.id}" target="_blank">${esc(e.title)}</a></b>${e.group_size > 1 ? ` <span class="st qty">× ${e.group_size} шт. — решение для всей группы</span>` : ''}
       <div class="small">${esc(e.categories?.name)} · ${esc(e.brand)} ${esc(e.model)} ${e.year || ''} · ${esc(e.city)} · <span class="num">${priceText(e)}</span></div>
       <div class="small muted">${esc(e.organizations?.name)} ${status('org', e.organizations?.verification_status)} · фото: ${(e.photos || []).length}</div>
       ${e.description ? `<div class="small" style="margin-top:4px;white-space:pre-wrap">${esc(e.description.slice(0, 400))}</div>` : ''}</div>
